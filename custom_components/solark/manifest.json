@@ -1,13 +1,13 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "codeowners": ["@dcastenholz"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/dcastenholz/HA-solark-PV",
   "issue_tracker": "https://github.com/dcastenholz/HA-solark-PV/issues",
-  "domain": "solark_modbus",
+  "domain": "solark_modbus_dc",
   "iot_class": "local_polling",
-  "name": "SolArk Inverter Modbus",
+  "name": "SolArk Inverter Modbus DC",
   "requirements": [
     "pymodbus>=2.3.0"
   ]
