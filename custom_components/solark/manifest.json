@@ -1,10 +1,10 @@
 {
   "version": "1.4.0",
-  "codeowners": ["@pbix"],
+  "codeowners": ["@dcastenholz"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/pbix/HA-solark-PV",
-  "issue_tracker": "https://github.com/pbix/HA-solark-PV/issues",
+  "documentation": "https://github.com/dcastenholz/HA-solark-PV",
+  "issue_tracker": "https://github.com/dcastenholz/HA-solark-PV/issues",
   "domain": "solark_modbus",
   "iot_class": "local_polling",
   "name": "SolArk Inverter Modbus",
