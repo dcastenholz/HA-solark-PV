@@ -83,8 +83,8 @@ class SolArkModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure(self, user_input=None):
         if user_input is not None:
             # TODO: process user input
-            await self.async_set_unique_id(user_input[CONF_HOST])
-            self._abort_if_unique_id_mismatch()
+            """await self.async_set_unique_id(user_input[CONF_HOST])
+            self._abort_if_unique_id_mismatch()"""
             return self.async_update_reload_and_abort(
                 self._get_reconfigure_entry(),
                 data_updates=user_input,
