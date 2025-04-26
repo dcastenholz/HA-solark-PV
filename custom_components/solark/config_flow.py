@@ -8,15 +8,14 @@ import voluptuous as vol
 
 from .const import DEFAULT_NAME, DEFAULT_PORT, DEFAULT_SCAN_INTERVAL, DOMAIN
 
-DATA_SCHEMA = vol.Schema(
+def get_data_schema(conf_name, conf_host, conf_scan_interval):
+    return vol.Schema(
     {
-        vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
-        vol.Required(CONF_HOST, default='localhost'): str,
-        vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
+        vol.Required(CONF_NAME, default = conf_name): str,
+        vol.Required(CONF_HOST, default = conf_host): str,
+        vol.Optional(CONF_SCAN_INTERVAL, default = conf_scan_interval): int,
     }
 )
-
-
 
 @callback
 def solark_modbus_entries(hass: HomeAssistant):
@@ -24,8 +23,6 @@ def solark_modbus_entries(hass: HomeAssistant):
     return {
         entry.data[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)
     }
-
-
 
 def host_valid(netloc):
     
@@ -42,12 +39,8 @@ def host_valid(netloc):
 
     return True            
 
-
-
-
 class SolArkModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """SolArk Modbus configflow."""
-
 
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
@@ -66,9 +59,9 @@ class SolArkModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             host = user_input[CONF_HOST]
 
             if self._host_in_configuration_exists(host):
-                errors[CONF_HOST] = "already_configured"
+                errors[CONF_HOST] = "Host already configured"
             elif not host_valid(host):
-                errors[CONF_HOST] = "invalid host IP"
+                errors[CONF_HOST] = "Invalid host IP"
             else:
                 await self.async_set_unique_id(user_input[CONF_HOST])
                 self._abort_if_unique_id_configured()
@@ -77,20 +70,39 @@ class SolArkModbusConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
 
         return self.async_show_form(
-            step_id="user", data_schema=DATA_SCHEMA, errors=errors
+            step_id="user",
+            data_schema = get_data_schema(DEFAULT_NAME, DEFAULT_HOST, DEFAULT_SCAN_INTERVAL),
+            errors=errors
         )
 
     async def async_step_reconfigure(self, user_input=None):
         if user_input is not None:
-            # TODO: process user input
             """await self.async_set_unique_id(user_input[CONF_HOST])
             self._abort_if_unique_id_mismatch()"""
+
+            """
+            user_input[CONF_SCAN_INTERVAL] = 44
+            """
+
             return self.async_update_reload_and_abort(
                 self._get_reconfigure_entry(),
                 data_updates=user_input,
             )
 
+        existing_entry = self._get_reconfigure_entry()
+
+        DATA_SCHEMA_RECONFIG = vol.Schema(
+            {
+                vol.Required(CONF_NAME, default = existing_entry.data[CONF_NAME]): str,
+                vol.Required(CONF_HOST, default = existing_entry.data[CONF_HOST]): str,
+                vol.Optional(CONF_SCAN_INTERVAL, default = existing_entry.data[CONF_SCAN_INTERVAL]): int,
+            }
+        )
+
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=DATA_SCHEMA,
+            data_schema=get_data_schema(existing_entry.data[CONF_NAME],
+                                        existing_entry.data[CONF_HOST],
+                                        existing_entry.data[CONF_SCAN_INTERVAL]
+                                        ),
         )
