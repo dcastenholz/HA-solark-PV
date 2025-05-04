@@ -15,14 +15,16 @@
           "host": "URL or serial port to query",
           "name": "Sensor prefix used in HA",
           "scan_interval": "Polling period in seconds"
-        }
+        },
+        "already_configured": "xxDevice is already configured"
       }
     },
     "error": {
       "already_configured": "Device is already configured"
     },
     "abort": {
-      "already_configured": "Device is already configured"
+      "already_configured": "Device is already configured",
+      "reconfigure_successful": "WOOOOOWW"
     }
   }
 }
