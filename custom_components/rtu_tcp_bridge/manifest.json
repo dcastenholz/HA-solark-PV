@@ -1,0 +1,9 @@
+{
+  "domain": "rtu_tcp_bridge",
+  "name": "RTU to TCP Bridge",
+  "version": "1.0.0",
+  "requirements": ["pymodbus>=3.5.0"],
+  "dependencies": [],
+  "codeowners": [],
+  "config_flow": true
+}
