@@ -1,11 +1,13 @@
 from dataclasses import dataclass
+from enum import Enum, auto
 
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntityDescription,
-    SensorStateClass,
-)
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntityDescription, SensorStateClass
 from homeassistant.const import EntityCategory
+
+
+class SensorClass(Enum):
+    NORMAL = auto()
+    CONFIG = auto()
 
 
 # ----------------------------------
@@ -24,3 +26,4 @@ class SolArkModbusSensorEntityDescription(SensorEntityDescription):
     entity_registry_enabled_default: bool = True
     entity_category: EntityCategory | None = None
     description: str | None = None
+    sensor_class: SensorClass

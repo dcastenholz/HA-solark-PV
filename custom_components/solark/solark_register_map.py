@@ -2,9 +2,11 @@
 
 from typing import TypeVar
 
+from homeassistant.const import EntityCategory
+
 from .const import GEN_RELAY_STATUS, GRID_RELAY_STATUS
 from .fault_info import translate_fault_code_to_messages
-from .register_map import DIAGNOSTIC, DataType, DeviceClass, NativeUnit, RegisterMap, RegisterMapEntry, StateClass
+from .register_map import DIAGNOSTIC, DataType, DeviceClass, NativeUnit, RegisterMap, RegisterMapEntry, SensorClass, StateClass
 
 T = TypeVar("T", bound="RegisterMap")  # T is the real subclass
 
@@ -19,9 +21,83 @@ class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
         data_type=DataType.STRING,
         name="Serial Number",
         icon="mdi:information-outline",
-        state_class=StateClass.NONE,
         entity_registry_enabled_default=False,
     )
+
+    FIRMWARE_S = RegisterMapEntry(
+        address=11,
+        key="firmware_s",
+        data_type=DataType.INT16,
+        name="Firmware S Raw",
+        icon="mdi:information-outline",
+        entity_registry_enabled_default=False,
+    )
+    FIRMWARE_M = RegisterMapEntry(
+        address=13,
+        key="firmware_m",
+        data_type=DataType.INT16,
+        name="Firmware Control Board Raw",
+        icon="mdi:information-outline",
+        entity_registry_enabled_default=False,
+    )
+    FIRMWARE_C = RegisterMapEntry(
+        address=14,
+        key="firmware_c",
+        data_type=DataType.INT16,
+        name="Firmware Communication Board Raw",
+        icon="mdi:information-outline",
+        entity_registry_enabled_default=False,
+    )
+
+    RATED_POWER = RegisterMapEntry(
+        address=16,
+        key="rated_power",
+        data_type=DataType.INT32,
+        scale=0.1,
+        name="Rated Power",
+        icon="mdi:solar-power",
+        native_unit_of_measurement=NativeUnit.WATT,
+        device_class=DeviceClass.POWER,
+        entity_registry_enabled_default=False,
+    )
+
+    MPPT_INFO_RAW = RegisterMapEntry(
+        address=18,
+        key="mppt_info_raw",
+        data_type=DataType.INT16,
+        name="MPPT Info Raw Value",
+        icon="mdi:information-outline",
+        entity_registry_enabled_default=False,
+    )
+
+    SYSTEM_TIME_YM_RAW = RegisterMapEntry(
+        address=22,
+        key="system_time_ym_raw",
+        data_type=DataType.INT16,
+        name="System Time Year Month Raw Value",
+        icon="mdi:information-outline",
+        entity_registry_enabled_default=False,
+    )
+    SYSTEM_TIME_DH_RAW = RegisterMapEntry(
+        address=23,
+        key="system_time_DH_raw",
+        data_type=DataType.INT16,
+        name="System Time Day Hour Raw Value",
+        icon="mdi:information-outline",
+        entity_registry_enabled_default=False,
+    )
+    SYSTEM_TIME_MS_RAW = RegisterMapEntry(
+        address=24,
+        key="system_time_ms_raw",
+        data_type=DataType.INT16,
+        name="System Time Minute Second Raw Value",
+        icon="mdi:information-outline",
+        entity_registry_enabled_default=False,
+    )
+
+
+
+
     DAILYINV_E = RegisterMapEntry(
         address=60,
         key="dailyinv_e",
@@ -62,6 +138,30 @@ class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
         device_class=DeviceClass.ENERGY,
         state_class=StateClass.TOTAL_INCREASING,
     )
+
+    # NEW ------------------------------------------------
+    TOTALBATT_C_E = RegisterMapEntry(
+        address=72,
+        key="totalbattc_e",
+        data_type=DataType.UINT32,
+        scale=0.1,
+        name="Total Battery Charge Energy",
+        native_unit_of_measurement=NativeUnit.KWH,
+        device_class=DeviceClass.ENERGY,
+        state_class=StateClass.TOTAL,
+    )
+    TOTALBATT_D_E = RegisterMapEntry(
+        address=74,
+        key="totalbattd_e",
+        data_type=DataType.UINT32,
+        scale=0.1,
+        name="Total Battery Discharge Energy",
+        native_unit_of_measurement=NativeUnit.KWH,
+        device_class=DeviceClass.ENERGY,
+        state_class=StateClass.TOTAL,
+    )
+    # END ------------------------------------------------
+
     DAILYGRIDBUY_E = RegisterMapEntry(
         address=76,
         key="dailygridbuy_e",
@@ -82,6 +182,17 @@ class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
         device_class=DeviceClass.ENERGY,
         state_class=StateClass.TOTAL_INCREASING,
     )
+
+    # NEW ------------------------------------------------
+    TOTALGRIDBUY_E_LOW_RAW = RegisterMapEntry(
+        address=78,
+        key="totalgridbuy_e_low",
+        data_type=DataType.UINT16,
+        name="Total Grid Buy Energy - low word",
+        entity_category=DIAGNOSTIC,
+    )
+    # END ------------------------------------------------
+
     GRIDFREQ = RegisterMapEntry(
         address=79,
         key="gridfreq",
@@ -92,6 +203,28 @@ class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
         native_unit_of_measurement=NativeUnit.HZ,
         state_class=StateClass.MEASUREMENT,
     )
+
+    # NEW ------------------------------------------------
+    TOTALGRIDBUY_E_HIGH_RAW = RegisterMapEntry(
+        address=80,
+        key="totalgridbuy_e_high",
+        data_type=DataType.UINT16,
+        name="Total Grid Buy Energy - high word",
+        entity_category=DIAGNOSTIC,
+    )
+
+    TOTALGRIDSELL_E = RegisterMapEntry(
+        address=81,
+        key="totalsell_e",
+        data_type=DataType.UINT32,
+        scale=0.1,
+        name="Total Grid Sell Energy",
+        native_unit_of_measurement=NativeUnit.KWH,
+        device_class=DeviceClass.ENERGY,
+        state_class=StateClass.TOTAL,
+    )
+    # END ------------------------------------------------
+
     DAILYLOAD_E = RegisterMapEntry(
         address=84,
         key="dailyload_e",
@@ -240,6 +373,39 @@ class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
         state_class=StateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     )
+
+    # # NEW ---------------- NOT VERIFIED - Looks bad --------------------------------
+    # GRID_CHARGE_CURRENT = RegisterMapEntry(
+    #     address=128,
+    #     key="grid_charge_current",
+    #     data_type=DataType.UINT16,
+    #     name="Grid Charge Current",
+    #     icon="mdi:current-dc",
+    #     native_unit_of_measurement=NativeUnit.A,
+    #     device_class=DeviceClass.CURRENT,
+    #     state_class=StateClass.MEASUREMENT,
+    #     entity_registry_enabled_default=False,
+    # )
+    # GEN_CHARGE_ENABLE = RegisterMapEntry(
+    #     address=129,
+    #     key="gen_charge_enable",
+    #     data_type=DataType.UINT16,
+    #     name="Generator Charge Enable",
+    #     icon="mdi:engine",
+    #     state_class=StateClass.NONE,
+    #     entity_registry_enabled_default=False,
+    # )
+    # GRID_CHARGE_ENABLE = RegisterMapEntry(
+    #     address=130,
+    #     key="grid_charge_enable",
+    #     data_type=DataType.UINT16,
+    #     name="Grid Charge Enable",
+    #     icon="mdi:transmission-tower-export",
+    #     state_class=StateClass.NONE,
+    #     entity_registry_enabled_default=False,
+    # )
+    # # END ------------------------------------------------
+
     GRIDL1N_V = RegisterMapEntry(
         address=150,
         key="gridl1n_v",
@@ -478,7 +644,7 @@ class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
         address=172,
         key="gridext_p",
         data_type=DataType.INT16,
-        name="Grid External total Power",
+        name="Grid External Total Power",
         icon="mdi:solar-power",
         native_unit_of_measurement=NativeUnit.WATT,
         device_class=DeviceClass.POWER,
@@ -721,8 +887,370 @@ class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
         entity_registry_enabled_default=False,
     )
 
+    # Time of use
+
+    TIMEOFUSE_ENABLED = RegisterMapEntry(
+        address=248,
+        key="timeofuse_enabled",
+        data_type=DataType.UINT16,
+        name="Time of Use Enabled",
+        entity_registry_enabled_default=False,
+    )
+
+    TIMEOFUSE_TIME_1 = RegisterMapEntry(
+        address=250,
+        key="timeofuse_time_1",
+        data_type=DataType.UINT16,
+        name="Time of Use Time 1",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_TIME_2 = RegisterMapEntry(
+        address=251,
+        key="timeofuse_time_2",
+        data_type=DataType.UINT16,
+        name="Time of Use Time 2",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_TIME_3 = RegisterMapEntry(
+        address=252,
+        key="timeofuse_time_3",
+        data_type=DataType.UINT16,
+        name="Time of Use Time 3",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_TIME_4 = RegisterMapEntry(
+        address=253,
+        key="timeofuse_time_4",
+        data_type=DataType.UINT16,
+        name="Time of Use Time 4",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_TIME_5 = RegisterMapEntry(
+        address=254,
+        key="timeofuse_time_5",
+        data_type=DataType.UINT16,
+        name="Time of Use Time 5",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_TIME_6 = RegisterMapEntry(
+        address=255,
+        key="timeofuse_time_6",
+        data_type=DataType.UINT16,
+        name="Time of Use Time 6",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+
+    TIMEOFUSE_POWER_1 = RegisterMapEntry(
+        address=256,
+        key="timeofuse_power_1",
+        data_type=DataType.UINT16,
+        name="Time of Use Power 1",
+        native_unit_of_measurement=NativeUnit.WATT,
+        device_class=DeviceClass.POWER,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_POWER_2 = RegisterMapEntry(
+        address=257,
+        key="timeofuse_power_2",
+        data_type=DataType.UINT16,
+        name="Time of Use Power 2",
+        native_unit_of_measurement=NativeUnit.WATT,
+        device_class=DeviceClass.POWER,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_POWER_3 = RegisterMapEntry(
+        address=258,
+        key="timeofuse_power_3",
+        data_type=DataType.UINT16,
+        name="Time of Use Power 3",
+        native_unit_of_measurement=NativeUnit.WATT,
+        device_class=DeviceClass.POWER,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_POWER_4 = RegisterMapEntry(
+        address=259,
+        key="timeofuse_power_4",
+        data_type=DataType.UINT16,
+        name="Time of Use Power 4",
+        native_unit_of_measurement=NativeUnit.WATT,
+        device_class=DeviceClass.POWER,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_POWER_5 = RegisterMapEntry(
+        address=260,
+        key="timeofuse_power_5",
+        data_type=DataType.UINT16,
+        name="Time of Use Power 5",
+        native_unit_of_measurement=NativeUnit.WATT,
+        device_class=DeviceClass.POWER,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_POWER_6 = RegisterMapEntry(
+        address=261,
+        key="timeofuse_power_6",
+        data_type=DataType.UINT16,
+        name="Time of Use Power 6",
+        native_unit_of_measurement=NativeUnit.WATT,
+        device_class=DeviceClass.POWER,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+
+    TIMEOFUSE_VOLTAGE_1 = RegisterMapEntry(
+        address=262,
+        key="timeofuse_voltage_1",
+        data_type=DataType.UINT16,
+        name="Time of Use Voltage 1",
+        scale=0.1,
+        native_unit_of_measurement=NativeUnit.V,
+        device_class=DeviceClass.VOLTAGE,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_VOLTAGE_2 = RegisterMapEntry(
+        address=263,
+        key="timeofuse_voltage_2",
+        data_type=DataType.UINT16,
+        name="Time of Use Voltage 2",
+        scale=0.1,
+        native_unit_of_measurement=NativeUnit.V,
+        device_class=DeviceClass.VOLTAGE,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_VOLTAGE_3 = RegisterMapEntry(
+        address=264,
+        key="timeofuse_voltage_3",
+        data_type=DataType.UINT16,
+        name="Time of Use Voltage 3",
+        scale=0.1,
+        native_unit_of_measurement=NativeUnit.V,
+        device_class=DeviceClass.VOLTAGE,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_VOLTAGE_4 = RegisterMapEntry(
+        address=265,
+        key="timeofuse_voltage_4",
+        data_type=DataType.UINT16,
+        name="Time of Use Voltage 4",
+        scale=0.1,
+        native_unit_of_measurement=NativeUnit.V,
+        device_class=DeviceClass.VOLTAGE,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_VOLTAGE_5 = RegisterMapEntry(
+        address=266,
+        key="timeofuse_voltage_5",
+        data_type=DataType.UINT16,
+        name="Time of Use Voltage 5",
+        scale=0.1,
+        native_unit_of_measurement=NativeUnit.V,
+        device_class=DeviceClass.VOLTAGE,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_VOLTAGE_6 = RegisterMapEntry(
+        address=267,
+        key="timeofuse_voltage_6",
+        data_type=DataType.UINT16,
+        name="Time of Use Voltage 6",
+        scale=0.1,
+        native_unit_of_measurement=NativeUnit.V,
+        device_class=DeviceClass.VOLTAGE,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+
+    TIMEOFUSE_SOC_1 = RegisterMapEntry(
+        address=268,
+        key="timeofuse_soc_1",
+        data_type=DataType.UINT16,
+        name="Time of Use SOC 1",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_SOC_2 = RegisterMapEntry(
+        address=269,
+        key="timeofuse_soc_2",
+        data_type=DataType.UINT16,
+        name="Time of Use SOC 2",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_SOC_3 = RegisterMapEntry(
+        address=270,
+        key="timeofuse_soc_3",
+        data_type=DataType.UINT16,
+        name="Time of Use SOC 3",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_SOC_4 = RegisterMapEntry(
+        address=271,
+        key="timeofuse_soc_4",
+        data_type=DataType.UINT16,
+        name="Time of Use SOC 4",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_SOC_5 = RegisterMapEntry(
+        address=272,
+        key="timeofuse_soc_5",
+        data_type=DataType.UINT16,
+        name="Time of Use SOC 5",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_SOC_6 = RegisterMapEntry(
+        address=273,
+        key="timeofuse_soc_6",
+        data_type=DataType.UINT16,
+        name="Time of Use SOC 6",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+
+    TIMEOFUSE_ENABLED_1 = RegisterMapEntry(
+        address=274,
+        key="timeofuse_enabled_1",
+        data_type=DataType.UINT16,
+        name="Time of Use Enabled 1",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_ENABLED_2 = RegisterMapEntry(
+        address=275,
+        key="timeofuse_enabled_2",
+        data_type=DataType.UINT16,
+        name="Time of Use Enabled 2",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_ENABLED_3 = RegisterMapEntry(
+        address=276,
+        key="timeofuse_enabled_3",
+        data_type=DataType.UINT16,
+        name="Time of Use Enabled 3",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_ENABLED_4 = RegisterMapEntry(
+        address=277,
+        key="timeofuse_enabled_4",
+        data_type=DataType.UINT16,
+        name="Time of Use Enabled 4",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_ENABLED_5 = RegisterMapEntry(
+        address=278,
+        key="timeofuse_enabled_5",
+        data_type=DataType.UINT16,
+        name="Time of Use Enabled 5",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    TIMEOFUSE_ENABLED_6 = RegisterMapEntry(
+        address=279,
+        key="timeofuse_enabled_6",
+        data_type=DataType.UINT16,
+        name="Time of Use Enabled 6",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+
+    BMS_CHARGING_VOLTAGE = RegisterMapEntry(
+        address=312,
+        key="bms_charging_voltage",
+        data_type=DataType.UINT16,
+        name="BMS Charging Voltage",
+        scale=0.1,
+        native_unit_of_measurement=NativeUnit.V,
+        device_class=DeviceClass.VOLTAGE,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    BMS_DISCHARGE_VOLTAGE = RegisterMapEntry(
+        address=313,
+        key="bms_discharge_voltage",
+        data_type=DataType.UINT16,
+        name="BMS Discharge Voltage",
+        scale=0.1,
+        native_unit_of_measurement=NativeUnit.V,
+        device_class=DeviceClass.VOLTAGE,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    BMS_CHARGE_CURRENT_LIMIT = RegisterMapEntry(
+        address=314,
+        key="bms_charge_current_limit",
+        data_type=DataType.UINT16,
+        name="BMS Charge Current Limit",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    BMS_DISCHARGE_CURRENT_LIMIT = RegisterMapEntry(
+        address=315,
+        key="bms_discharge_current_limit",
+        data_type=DataType.UINT16,
+        name="BMS Discharge Current Limit",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    BMS_SOC = RegisterMapEntry(
+        address=316,
+        key="bms_soc",
+        data_type=DataType.UINT16,
+        name="BMS SOC",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    BMS_VOLTAGE = RegisterMapEntry(
+        address=317,
+        key="bms_voltage",
+        data_type=DataType.UINT16,
+        name="BMS Voltage",
+        scale=0.1,
+        native_unit_of_measurement=NativeUnit.V,
+        device_class=DeviceClass.VOLTAGE,
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    BMS_CURRENT = RegisterMapEntry(
+        address=318,
+        key="bms_current",
+        data_type=DataType.INT16,
+        name="BMS Current",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+    BMS_TEMP = RegisterMapEntry(
+        address=319,
+        key="bms_temp",
+        data_type=DataType.INT16,
+        name="BMS Temperature",
+        state_class=StateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+    )
+
+    # ----------------------------------
+    # Post process methods
+    # ----------------------------------
     @staticmethod
-    def value_is_injected(register_map: "SolArkRegisterMap", entry: RegisterMapEntry):
+    def value_is_injected(register_map: "SolArkRegisterMap", entry: RegisterMapEntry): # pylint: disable=W0613
         # Value is injected into the data dictionary
         return
 
@@ -745,6 +1273,15 @@ class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
         raw: int = int(register_map.GEN_RLY_RAW) & 0x0F  # mask low 4 bits
         entry.register_value = GEN_RELAY_STATUS.get(int(raw), "Unknown") if raw is not None else "Unknown"
 
+    @staticmethod
+    def total_grid_buy(register_map: "SolArkRegisterMap", entry: RegisterMapEntry):
+        high: int = int(register_map.TOTALGRIDBUY_E_HIGH_RAW)
+        low: int = int(register_map.TOTALGRIDBUY_E_LOW_RAW)
+        entry.register_value = (high << 16) | low
+
+    # ----------------------------------
+    # Post processed sensor definitions
+    # ----------------------------------
     FAULTMSG = RegisterMapEntry(
         source_is_register_read=False,
         key="faultmsg",
@@ -790,6 +1327,17 @@ class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
         post_process_method=gen_relay_status,
         description="Indicates the status of the generator relay based on raw register values.",
     )
+    TOTALGRIDBUY_E = RegisterMapEntry(
+        source_is_register_read=False,
+        key="totalgridbuy_e",
+        data_type=DataType.INT32,
+        name="Total Grid Buy Energy",
+        native_unit_of_measurement=NativeUnit.KWH,
+        device_class=DeviceClass.ENERGY,
+        state_class=StateClass.TOTAL,
+        entity_registry_enabled_default=False,
+        post_process_method=total_grid_buy,
+    )
 
     UPDATE_COUNTER = RegisterMapEntry(
         source_is_register_read=False,
@@ -800,3 +1348,17 @@ class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
         state_class=StateClass.TOTAL,
         post_process_method=value_is_injected,
     )
+
+    CONFIG_INFO = RegisterMapEntry(
+        source_is_register_read=False,
+        key="config_info",
+        data_type=DataType.STRING,
+        name="Configuration",
+        icon="mdi:information-outline",
+        entity_category = EntityCategory.DIAGNOSTIC,
+        state_class=StateClass.NONE,
+        post_process_method=value_is_injected,
+        sensor_class = SensorClass.CONFIG,
+    )
+    # TODO - add performance metrics for the register reads.
+    # TODO - add fault list sensor

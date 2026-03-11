@@ -18,7 +18,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 
-from .sensor_entity_description import SolArkModbusSensorEntityDescription
+from .sensor_entity_description import SensorClass, SolArkModbusSensorEntityDescription
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,8 +81,6 @@ class DataType(Enum):
 RegisterValue = Union[int, float, str, None]
 NumericValue = Union[int, float]
 DIAGNOSTIC = EntityCategory.DIAGNOSTIC
-# TODO - Add config entities
-CONFIG = EntityCategory.CONFIG
 
 
 # ----------------------------------
@@ -109,6 +107,7 @@ class RegisterMapEntry:
     entity_category: EntityCategory | None = None
     post_process_method: Optional[Callable[[Any, "RegisterMapEntry"], None]] = None
     description: str | None = None
+    sensor_class: SensorClass = SensorClass.NORMAL
 
     last_read_successful: bool = False
 
@@ -203,6 +202,7 @@ class RegisterMapEntry:
             entity_registry_enabled_default=self.entity_registry_enabled_default,
             entity_category=self.entity_category,
             description=self.description,
+            sensor_class=self.sensor_class
         )
 
 
@@ -264,6 +264,14 @@ class RegisterMap(Generic[T]):
         """Get a RegisterMapEntry by key."""
         return self._map.get(key)
 
+    def get_descriptions(self) -> list[SolArkModbusSensorEntityDescription]:
+        return [
+            entry.from_register_map_entry()
+            for entry in self._sorted
+            # Modern HA does not use EntityCategory.CONFIG for sensors.
+            if entry.entity_category != EntityCategory.CONFIG
+        ]
+
     def is_error(self) -> bool:
         """Return whether an error occurred."""
         return self._error
@@ -283,9 +291,6 @@ class RegisterMap(Generic[T]):
 
     def is_empty(self) -> bool:
         return len(self._map) == 0
-
-    def sensor_types(self) -> dict[str, SolArkModbusSensorEntityDescription]:
-        return {entry.key: entry.from_register_map_entry() for entry in self._sorted}
 
     def init(self):
         """Initialize the register map before reading registers. This can be used to reset any calculated values or error flags."""
