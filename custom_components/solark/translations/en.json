@@ -4,27 +4,51 @@
       "user": {
         "title": "Configure the Modbus Interface",
         "data": {
-          "host": "URL or serial port to query",
           "name": "Sensor prefix used in HA",
+          "connection_type": "Connection type",
           "scan_interval": "Polling period in seconds"
         }
       },
       "reconfigure": {
         "title": "Reconfigure the Modbus Interface",
         "data": {
-          "host": "URL or serial port to query",
+          "name": "Sensor prefix used in HA",
+          "connection_type": "Connection type",
           "scan_interval": "Polling period in seconds"
+        }
+      },
+      "tcp": {
+        "title": "Configure the TCP Connection",
+        "description": "Enter TCP connection settings.",
+        "data": {
+          "tcp_host": "Modbus IP address",
+          "tcp_port": "Modbus TCP port",
+          "device_id": "Modbus device ID"
+        }
+      },
+      "rtu": {
+        "title": "Configure the RTU Connection",
+        "description": "Enter RTU connection settings.",
+        "data": {
+          "rtu_port": "Serial port",
+          "device_id": "Modbus device ID"
         }
       }
     },
     "error": {
+      "name_already_configured": "Name is already used by another device",
       "already_configured": "Device is already configured",
       "host_already_configured": "Host is already configured",
-      "invalid_host": "Invalid host IP"
+      "invalid_tcp_host": "Invalid TCP host",
+      "invalid_tcp_port": "Invalid TCP port",
+      "invalid_rtu_port": "Invalid serial port",
+      "device_id_out_of_range": "Device ID ranges from 1 to 247",
+      "non_int_tcp_port": "TCP port must be an integer",
+      "non_int_device_id": "Device ID must be an integer"
     },
     "abort": {
       "already_configured": "Device is already configured",
-      "reconfigure_successful": "Reconfigure successful"
+      "reconfigure_successful": "Reconfiguration successful"
     }
   }
 }

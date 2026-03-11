@@ -5,11 +5,13 @@ from __future__ import annotations
 DOMAIN = "solark_modbus"
 DEFAULT_NAME = "SolArk"
 DEFAULT_HOST = "localhost"
+DEFAULT_PORT_RTU = "/dev/ttyUSB0"
 DEFAULT_SCAN_INTERVAL: int = 20
 DEFAULT_PORT: int = 502
 ATTR_MANUFACTURER = "SolArk"
 DEFAULT_DEVICE_ID: int = 1
-DEFAULT_MAX_STALE_DATA_AGE: int = 300  # 5 minutes
+DEFAULT_MAX_STALE_DATA_AGE_SECONDS: int = 300  # 5 minutes
+MIN_SCAN_INTERVAL_SECONDS: int = 5
 
 
 # Define FAULT_TABLE as dict[int, tuple[str, str, str]]
