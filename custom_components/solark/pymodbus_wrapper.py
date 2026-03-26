@@ -21,12 +21,14 @@ Home Assistant Version  Pymodbus Version   Python Version
 
 from __future__ import annotations
 
-import asyncio
-import threading
+import logging
 
 import pymodbus
 from packaging import version
-from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
+
+from .const import DEFAULT_PORT
+
+_LOGGER = logging.getLogger(__name__)
 
 # ---- Version parsing ----
 PYMODBUS_VERSION = version.parse(pymodbus.__version__)
@@ -101,18 +103,17 @@ class ModbusResponseError(ModbusResponse):
 class ModbusClientWrapper:
     """Thread-safe and async wrapper for Modbus TCP/Serial."""
 
-    __slots__ = ("_client", "_lock", "_connected")
+    __slots__ = ("_client", "_lock", "_connected", "_stopped")
 
     def __init__(
         self,
         host: str | None = None,
-        port: int = 502,
+        port: int = DEFAULT_PORT,
         serial_port: str | None = None,
         baudrate: int = 9600,
     ) -> None:
         """Create a Modbus client wrapper (TCP or Serial)."""
-        self._lock = threading.Lock()  # For reads
-        self._connected = False
+        self._client: ModbusTcpClient | ModbusSerialClient | OldModbusSerialClient | None
 
         if serial_port is not None:
             if IS_PRIOR_TO_V3_5_0:
@@ -129,46 +130,20 @@ class ModbusClientWrapper:
         else:
             raise ValueError("Either host or serial_port must be provided")
 
-    # ---- Connection handling ----
-    def _ensure_connected(self) -> None:
-        """Ensure the Modbus client is connected.
+    def close(self) -> None:
+        if self._client:
+            self._client.close()
 
-        PyModbus attempts to handle reconnect in many situations, but not all.
-        It is an undocumented feature. A failure in the pymodbus client creation
-        used to leave the hub in an unrecoverable state. By explicitly handling it,
-        we handle a failure at any point, as well as any reconnection attempt that
-        pymodbus does not handle properly."""
-
-        if self._connected:
-            return
-
-        if not self._client.connect():
-            raise ConnectionException("Modbus connection failed")
-
-        self._connected = True
+    def connect(self) -> bool:
+        if self._client:
+            return self._client.connect()
+        return False
 
     # ---- Sync read ----
     def read_holding_registers(self, address: int, count: int, device_id: int) -> ModbusResponse:
-        """Read holding registers in a thread-safe way."""
-        with self._lock:
-            try:
-                self._ensure_connected()
-
-                device_kw = self._get_device_id_param_name(device_id)
-
-                resp = self._client.read_holding_registers(address=address, count=count, **device_kw)  # type: ignore[arg-type]
-                return ModbusResponse(resp)
-            except (ModbusIOException, ConnectionException, ModbusException) as exc:
-                self._connected = False
-                return ModbusResponseError(exc)
-
-    # ---- Async helper ----
-    async def async_read_holding_registers(self, address: int, count: int, device_id: int) -> ModbusResponse:
-        """Async wrapper for read_holding_registers."""
-        # TODO - Move to real async.  Eliminate run_in_executor calls.
-        #  This will require a move to pymodbus >= 3.5 thus Home Assistant 2024.3 or later
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.read_holding_registers, address, count, device_id)
+        device_kw = self._get_device_id_param_name(device_id)
+        resp = self._client.read_holding_registers(address=address, count=count, **device_kw)  # type: ignore[arg-type]
+        return ModbusResponse(resp)
 
     # ---- Helper for slave/device_id ------
     def _get_device_id_param_name(self, device_id: int) -> dict[str, int]:
@@ -176,12 +151,3 @@ class ModbusClientWrapper:
         if IS_PRIOR_TO_V3_10_0:
             return {"slave": device_id}  # 3.1.1 → 3.9.x
         return {"device_id": device_id}  # 3.10+
-
-    # ---- Close client ----
-    def close(self) -> None:
-        """Close the underlying client."""
-        with self._lock:
-            try:
-                self._client.close()
-            finally:
-                self._connected = False

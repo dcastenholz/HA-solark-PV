@@ -126,3 +126,6 @@ pyproject.toml
 .vscode
 .vscode/
 .vscode/*
+
+node_modules
+package*.json

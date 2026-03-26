@@ -5,6 +5,9 @@ from struct import pack, unpack
 import warnings
 
 from pymodbus.exceptions import ParameterException
+# TODO - Move to standard HA LOGGING
+# import logging
+# _LOGGER = logging.getLogger(__name__)
 from pymodbus.logging import Log
 
 
@@ -19,6 +22,7 @@ class BinaryPayloadDecoder:
         second  = decoder.decode_16bit_uint()
     """
 
+    # TODO - Get rid of this. It does nothing.
     @classmethod
     def deprecate(cls):
         """Log warning."""
@@ -58,6 +62,8 @@ class BinaryPayloadDecoder:
         :raises ParameterException:
         """
         cls.deprecate()
+        # TODO - Move to standard HA LOGGING
+        # _LOGGER.debug("Registers: %s", registers)
         Log.debug("{}", registers)
         if isinstance(registers, list):  # repack into flat binary
             payload = pack(f"!{len(registers)}H", *registers)
@@ -80,6 +86,8 @@ class BinaryPayloadDecoder:
             if self._wordorder == "<":
                 handle.reverse()
             handle = handle.tobytes()
+        # TODO - Move to standard HA LOGGING
+        # _LOGGER.debug("handle: %s", handle)
         Log.debug("handle: {}", handle)
         return handle
 
@@ -94,6 +102,12 @@ class BinaryPayloadDecoder:
         Returns:
             The decoded integer value.
         """
+        if self._pointer + size > len(self._payload):
+            raise ValueError(
+                f"Decoder buffer overrun: need {size} bytes at {self._pointer}, "
+                f"payload length {len(self._payload)}"
+            )
+
         start = self._pointer
         self._pointer += size
         handle = self._payload[start : self._pointer]

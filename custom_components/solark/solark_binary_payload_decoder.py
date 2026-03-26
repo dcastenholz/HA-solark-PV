@@ -2,7 +2,7 @@ import warnings
 
 from .binary_payload_decoder import BinaryPayloadDecoder
 
-
+# TODO - Combine this with BinaryPayloadDecoder. No need to maintain the base class as well.
 class SolArkBinaryPayloadDecoder(BinaryPayloadDecoder):
     """Custom BinaryPayloadDecoder to replace the deprecated one from pymodbus."""
 

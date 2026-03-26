@@ -11,7 +11,12 @@ DEFAULT_PORT: int = 502
 ATTR_MANUFACTURER = "SolArk"
 DEFAULT_DEVICE_ID: int = 1
 DEFAULT_MAX_STALE_DATA_AGE_SECONDS: int = 300  # 5 minutes
+
 MIN_SCAN_INTERVAL_SECONDS: int = 5
+MIN_DEVICE_ID: int = 1
+MAX_DEVICE_ID: int = 247
+MIN_PORT: int = 1
+MAX_PORT_NUMBER: int = 65535
 
 
 # Define FAULT_TABLE as dict[int, tuple[str, str, str]]

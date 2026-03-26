@@ -1,0 +1,39 @@
+Move to modern DataUpdateCoordinator architecture: https://developers.home-assistant.io/blog/2024/08/05/coordinator_async_setup/
+
+Store runtime data on the ConfigEntry: https://developers.home-assistant.io/docs/core/integration-quality-scale/rules/runtime-data/
+2024.6.0 is required in manifest.json to suport config_entries.runtime_data
+
+
+Coordinator and Client are separate.  Coordinator calls Client to get data: https://developers.home-assistant.io/docs/core/integration-quality-scale/rules/common-modules/
+Coordinator and API are separate classes: https://developers.home-assistant.io/docs/integration_fetching_data/
+Coordinator contains reference to "my_api: ApiClient" which defines logic for reading data: https://deepwiki.com/home-assistant/developers.home-assistant/3.3-data-update-coordinator
+
+
+custom_components/solark/
+│
+├── modbus_client.py
+│   └── SolArkModbusClient        # handles Modbus communication
+│
+├── config_entry.py
+│   └── SolArkConfigEntry(ConfigEntry)
+│       └─ runtime_data: SolArkData
+│
+├── data.py
+│   └── SolArkData
+│       ├─ client: SolArkModbusClient
+│       ├─ coordinator: SolArkCoordinator | None
+│       └─ entry: SolArkConfigEntry
+│
+├── coordinator.py
+│   └── SolArkCoordinator(DataUpdateCoordinator)
+│       └─ data: SolArkData
+│
+├── sensor.py
+│   ├── SolArkBaseSensor(SensorEntity)
+│   ├── SolArkSensor(CoordinatorEntity, SolArkBaseSensor)
+│   └── SolArkConfigInfoSensor(SolArkBaseSensor)
+│
+└── __init__.py
+
+
+Handled buffer overrun in BinaryPayloadDecoder._decode()

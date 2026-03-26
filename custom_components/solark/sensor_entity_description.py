@@ -8,6 +8,7 @@ from homeassistant.const import EntityCategory
 class SensorClass(Enum):
     NORMAL = auto()
     CONFIG = auto()
+    DATETIME = auto()
 
 
 # ----------------------------------
@@ -26,4 +27,5 @@ class SolArkModbusSensorEntityDescription(SensorEntityDescription):
     entity_registry_enabled_default: bool = True
     entity_category: EntityCategory | None = None
     description: str | None = None
-    sensor_class: SensorClass
+    sensor_class: SensorClass = SensorClass.NORMAL
+    exclude_from_recorder: bool = False

@@ -1,69 +1,34 @@
+"""Config flow."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 
-import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL
+from homeassistant.config_entries import CONN_CLASS_LOCAL_POLL, ConfigFlow, ConfigFlowResult
+from homeassistant.const import CONF_NAME, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.selector import (
-    NumberSelector,
-    NumberSelectorConfig,
-    NumberSelectorMode,
-    SelectSelector,
-    SelectSelectorConfig,
-    SelectSelectorMode,
-    TextSelector,
-    TextSelectorConfig,
-)
 
-from .config import (
-    MAX_DEVICE_ID,
-    MAX_PORT_NUMBER,
-    MIN_DEVICE_ID,
-    MIN_PORT,
+from .config_flow_state import CONF_CONNECTION_TYPE, ConfigFlowState
+from .config_schema import SolArkConfigSchema
+from .const import (
+    DEFAULT_HOST,
+    DEFAULT_NAME,
+    DEFAULT_PORT_RTU,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+)
+from .modbus_config import (
     ConnectionType,
-    SolArkConfig,
     is_valid_device_id,
     is_valid_rtu_port,
     is_valid_tcp_host,
     is_valid_tcp_port,
 )
-from .const import (
-    DEFAULT_DEVICE_ID,
-    DEFAULT_HOST,
-    DEFAULT_NAME,
-    DEFAULT_PORT,
-    DEFAULT_PORT_RTU,
-    DEFAULT_SCAN_INTERVAL,
-    DOMAIN,
-    MIN_SCAN_INTERVAL_SECONDS,
-)
-
-CONF_CONNECTION_TYPE = "connection_type"
-CONNECTION_TCP = ConnectionType.TCP.value
-CONNECTION_RTU = ConnectionType.RTU.value
 
 CONF_TCP_HOST = "tcp_host"
 CONF_TCP_PORT = "tcp_port"
 CONF_RTU_PORT = "rtu_port"
 CONF_DEVICE_ID = "device_id"
-
-
-# ------------------------------------------------------------
-# Flow State
-# ------------------------------------------------------------
-
-@dataclass
-class FlowState:
-    name: str = DEFAULT_NAME
-    scan_interval: int = DEFAULT_SCAN_INTERVAL
-    connection_type: Literal["tcp", "rtu"] = CONNECTION_TCP
-    tcp_host: str = DEFAULT_HOST
-    tcp_port: int = DEFAULT_PORT
-    rtu_port: str = DEFAULT_PORT_RTU
-    device_id: int = DEFAULT_DEVICE_ID
 
 
 # ------------------------------------------------------------
@@ -73,110 +38,61 @@ class FlowState:
 class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
     """SolArk Modbus config flow."""
 
+    # This is the version number for the config_entry as stored in the config_entries storage
     VERSION = 1
+    CONNECTION_CLASS = CONN_CLASS_LOCAL_POLL
+    is_reconfiguration: bool = False
 
     def __init__(self) -> None:
-        self.state = FlowState()
+        self._state = ConfigFlowState()
+        self._schema = SolArkConfigSchema(self._state)
         # Prevent overwriting user input when reconfiguring: load entry data only once
         self._reconfigure_loaded = False
 
-    # ------------------------------------------------------------
-    # Schemas
-    # ------------------------------------------------------------
-
-    def _user_schema(self, readonly_name: bool) -> vol.Schema:
-        return vol.Schema(
-            {
-                vol.Required(CONF_NAME, default=self.state.name): TextSelector(
-                    TextSelectorConfig(read_only=readonly_name)
-                ),
-                vol.Required(
-                    CONF_SCAN_INTERVAL, default=self.state.scan_interval
-                ): vol.All(int, vol.Range(min=MIN_SCAN_INTERVAL_SECONDS)),
-                vol.Required(
-                    CONF_CONNECTION_TYPE, default=self.state.connection_type
-                ): SelectSelector(
-                    SelectSelectorConfig(
-                        options=[
-                            {"value": CONNECTION_TCP, "label": "TCP"},
-                            {"value": CONNECTION_RTU, "label": "RTU"},
-                        ],
-                        mode=SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }
-        )
-
-    def _tcp_schema(self) -> vol.Schema:
-        return vol.Schema(
-            {
-                vol.Required(CONF_TCP_HOST, default=self.state.tcp_host): str,
-                vol.Required(CONF_TCP_PORT, default=self.state.tcp_port): vol.All(
-                    int,
-                    vol.Range(min=1, max=MAX_PORT_NUMBER),
-                    NumberSelector(
-                        NumberSelectorConfig(min=MIN_PORT, max=MAX_PORT_NUMBER, step=1, mode=NumberSelectorMode.BOX)
-                    )
-                ),
-                vol.Required(CONF_DEVICE_ID, default=self.state.device_id): vol.All(
-                    int,
-                    vol.Range(min=1, max=MAX_DEVICE_ID),NumberSelector(
-                        NumberSelectorConfig(min=MIN_DEVICE_ID, max=MAX_DEVICE_ID, step=1, mode=NumberSelectorMode.BOX)
-                    )
-                ),
-            }
-        )
-
-    def _rtu_schema(self) -> vol.Schema:
-        return vol.Schema(
-            {
-                vol.Required(CONF_RTU_PORT, default=self.state.rtu_port): str,
-                vol.Required(CONF_DEVICE_ID, default=self.state.device_id): vol.All(
-                    int,
-                    vol.Range(min=1, max=MAX_DEVICE_ID),
-                    NumberSelector(
-                        NumberSelectorConfig(min=MIN_DEVICE_ID, max=MAX_DEVICE_ID, step=1, mode=NumberSelectorMode.BOX)
-                    )
-                ),
-            }
+    def is_matching(self, other_flow: ConfigFlow) -> bool:
+        return (
+            isinstance(other_flow, SolArkConfigFlow)
+            and self.context.get("name") is not None
+            and self.context.get("name") == other_flow.context.get("name")
         )
 
     # ------------------------------------------------------------
     # Step: user
     # ------------------------------------------------------------
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input=None):
 
         errors: dict[str, str] = {}
-        readonly_name = self.context.get("source") == "reconfigure"
 
         if user_input is not None:
             name = user_input[CONF_NAME]
-            existing = solark_modbus_entry_names(self.hass)
+            existing = existing_config_entry_names(self.hass)
 
-            if readonly_name:
-                entry = self._get_reconfigure_entry()
-                entry_name = entry.data.get(CONF_NAME)
-                if isinstance(entry_name, str):
-                    existing.discard(entry_name)
+            #await self.async_set_unique_id(name)
 
-            if name in existing:
+            # if self.is_reconfiguration:
+            #     entry = self._get_reconfigure_entry()
+            #     entry_name = entry.data.get(CONF_NAME)
+            #     if isinstance(entry_name, str):
+            #         existing.discard(entry_name)
+            # else:
+            #     self._abort_if_unique_id_configured()
+
+            if (not self.is_reconfiguration) and name in existing:
                 errors[CONF_NAME] = "name_already_configured"
 
             if not errors:
-                self.state.name = name
-                self.state.scan_interval = user_input[CONF_SCAN_INTERVAL]
-                self.state.connection_type = user_input[CONF_CONNECTION_TYPE]
+                self._state.name = name
+                self._state.scan_interval = user_input[CONF_SCAN_INTERVAL]
+                self._state.connection_type = user_input[CONF_CONNECTION_TYPE]
 
-                if self.state.connection_type == CONNECTION_TCP:
+                if self._state.connection_type == ConnectionType.TCP:
                     return await self.async_step_tcp()
                 return await self.async_step_rtu()
 
         return self.async_show_form(
             step_id="user",
-            data_schema=self._user_schema(readonly_name),
+            data_schema=self._schema.get_user_schema(self.is_reconfiguration),
             errors=errors,
         )
 
@@ -187,6 +103,7 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_tcp(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Second dialog for TCP."""
 
         errors: dict[str, str] = {}
 
@@ -214,15 +131,15 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors[CONF_DEVICE_ID] = "device_id_out_of_range"
 
             if not errors:
-                self.state.tcp_host = user_input[CONF_TCP_HOST]
-                self.state.tcp_port = tcp_port
-                self.state.device_id = device_id
+                self._state.tcp_host = user_input[CONF_TCP_HOST]
+                self._state.tcp_port = tcp_port
+                self._state.device_id = device_id
 
                 return self._finish_flow()
 
         return self.async_show_form(
             step_id="tcp",
-            data_schema=self._tcp_schema(),
+            data_schema=self._schema.get_tcp_schema(),
             errors=errors,
             last_step=True,
         )
@@ -234,6 +151,7 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_rtu(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Second dialog for RTU."""
 
         errors: dict[str, str] = {}
 
@@ -252,14 +170,14 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors[CONF_DEVICE_ID] = "device_id_out_of_range"
 
             if not errors:
-                self.state.rtu_port = user_input[CONF_RTU_PORT]
-                self.state.device_id = device_id
+                self._state.rtu_port = user_input[CONF_RTU_PORT]
+                self._state.device_id = device_id
 
                 return self._finish_flow()
 
         return self.async_show_form(
             step_id="rtu",
-            data_schema=self._rtu_schema(),
+            data_schema=self._schema.get_rtu_schema(),
             errors=errors,
             last_step=True,
         )
@@ -272,23 +190,24 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
 
+        self.is_reconfiguration = True
         entry = self._get_reconfigure_entry()
 
         if not self._reconfigure_loaded:
-            cfg = SolArkConfig(entry)
+            state: ConfigFlowState = ConfigFlowState.from_config_entry(entry)
             self._reconfigure_loaded = True
 
-            self.state.name = entry.data.get(CONF_NAME, DEFAULT_NAME)
-            self.state.scan_interval = entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-            self.state.device_id = cfg.device_id
+            self._state.name = entry.data.get(CONF_NAME, DEFAULT_NAME)
+            self._state.scan_interval = entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+            self._state.device_id = state.device_id
 
-            if cfg.connection_type == ConnectionType.TCP:
-                self.state.connection_type = CONNECTION_TCP
-                self.state.tcp_host = cfg.host or DEFAULT_HOST
-                self.state.tcp_port = cfg.port
+            if state.connection_type == ConnectionType.TCP:
+                self._state.connection_type = ConnectionType.TCP
+                self._state.tcp_host = state.tcp_host or DEFAULT_HOST
+                self._state.tcp_port = state.tcp_port
             else:
-                self.state.connection_type = CONNECTION_RTU
-                self.state.rtu_port = cfg.serial_port or DEFAULT_PORT_RTU
+                self._state.connection_type = ConnectionType.RTU
+                self._state.rtu_port = state.rtu_port or DEFAULT_PORT_RTU
 
         return await self.async_step_user(user_input)
 
@@ -297,37 +216,25 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
     # ------------------------------------------------------------
 
     @callback
-    def _build_host_string(self) -> str:
-        """Return the canonical host string for the entry."""
-        if self.state.connection_type == CONNECTION_TCP:
-            return f"{self.state.tcp_host}:{self.state.tcp_port}/;{self.state.device_id}"
-        return f"{self.state.rtu_port}/;{self.state.device_id}"
-
-    @callback
     def _finish_flow(self) -> ConfigFlowResult:
-        data = {
-            CONF_NAME: self.state.name,
-            CONF_HOST: self._build_host_string(),
-            CONF_SCAN_INTERVAL: self.state.scan_interval,
-        }
+        data: dict[str, Any] = self._state.get_config_entry_data()
 
         if self.context.get("source") == "reconfigure":
             entry = self._get_reconfigure_entry()
-            self.hass.config_entries.async_update_entry(entry, data=data)
-            return self.async_abort(reason="reconfigure_successful")
+            return self.async_update_reload_and_abort(entry, data=data, reason="reconfigure_successful")
 
-        return self.async_create_entry(title=self.state.name, data=data)
+        return self.async_create_entry(title=self._state.name, data=data)
 
 # ------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------
 
 @callback
-def solark_modbus_entry_names(hass: HomeAssistant) -> set[str]:
+def existing_config_entry_names(hass: HomeAssistant) -> set[str]:
     """Return names already configured."""
     names: set[str] = set()
     for entry in hass.config_entries.async_entries(DOMAIN):
-        name = entry.data.get(CONF_NAME)
+        name: str = entry.data[CONF_NAME]
         if isinstance(name, str):
             names.add(name)
     return names
