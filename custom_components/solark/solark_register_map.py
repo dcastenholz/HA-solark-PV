@@ -1,5 +1,10 @@
 from typing import TypeVar
 
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorStateClass,
+)
+
 from .register_map import RegisterMap
 from .register_map_entry import (
     BatteryVoltageEntry,
@@ -9,17 +14,16 @@ from .register_map_entry import (
     EnergyEntry,
     FrequencyEntry,
     GridVoltageEntry,
-    NativeUnit,
     PowerEntry,
     PVVoltageEntry,
     RegisterMapEntry,
     SOCEntry,
-    StateClass,
     StringEntry,
     SystemTimeEntry,
     TemperatureEntry,
-    TimeEntry,
     TimeOfUseEnabledEntry,
+    TimeOfUseTimeEntry,
+    UnitOfMeasure,
 )
 
 T = TypeVar("T", bound="RegisterMap")  # T is the real subclass
@@ -37,24 +41,24 @@ class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
     SYSTEM_TIME_MS_RAW = SystemTimeEntry(address=24, key="system_time_ms_raw", name="System Time Minute Second Raw Value")
     DAILYINV_E = EnergyEntry(address=60, key="dailyinv_e", name="Daily Inverter Energy", data_type=DataType.INT16)
     TOTALGRID_E = EnergyEntry(address=63, key="totalgrid_e", name="Total Grid Breaker Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
-    DAILYBATT_C_E = EnergyEntry(address=70, key="daybattc_e", name="Daily Battery Charge Energy", data_type=DataType.UINT16, state_class=StateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
-    DAILYBATT_D_E = EnergyEntry(address=71, key="daybattd_e", name="Daily Battery Discharge Energy", data_type=DataType.UINT16, state_class=StateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
+    DAILYBATT_C_E = EnergyEntry(address=70, key="daybattc_e", name="Daily Battery Charge Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
+    DAILYBATT_D_E = EnergyEntry(address=71, key="daybattd_e", name="Daily Battery Discharge Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
     TOTALBATT_C_E = EnergyEntry(address=72, key="totalbattc_e", name="Total Battery Charge Energy", data_type=DataType.INT32)
     TOTALBATT_D_E = EnergyEntry(address=74, key="totalbattd_e", name="Total Battery Discharge Energy", data_type=DataType.INT32)
-    DAILYGRIDBUY_E = EnergyEntry(address=76, key="dailygridbuy_e", name="Daily Grid Buy Energy", data_type=DataType.UINT16, state_class=StateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
-    DAILYGRIDSELL_E = EnergyEntry(address=77, key="dailygridsell_e", name="Daily Grid Sell Energy", data_type=DataType.UINT16, state_class=StateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
+    DAILYGRIDBUY_E = EnergyEntry(address=76, key="dailygridbuy_e", name="Daily Grid Buy Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
+    DAILYGRIDSELL_E = EnergyEntry(address=77, key="dailygridsell_e", name="Daily Grid Sell Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
     TOTALGRIDBUY_E_LOW_RAW = DiagnosticEntry(address=78, key="totalgridbuy_e_low", name="Total Grid Buy Energy - low word")
     GRIDFREQ = FrequencyEntry(address=79, key="gridfreq", name="Grid Frequency", entity_registry_enabled_default=True)
     TOTALGRIDBUY_E_HIGH_RAW = DiagnosticEntry(address=80, key="totalgridbuy_e_high", name="Total Grid Buy Energy - high word")
     TOTALGRIDSELL_E = EnergyEntry(address=81, key="totalsell_e", name="Total Grid Sell Energy", data_type=DataType.INT32)
-    DAILYLOAD_E = EnergyEntry(address=84, key="dailyload_e", name="Daily Load Energy", data_type=DataType.UINT16, state_class=StateClass.TOTAL_INCREASING)
+    DAILYLOAD_E = EnergyEntry(address=84, key="dailyload_e", name="Daily Load Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING)
     TOTALLOAD_E = EnergyEntry(address=85, key="totalload_e", name="Total Load Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
     DCHSTempC = TemperatureEntry(address=90, key="dchstempc", name="DC Heatsink Temperature")
     ACHSTempC = TemperatureEntry(address=91, key="achstempc", name="AC Heatsink Temperature")
     TOTALINV_E = EnergyEntry(address=96, key="totalinv_e", name="Total PV Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
     FAULT_INFO_RAW = DiagnosticEntry(address=103, key="fault_info_raw", name="Inverter Fault Information Raw Value", data_type=DataType.UINT64, icon="mdi:message-alert-outline")
-    CORR_BATT_CAP = RegisterMapEntry(address=107, key="corr_batt_cap", data_type=DataType.UINT16, name="Corrected Battery Capacity", icon="mdi:battery", native_unit_of_measurement=NativeUnit.AH, state_class=StateClass.NONE)
-    DAILYPV_E = EnergyEntry(address=108, key="dailypv_e", name="Daily PV Energy", data_type=DataType.UINT16, state_class=StateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
+    CORR_BATT_CAP = RegisterMapEntry(address=107, key="corr_batt_cap", data_type=DataType.UINT16, name="Corrected Battery Capacity", icon="mdi:battery", unit_of_measurement=UnitOfMeasure.AH, state_class=None)
+    DAILYPV_E = EnergyEntry(address=108, key="dailypv_e", name="Daily PV Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
 
     PV1_V = PVVoltageEntry(address=109, key="pv1_v", name="PV1 Voltage")
     PV1_C = CurrentEntry(address=110, key="pv1_c", name="PV1 Current")
@@ -122,12 +126,12 @@ class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
     # ----------------------------
     TIMEOFUSE_ENABLED = RegisterMapEntry(address=248, key="timeofuse_enabled", data_type=DataType.UINT16, name="Time of Use Enabled")
 
-    TIMEOFUSE_TIME_1 = TimeEntry(address=250, key="timeofuse_time_1", name="Time of Use Time 1")
-    TIMEOFUSE_TIME_2 = TimeEntry(address=251, key="timeofuse_time_2", name="Time of Use Time 2")
-    TIMEOFUSE_TIME_3 = TimeEntry(address=252, key="timeofuse_time_3", name="Time of Use Time 3")
-    TIMEOFUSE_TIME_4 = TimeEntry(address=253, key="timeofuse_time_4", name="Time of Use Time 4")
-    TIMEOFUSE_TIME_5 = TimeEntry(address=254, key="timeofuse_time_5", name="Time of Use Time 5")
-    TIMEOFUSE_TIME_6 = TimeEntry(address=255, key="timeofuse_time_6", name="Time of Use Time 6")
+    TIMEOFUSE_TIME_1 = TimeOfUseTimeEntry(address=250, key="timeofuse_time_1", name="Time of Use Time 1")
+    TIMEOFUSE_TIME_2 = TimeOfUseTimeEntry(address=251, key="timeofuse_time_2", name="Time of Use Time 2")
+    TIMEOFUSE_TIME_3 = TimeOfUseTimeEntry(address=252, key="timeofuse_time_3", name="Time of Use Time 3")
+    TIMEOFUSE_TIME_4 = TimeOfUseTimeEntry(address=253, key="timeofuse_time_4", name="Time of Use Time 4")
+    TIMEOFUSE_TIME_5 = TimeOfUseTimeEntry(address=254, key="timeofuse_time_5", name="Time of Use Time 5")
+    TIMEOFUSE_TIME_6 = TimeOfUseTimeEntry(address=255, key="timeofuse_time_6", name="Time of Use Time 6")
 
     TIMEOFUSE_POWER_1 = PowerEntry(address=256, key="timeofuse_power_1", name="Time of Use Power 1")
     TIMEOFUSE_POWER_2 = PowerEntry(address=257, key="timeofuse_power_2", name="Time of Use Power 2")

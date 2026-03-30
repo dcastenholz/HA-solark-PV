@@ -1,37 +1,23 @@
 import calendar
 import datetime
-from dataclasses import dataclass
-from typing import Any, Callable, Iterator, Optional
+from typing import Iterator
 
 from homeassistant.util import dt
 
 from .const import GEN_RELAY_STATUS, GRID_RELAY_STATUS
 from .fault_info import translate_fault_code_to_messages
-from .register_map import RegisterMap
-from .register_map_entry import (
+from .sensor_entity_description import SensorClass
+from .sensor_map import SensorMap
+from .sensor_map_entry import (
     ConfigEntry,
-    DataType,
-    DeviceClass,
     EnergyEntry,
     PowerEntry,
-    RegisterMapEntry,
-    StateClass,
-    StringEntry,
+    SensorMapEntry,
 )
-from .sensor_entity_description import SensorClass, SolArkModbusSensorEntityDescription
 from .solark_register_map import SolArkRegisterMap
 
 
-# ----------------------------------
-# Calculated Sensor Entity Description
-# ----------------------------------
-@dataclass(kw_only=True, frozen=True)
-class SolArkModbusCalculatedSensorEntityDescription(SolArkModbusSensorEntityDescription):
-    """A class that describes calculated SolArk sensor entities."""
-
-    post_process_method: Optional[Callable[[Any, "RegisterMapEntry"], None]] = None
-
-class CalculatedSensors(RegisterMap["CalculatedSensors"]):
+class SolArkSensorMap(SensorMap["SolArkSensorMap"]):
     register_map: SolArkRegisterMap
 
     def __init__(self, register_map: SolArkRegisterMap):
@@ -47,7 +33,7 @@ class CalculatedSensors(RegisterMap["CalculatedSensors"]):
             entry.post_process(self.register_map)
 
     @property
-    def entries_post_process(self) -> Iterator[RegisterMapEntry]:
+    def entries_post_process(self) -> Iterator[SensorMapEntry]:
         """Return all register map entries that have a post_process_method."""
         for entry in self:
             if entry.post_process_method is not None:
@@ -70,47 +56,47 @@ class CalculatedSensors(RegisterMap["CalculatedSensors"]):
         raise ValueError("Month must be between 1 and 12")
 
     @staticmethod
-    def inverter_date_time(register_map: "SolArkRegisterMap", entry: RegisterMapEntry):
-        year_month: tuple[int, int] = CalculatedSensors.split_uint16(int(register_map.SYSTEM_TIME_YM_RAW))
-        day_hour: tuple[int, int] = CalculatedSensors.split_uint16(int(register_map.SYSTEM_TIME_DH_RAW))
-        minute_second: tuple[int, int] = CalculatedSensors.split_uint16(int(register_map.SYSTEM_TIME_MS_RAW))
+    def inverter_date_time(register_map: "SolArkRegisterMap", entry: SensorMapEntry):
+        year_month: tuple[int, int] = SolArkSensorMap.split_uint16(int(register_map.SYSTEM_TIME_YM_RAW))
+        day_hour: tuple[int, int] = SolArkSensorMap.split_uint16(int(register_map.SYSTEM_TIME_DH_RAW))
+        minute_second: tuple[int, int] = SolArkSensorMap.split_uint16(int(register_map.SYSTEM_TIME_MS_RAW))
         local_dt = dt.as_local(datetime.datetime(2000 + year_month[0], year_month[1], day_hour[0], day_hour[1], minute_second[0], minute_second[1]))
 
         # Convert to UTC
-       # utc_dt = dt.as_utc(local_dt)
+        # utc_dt = dt.as_utc(local_dt)
 
         entry.register_value = local_dt  # ready for SensorDeviceClass.TIMESTAMP
 
     @staticmethod
-    def inverter_date_time_string(register_map: "SolArkRegisterMap", entry: RegisterMapEntry): # pylint: disable=W0613
+    def inverter_date_time_string(register_map: "SolArkRegisterMap", entry: SensorMapEntry): # pylint: disable=W0613
         return
 
     @staticmethod
-    def value_is_injected(register_map: "SolArkRegisterMap", entry: RegisterMapEntry): # pylint: disable=W0613
+    def value_is_injected(register_map: "SolArkRegisterMap", entry: SensorMapEntry): # pylint: disable=W0613
         # Value is injected into the data dictionary outside of the normal register handling
         return
 
     @staticmethod
-    def fault_code_to_message(register_map: "SolArkRegisterMap", entry: RegisterMapEntry):
+    def fault_code_to_message(register_map: "SolArkRegisterMap", entry: SensorMapEntry):
         fault_message_list = translate_fault_code_to_messages(int(register_map.FAULT_INFO_RAW))
         entry.register_value = ", ".join(fault_message_list)
 
     @staticmethod
-    def pv_input_power(register_map: "SolArkRegisterMap", entry: RegisterMapEntry):
+    def pv_input_power(register_map: "SolArkRegisterMap", entry: SensorMapEntry):
         entry.register_value = register_map.PV1_P + register_map.PV2_P + register_map.PV3_P
 
     @staticmethod
-    def grid_relay_status(register_map: "SolArkRegisterMap", entry: RegisterMapEntry):
+    def grid_relay_status(register_map: "SolArkRegisterMap", entry: SensorMapEntry):
         raw: int = int(register_map.GRID_RLY_RAW)
         entry.register_value = GRID_RELAY_STATUS.get(int(raw), "Unknown") if raw is not None else "Unknown"
 
     @staticmethod
-    def gen_relay_status(register_map: "SolArkRegisterMap", entry: RegisterMapEntry):
+    def gen_relay_status(register_map: "SolArkRegisterMap", entry: SensorMapEntry):
         raw: int = int(register_map.GEN_RLY_RAW) & 0x0F  # mask low 4 bits
         entry.register_value = GEN_RELAY_STATUS.get(raw, "Unknown") if raw is not None else "Unknown"
 
     @staticmethod
-    def total_grid_buy(register_map: "SolArkRegisterMap", entry: RegisterMapEntry):
+    def total_grid_buy(register_map: "SolArkRegisterMap", entry: SensorMapEntry):
         high: int = int(register_map.TOTALGRIDBUY_E_HIGH_RAW)
         low: int = int(register_map.TOTALGRIDBUY_E_LOW_RAW)
         value = (high << 16) | low
@@ -119,7 +105,7 @@ class CalculatedSensors(RegisterMap["CalculatedSensors"]):
         entry.register_value = value
 
     @staticmethod
-    def firmware_versions(register_map: "SolArkRegisterMap", entry: RegisterMapEntry):
+    def firmware_versions(register_map: "SolArkRegisterMap", entry: SensorMapEntry):
         # firmware: str = f"M {get_firmware(int(register_map.FIRMWARE_M.register_value))} / "
         # firmware += f"S {get_firmware(int(register_map.FIRMWARE_S.register_value))} / "
         # firmware += f"C {get_firmware(int(register_map.FIRMWARE_C.register_value))}"
@@ -128,27 +114,22 @@ class CalculatedSensors(RegisterMap["CalculatedSensors"]):
     # ----------------------------------
     # Post processed sensor definitions
     # ----------------------------------
-    FIRMWARE = RegisterMapEntry(
-        source_is_register_read=False,
+    FIRMWARE = SensorMapEntry(
         key="firmware",
         name="Firmware Versions",
         post_process_method=firmware_versions
     )
 
-    SYSTEM_DATE_TIME = RegisterMapEntry(
-        source_is_register_read=False,
+    SYSTEM_DATE_TIME = SensorMapEntry(
         key="system_date_time",
         name="System Date Time",
         icon="mdi:clock",
-        device_class=DeviceClass.NONE,
-        state_class=StateClass.NONE,
         sensor_class=SensorClass.DATETIME,
         exclude_from_recorder=True,
         post_process_method=inverter_date_time,
     )
 
-    FAULTMSG = StringEntry(
-        source_is_register_read=False,
+    FAULTMSG = SensorMapEntry(
         key="faultmsg",
         #data_type=DataType.STRING,
         name="Inverter error Message",
@@ -156,55 +137,72 @@ class CalculatedSensors(RegisterMap["CalculatedSensors"]):
         # Caution: this is used by the hub to indicate a communication error with the device.
         # TODO - Another option is to create another entity, with the old one set to be not enabled by default.
         icon="mdi:message-alert-outline",
-        state_class=StateClass.NONE,
         post_process_method=fault_code_to_message,
         entity_registry_enabled_default=True,
     )
     PV_P = PowerEntry(
-        source_is_register_read=False,
         key="pv_p",
-        data_type=DataType.UINT16,
         name="PV Input Power",
         icon="mdi:solar-power",
         post_process_method=pv_input_power,
         entity_registry_enabled_default=True,
     )
-    GRID_RLY = RegisterMapEntry(
-        source_is_register_read=False,
+    GRID_RLY = SensorMapEntry(
         key="grid_rly",
         name="Grid Relay",
         icon="mdi:electric-switch",
-        state_class=StateClass.NONE,
         post_process_method=grid_relay_status,
     )
-    GEN_RLY = RegisterMapEntry(
-        source_is_register_read=False,
+    GEN_RLY = SensorMapEntry(
         key="gen_rly",
         name="Generator Relay",
         icon="mdi:electric-switch",
-        state_class=StateClass.NONE,
         post_process_method=gen_relay_status,
     )
     TOTALGRIDBUY_E = EnergyEntry(
-        source_is_register_read=False,
         key="totalgridbuy_e",
-        data_type=DataType.INT32,
         name="Total Grid Buy Energy",
         post_process_method=total_grid_buy,
     )
 
-    UPDATE_COUNTER = RegisterMapEntry(
-        source_is_register_read=False,
+    UPDATE_COUNTER = SensorMapEntry(
         key="update_cnt",
         name="Update Counter",
         icon="mdi:information-outline",
-        state_class=StateClass.TOTAL,
         post_process_method=value_is_injected,
     )
 
     CONFIG_INFO = ConfigEntry(
-        source_is_register_read=False,
         key="config_info",
         name="Configuration Information",
         post_process_method=value_is_injected
     )
+
+@staticmethod
+def get_mppt_info_string(decimal_number: int) -> str:
+    info: tuple[int, int] = get_mppt_info(decimal_number)
+    info_string: str = f"{info[0]} MPPTs, {info[1]} phase"
+    return info_string
+
+@staticmethod
+def get_mppt_info(decimal_number: int) -> tuple[int, int]:
+    hex_tuple: tuple[str, ...] = decimal_to_hex_tuple(decimal_number)
+    info: tuple[int, int] = combine_decimal_digits(hex_tuple[0], hex_tuple[1]), combine_decimal_digits(hex_tuple[2], hex_tuple[3])
+    return info
+
+@staticmethod
+def get_firmware(decimal_number: int) -> str:
+    hex_tuple: tuple[str, ...] = decimal_to_hex_tuple(decimal_number)
+    firmware: str = f"{hex_tuple[0]}.{hex_tuple[1]}.{hex_tuple[2]}.{hex_tuple[3]}"
+    return firmware
+
+@staticmethod
+def decimal_to_hex_tuple(decimal_number: int) -> tuple[str, ...]:
+    # Convert to hex without the '0x' prefix and make uppercase
+    hex_str = hex(decimal_number)[2:].upper()
+    # Create a tuple with each hex digit as a string
+    return tuple(hex_str)
+
+@staticmethod
+def combine_decimal_digits(a: int, b: int) -> int:
+    return a * 10 + b

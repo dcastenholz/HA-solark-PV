@@ -3,12 +3,12 @@ from datetime import datetime, timedelta
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .calculated_sensors import CalculatedSensors
 from .data import SolArkData
 from .device_info import update_device_firmware, update_device_serial
 from .modbus_client import SolArkModbusClient
 from .register_map import RegisterValue
 from .solark_register_map import SolArkRegisterMap
+from .solark_sensor_map import SolArkSensorMap
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
         """Read the data from the inverter and return it as a dictionary."""
         current_data: dict = {}
         register_map: SolArkRegisterMap = self._runtime_data.register_map
-        calculated_sensor_map: CalculatedSensors = self._runtime_data.calculated_sensor_map
+        calculated_sensor_map: SolArkSensorMap = self._runtime_data.calculated_sensor_map
         modbus_client: SolArkModbusClient = self._runtime_data.modbus_client
 
         try:

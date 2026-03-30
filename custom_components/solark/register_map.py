@@ -39,7 +39,7 @@ class RegisterMap(Generic[T]):
 
         # Ensure no overlapping address ranges
         prev = None
-        for entry in self.entries_register_read:
+        for entry in self:
             if prev is not None:
                 prev_end = prev.address + prev.register_length - 1
                 if entry.address <= prev_end:
@@ -72,7 +72,7 @@ class RegisterMap(Generic[T]):
             entry.from_register_map_entry()
             for entry in self._sorted
             # Modern HA does not use EntityCategory.CONFIG for sensors.
-            if entry.entity_category != EntityCategory.CONFIG
+            if entry.entity_description.entity_category != EntityCategory.CONFIG
         ]
 
     def is_error(self) -> bool:
@@ -90,7 +90,7 @@ class RegisterMap(Generic[T]):
         return iter(self._sorted)
 
     def as_dict(self) -> dict[str, "RegisterValue"]:
-        return {entry.key: entry.register_value for entry in self._sorted}
+        return {entry.entity_description.key: entry.register_value for entry in self._sorted}
 
     def is_empty(self) -> bool:
         return len(self._map) == 0
@@ -99,23 +99,6 @@ class RegisterMap(Generic[T]):
         """Initialize the register map before reading registers."""
         self.set_error(False)
 
-    #
-    # Iterators
-    #
-    @property
-    def entries_register_read(self) -> Iterator[RegisterMapEntry]:
-        """Return all register map entries that have a post_process_method."""
-        for entry in self:
-            if entry.source_is_register_read:
-                yield entry
-
-    @property
-    def entries_sensor_only(self) -> Iterator[RegisterMapEntry]:
-        """Return all register map entries that are sensor only."""
-        for entry in self._sorted:
-            if not entry.source_is_register_read:
-                yield entry
-
     def init_register_range(self, start: RegisterMapEntry, end: RegisterMapEntry | None = None):
         """Initialize the register map entries in the range before reading."""
         entries = self.entries_register_read_in_range(start, end)
@@ -123,11 +106,14 @@ class RegisterMap(Generic[T]):
         for entry in entries:
             entry.register_value = None
 
+    #
+    # Iterators
+    #
     def entries_register_read_in_range(self, start: RegisterMapEntry, end: RegisterMapEntry | None = None) -> Iterator[RegisterMapEntry]:
         """Yield registers from start to end (inclusive). If end is None, yield only start."""
         end = end or start  # if end is None, just use start
 
-        for entry in self.entries_register_read:
+        for entry in self:
             if entry.address < start.address:
                 continue
             if entry.address > end.address:

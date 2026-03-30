@@ -70,6 +70,32 @@ class SolArkSensor(CoordinatorEntity, SolArkBaseSensor):
         return None if data is None else data.get(self.entity_description.key)
 
 
+class SolArkTOU_TimeSensor(SolArkSensor):
+    @property
+    def native_value(self) -> str | None:
+        data = self.coordinator.data.get(self.entity_description.key) if self.coordinator.data else None
+        if not isinstance(data, int):
+            return None  # return None if no value yet
+        # Convert HHMM integer to a 12-hour formatted string.
+        try:
+            value = int(data) # type: ignore
+        except (TypeError, ValueError):
+            return ""
+
+        hours = value // 100
+        minutes = value % 100
+        if hours > 23 or minutes > 59:
+            return "Invalid"
+
+        suffix = "AM" if hours < 12 else "PM"
+        hour_12 = hours % 12
+        if hour_12 == 0:
+            hour_12 = 12
+
+        # TODO - Add option for 24 hour time display
+        return f"{hour_12}:{minutes:02d} {suffix}"
+
+
 class SolArkDateTimeSensor(SolArkSensor):
     @property
     def native_value(self) -> str | None:
@@ -118,4 +144,6 @@ def _get_sensor_class(sensor_class: SensorClass) -> type[SolArkBaseSensor]:
         return SolArkConfigInfoSensor
     if sensor_class == SensorClass.DATETIME:
         return SolArkDateTimeSensor
+    if sensor_class == SensorClass.TOU_TIME:
+        return SolArkTOU_TimeSensor
     raise ValueError(f"Unknown SensorClass: {sensor_class}")
