@@ -4,8 +4,9 @@ from typing import Generic, Iterator, TypeVar
 
 from homeassistant.const import EntityCategory
 
-from .register_map_entry import RegisterMapEntry, RegisterValue
+from .register_map_entry import RegisterMapEntry
 from .sensor_entity_description import SolArkModbusSensorEntityDescription
+from .sensor_map_entry import RegisterValue
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,7 +19,6 @@ T = TypeVar("T", bound="RegisterMap")
 # ----------------------------------
 # Register Map
 # ----------------------------------
-@dataclass
 class RegisterMap(Generic[T]):
     """Base class for register maps that collects RegisterMapEntry class attributes across inheritance."""
 
@@ -69,7 +69,7 @@ class RegisterMap(Generic[T]):
 
     def get_descriptions(self) -> list[SolArkModbusSensorEntityDescription]:
         return [
-            entry.from_register_map_entry()
+            entry.entity_description
             for entry in self._sorted
             # Modern HA does not use EntityCategory.CONFIG for sensors.
             if entry.entity_description.entity_category != EntityCategory.CONFIG
@@ -83,13 +83,10 @@ class RegisterMap(Generic[T]):
         """Set error flag."""
         self._error = value
 
-    def __getitem__(self, key: str) -> "RegisterMapEntry":
-        return self._map[key]
-
     def __iter__(self) -> Iterator["RegisterMapEntry"]:
         return iter(self._sorted)
 
-    def as_dict(self) -> dict[str, "RegisterValue"]:
+    def as_dict(self) -> dict[str, RegisterValue]:
         return {entry.entity_description.key: entry.register_value for entry in self._sorted}
 
     def is_empty(self) -> bool:

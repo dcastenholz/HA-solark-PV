@@ -85,15 +85,21 @@ class SolArkTOU_TimeSensor(SolArkSensor):
         hours = value // 100
         minutes = value % 100
         if hours > 23 or minutes > 59:
-            return "Invalid"
+            return f"Invalid: {value}"
 
-        suffix = "AM" if hours < 12 else "PM"
-        hour_12 = hours % 12
-        if hour_12 == 0:
-            hour_12 = 12
+        suffix = ""
 
         # TODO - Add option for 24 hour time display
-        return f"{hour_12}:{minutes:02d} {suffix}"
+        FORMAT_24HOUR: bool = False
+
+        if not FORMAT_24HOUR:
+            suffix += " "
+            suffix += "AM" if hours < 12 else "PM"
+            hours = hours % 12
+            if hours == 0:
+                hours = 12
+
+        return f"{hours}:{minutes:02d}{suffix}"
 
 
 class SolArkDateTimeSensor(SolArkSensor):
@@ -105,10 +111,6 @@ class SolArkDateTimeSensor(SolArkSensor):
         # dt is a datetime object, safe to format now
         return dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    @property
-    def exclude_from_recorder(self) -> bool:
-        return True
-
 
 class SolArkConfigInfoSensor(SolArkBaseSensor):
     """Sensor exposing static config values as attributes."""
@@ -118,7 +120,9 @@ class SolArkConfigInfoSensor(SolArkBaseSensor):
         runtime_data: SolArkData,
         entity_description: SolArkModbusSensorEntityDescription
     ):
-        SolArkBaseSensor.__init__(self, runtime_data, entity_description)
+        super().__init__(runtime_data, entity_description)
+
+        self._attr_exclude_from_recorder = True
 
     @property
     def native_value(self) -> Any | None:
@@ -132,10 +136,6 @@ class SolArkConfigInfoSensor(SolArkBaseSensor):
     @property
     def should_poll(self) -> bool:
         return False
-
-    @property
-    def exclude_from_recorder(self) -> bool:
-        return True
 
 def _get_sensor_class(sensor_class: SensorClass) -> type[SolArkBaseSensor]:
     if sensor_class == SensorClass.NORMAL:

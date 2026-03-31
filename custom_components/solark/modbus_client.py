@@ -19,7 +19,8 @@ from .const import MODBUS_EXCEPTIONS
 from .modbus_config import ConnectionType, ModbusConfig
 from .pymodbus_wrapper import ModbusClientWrapper, ModbusResponse, ModbusResponseError
 from .register_map import RegisterMapEntry
-from .register_map_entry import DataType, NumericValue, StringEntry
+from .register_map_entry import DataType, StringEntry
+from .sensor_map_entry import NumericValue
 from .solark_binary_payload_decoder import ModbusDecodeError, SolArkBinaryPayloadDecoder
 from .solark_register_map import SolArkRegisterMap
 

@@ -18,7 +18,6 @@ T = TypeVar("T", bound="SensorMap")
 # ----------------------------------
 # Register Map
 # ----------------------------------
-@dataclass
 class SensorMap(Generic[T]):
     """Base class for register maps that collects SensorMapEntry class attributes across inheritance."""
 
@@ -53,7 +52,7 @@ class SensorMap(Generic[T]):
 
     def get_descriptions(self) -> list[SolArkModbusSensorEntityDescription]:
         return [
-            entry.from_register_map_entry()
+            entry.entity_description
             for entry in self._entries
             # Modern HA does not allow use EntityCategory.CONFIG for sensors.
             if entry.entity_description.entity_category != EntityCategory.CONFIG
@@ -67,13 +66,10 @@ class SensorMap(Generic[T]):
         """Set error flag."""
         self._error = value
 
-    def __getitem__(self, key: str) -> "SensorMapEntry":
-        return self._map[key]
-
     def __iter__(self) -> Iterator["SensorMapEntry"]:
         return iter(self._entries)
 
-    def as_dict(self) -> dict[str, "RegisterValue"]:
+    def as_dict(self) -> dict[str, RegisterValue]:
         return {entry.entity_description.key: entry.register_value for entry in self._entries}
 
     def is_empty(self) -> bool:

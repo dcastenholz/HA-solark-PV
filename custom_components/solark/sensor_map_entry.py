@@ -1,6 +1,5 @@
 import datetime
 import logging
-from enum import Enum
 from typing import Any, Callable, Optional, Union
 
 from homeassistant.components.sensor import (
@@ -15,7 +14,6 @@ from .sensor_entity_description import SensorClass, SolArkModbusSensorEntityDesc
 
 RegisterValue = Union[int, float, str, datetime.datetime, None]
 NumericValue = Union[int, float]
-DIAGNOSTIC = EntityCategory.DIAGNOSTIC
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,13 +24,13 @@ _LOGGER = logging.getLogger(__name__)
 class SensorMapEntry():
     _entity_description: SolArkModbusSensorEntityDescription
 
-    register_value: RegisterValue = (
-        None  # This will hold the decoded value after reading registers, or the calculated value if source_is_register_read is False
-    )
+    scale: float
+    offset: int
+    post_process_method: Optional[Callable[[Any, "SensorMapEntry"], None]]
+
+    # This will hold the decoded value after reading registers
+    register_value: RegisterValue = None
     processed_value: int | None = None
-    scale: float = 1.0
-    offset: int = 0
-    post_process_method: Optional[Callable[[Any, "SensorMapEntry"], None]] = None
 
     def __init__(
         self,
@@ -72,17 +70,13 @@ class SensorMapEntry():
         self.offset = offset
         self.post_process_method = post_process_method
 
-    @property
-    def entity_description(self) -> SolArkModbusSensorEntityDescription:
-        return self._entity_description
+        self._validate()
 
-    def __post_init__(self):
-        self.__validate__()
-
-    def __validate__(self):
-        # Must have a post_process_method
-        if self.post_process_method is None:
-            raise ValueError(f"SensorMapEntry {self._entity_description.key} must have post_process_method if source_is_register_read is False")
+    def _validate(self):
+        if type(self) is SensorMapEntry:
+            # Must have a post_process_method. Not required for subclasses
+            if self.post_process_method is None:
+                raise ValueError(f"SensorMapEntry {self._entity_description.key} must have post_process_method")
 
     def __add__(self, other: Union["SensorMapEntry", NumericValue]) -> NumericValue:
         """Add this entry to another entry or numeric value."""
@@ -121,28 +115,16 @@ class SensorMapEntry():
             return float(self.register_value)
         raise TypeError(f"Cannot convert non-numeric register_value {self.register_value} to float")
 
+    @property
+    def entity_description(self) -> SolArkModbusSensorEntityDescription:
+        return self._entity_description
+
     def post_process(self, register_map: Any) -> None:
         if self.post_process_method is not None:
             try:
                 self.post_process_method(register_map, self)
             except Exception as ex:                             # pylint: disable=W0718
                 _LOGGER.exception("Error post-processing register %s: %s", self._entity_description.key, ex)
-
-    def from_register_map_entry(self) -> SolArkModbusSensorEntityDescription:
-        return self._entity_description
-        # return SolArkModbusSensorEntityDescription(
-        #     name=self.name,
-        #     key=self.key,
-        #     native_unit_of_measurement=self.unit_of_measurement.value,
-        #     device_class=self.device_class.value,
-        #     state_class=self.state_class.value,
-        #     icon=self.icon or None,
-        #     entity_registry_enabled_default=self.entity_registry_enabled_default,
-        #     entity_category=self.entity_category,
-        #     description=self.description,
-        #     sensor_class=self.sensor_class,
-        #     exclude_from_recorder=self.exclude_from_recorder
-        # )
 
 
 # ----------------------------
@@ -156,6 +138,7 @@ class PowerEntry(SensorMapEntry):
             unit_of_measurement=UnitOfMeasure.WATT,
             **kwargs,
         )
+
 
 # ----------------------------
 # Energy

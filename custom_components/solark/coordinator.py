@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta
+from typing import Any
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
@@ -43,7 +44,7 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
 
     async def _async_update_data(self) -> dict:
         """Read the data from the inverter and return it as a dictionary."""
-        current_data: dict = {}
+        current_data: dict[str, Any] = {}
         register_map: SolArkRegisterMap = self._runtime_data.register_map
         calculated_sensor_map: SolArkSensorMap = self._runtime_data.calculated_sensor_map
         modbus_client: SolArkModbusClient = self._runtime_data.modbus_client
@@ -72,7 +73,7 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
             if not modbus_client.register_map.is_error():
                 await self.hass.async_add_executor_job(calculated_sensor_map.post_process)
 
-            current_data = {**register_map.as_dict(), **calculated_sensor_map.as_dict()}
+            current_data: dict[str, Any] = {**register_map.as_dict(), **calculated_sensor_map.as_dict()}
 
         except Exception as e:
             _LOGGER.exception("Unexpected error reading inverter data: %s", e)
