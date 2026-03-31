@@ -28,7 +28,7 @@ from .register_map_entry import (
 T = TypeVar("T", bound="RegisterMap")  # T is the real subclass
 
 """SolArk Modbus Register Map class"""
-class SolArkRegisterMap(RegisterMap["SolArkRegisterMap"]):
+class SolArkRegisterMap(RegisterMap):
     SN = StringEntry(address=3, length=5, key="sn", name="Serial Number", icon="mdi:information-outline")
     FIRMWARE_S = RegisterMapEntry(address=11, key="firmware_s", name="Firmware S Raw", icon="mdi:information-outline")
     FIRMWARE_M = RegisterMapEntry(address=13, key="firmware_m", name="Firmware Control Board Raw", icon="mdi:information-outline")

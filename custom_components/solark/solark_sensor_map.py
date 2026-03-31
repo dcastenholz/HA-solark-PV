@@ -17,7 +17,7 @@ from .sensor_map_entry import (
 from .solark_register_map import SolArkRegisterMap
 
 
-class SolArkSensorMap(SensorMap["SolArkSensorMap"]):
+class SolArkSensorMap(SensorMap):
     register_map: SolArkRegisterMap
 
     def __init__(self, register_map: SolArkRegisterMap):
