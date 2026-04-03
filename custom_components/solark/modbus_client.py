@@ -20,7 +20,7 @@ from .modbus_config import ConnectionType, ModbusConfig
 from .pymodbus_wrapper import ModbusClientWrapper, ModbusResponse, ModbusResponseError
 from .register_map import RegisterMapEntry
 from .register_map_entry import DataType, StringEntry
-from .sensor_map_entry import NumericValue
+from .register_value_types import NumericValue
 from .solark_binary_payload_decoder import ModbusDecodeError, SolArkBinaryPayloadDecoder
 from .solark_register_map import SolArkRegisterMap
 
@@ -81,7 +81,7 @@ class SolArkModbusClient():
     def read_modbus_inverter_data(self):
         """Read the static inverter data from the inverter and store the results in the register map."""
 
-        self._process_register_range(self.register_map.SN, self.register_map.RATED_POWER)   # R5 - R16
+        self._process_register_range(self.register_map.SN, self.register_map.INFO_RATED_POWER)   # R5 - R16
 
         if self.register_map.is_error():
             _LOGGER.error("Reading inverter data failed!")
@@ -91,7 +91,7 @@ class SolArkModbusClient():
         # self._process_register_range(self.register_map.DAILYINV_E, self.register_map.GRIDFREQ)  # R60 - R79
         # self._process_register_range(self.register_map.DAILYLOAD_E, self.register_map.ACHSTempC)  # R84 - R91
 
-        self._process_register_range(self.register_map.MPPT_INFO_RAW, self.register_map.SYSTEM_TIME_MS_RAW)  # R60 - R91
+        self._process_register_range(self.register_map.INFO_MPPT_PHASE_COUNTS_RAW, self.register_map.SYSTEM_TIME_MS_RAW)  # R60 - R91
 
         self._process_register_range(self.register_map.DAILYINV_E, self.register_map.ACHSTempC)  # R60 - R91
 

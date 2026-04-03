@@ -1,6 +1,7 @@
 from typing import TypeVar
 
 from homeassistant.components.sensor import (
+    EntityCategory,
     SensorStateClass,
 )
 
@@ -9,12 +10,12 @@ from .register_map_entry import (
     BatteryVoltageEntry,
     CurrentEntry,
     DataType,
-    DiagnosticEntry,
     EnergyEntry,
     FrequencyEntry,
     GridVoltageEntry,
     PowerEntry,
     PVVoltageEntry,
+    RawValueEntry,
     RegisterMapEntry,
     SOCEntry,
     StringEntry,
@@ -30,14 +31,16 @@ T = TypeVar("T", bound="RegisterMap")  # T is the real subclass
 """SolArk Modbus Register Map class"""
 class SolArkRegisterMap(RegisterMap):
     SN = StringEntry(address=3, length=5, key="sn", name="Serial Number", icon="mdi:information-outline")
-    FIRMWARE_S = RegisterMapEntry(address=11, key="firmware_s", name="Firmware S Raw", icon="mdi:information-outline")
-    FIRMWARE_M = RegisterMapEntry(address=13, key="firmware_m", name="Firmware Control Board Raw", icon="mdi:information-outline")
-    FIRMWARE_C = RegisterMapEntry(address=14, key="firmware_c", name="Firmware Communication Board Raw", icon="mdi:information-outline")
-    RATED_POWER = PowerEntry(address=16, key="rated_power", scale=0.1, name="Rated Power", icon="mdi:solar-power")
-    MPPT_INFO_RAW = RegisterMapEntry(address=18, key="mppt_info_raw", name="MPPT Info Raw Value", icon="mdi:information-outline")
+    INFO_FIRMWARE_S = RawValueEntry(address=11, key="info_firmware_s", name="Firmware S Raw", icon="mdi:information-outline")
+    INFO_FIRMWARE_M = RawValueEntry(address=13, key="info_firmware_m", name="Firmware Control Board Raw", icon="mdi:information-outline")
+    INFO_FIRMWARE_C = RawValueEntry(address=14, key="info_firmware_c", name="Firmware Communication Board Raw", icon="mdi:information-outline")
+    INFO_RATED_POWER = PowerEntry(address=16, key="info_rated_power", scale=0.1, name="Rated Power", icon="mdi:solar-power", data_type=DataType.UINT32, entity_category=EntityCategory.DIAGNOSTIC)
+    INFO_MPPT_PHASE_COUNTS_RAW = RawValueEntry(address=18, key="info_mppt_phase_raw", name="MPPT & Phase Info Raw Value")
+
     SYSTEM_TIME_YM_RAW = SystemTimeEntry(address=22, key="system_time_ym_raw", name="System Time Year Month Raw Value")
     SYSTEM_TIME_DH_RAW = SystemTimeEntry(address=23, key="system_time_DH_raw", name="System Time Day Hour Raw Value")
     SYSTEM_TIME_MS_RAW = SystemTimeEntry(address=24, key="system_time_ms_raw", name="System Time Minute Second Raw Value")
+
     DAILYINV_E = EnergyEntry(address=60, key="dailyinv_e", name="Daily Inverter Energy", data_type=DataType.INT16)
     TOTALGRID_E = EnergyEntry(address=63, key="totalgrid_e", name="Total Grid Breaker Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
     DAILYBATT_C_E = EnergyEntry(address=70, key="daybattc_e", name="Daily Battery Charge Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
@@ -46,17 +49,17 @@ class SolArkRegisterMap(RegisterMap):
     TOTALBATT_D_E = EnergyEntry(address=74, key="totalbattd_e", name="Total Battery Discharge Energy", data_type=DataType.INT32)
     DAILYGRIDBUY_E = EnergyEntry(address=76, key="dailygridbuy_e", name="Daily Grid Buy Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
     DAILYGRIDSELL_E = EnergyEntry(address=77, key="dailygridsell_e", name="Daily Grid Sell Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
-    TOTALGRIDBUY_E_LOW_RAW = DiagnosticEntry(address=78, key="totalgridbuy_e_low", name="Total Grid Buy Energy - low word")
+    TOTALGRIDBUY_E_LOW_RAW = RawValueEntry(address=78, key="totalgridbuy_e_low", name="Total Grid Buy Energy - low word")
     GRIDFREQ = FrequencyEntry(address=79, key="gridfreq", name="Grid Frequency", entity_registry_enabled_default=True)
-    TOTALGRIDBUY_E_HIGH_RAW = DiagnosticEntry(address=80, key="totalgridbuy_e_high", name="Total Grid Buy Energy - high word")
+    TOTALGRIDBUY_E_HIGH_RAW = RawValueEntry(address=80, key="totalgridbuy_e_high", name="Total Grid Buy Energy - high word")
     TOTALGRIDSELL_E = EnergyEntry(address=81, key="totalsell_e", name="Total Grid Sell Energy", data_type=DataType.INT32)
     DAILYLOAD_E = EnergyEntry(address=84, key="dailyload_e", name="Daily Load Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING)
     TOTALLOAD_E = EnergyEntry(address=85, key="totalload_e", name="Total Load Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
     DCHSTempC = TemperatureEntry(address=90, key="dchstempc", name="DC Heatsink Temperature")
     ACHSTempC = TemperatureEntry(address=91, key="achstempc", name="AC Heatsink Temperature")
     TOTALINV_E = EnergyEntry(address=96, key="totalinv_e", name="Total PV Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
-    FAULT_INFO_RAW = DiagnosticEntry(address=103, key="fault_info_raw", name="Inverter Fault Information Raw Value", data_type=DataType.UINT64, icon="mdi:message-alert-outline")
-    CORR_BATT_CAP = RegisterMapEntry(address=107, key="corr_batt_cap", data_type=DataType.UINT16, name="Corrected Battery Capacity", icon="mdi:battery", unit_of_measurement=UnitOfMeasure.AH, state_class=None)
+    FAULT_INFO_RAW = RawValueEntry(address=103, key="fault_info_raw", name="Inverter Fault Information Raw Value", data_type=DataType.UINT64, icon="mdi:message-alert-outline")
+    CORR_BATT_CAP = RegisterMapEntry(address=107, key="corr_batt_cap", name="Corrected Battery Capacity", data_type=DataType.UINT16, icon="mdi:battery", unit_of_measurement=UnitOfMeasure.AH, state_class=None)
     DAILYPV_E = EnergyEntry(address=108, key="dailypv_e", name="Daily PV Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
 
     PV1_V = PVVoltageEntry(address=109, key="pv1_v", name="PV1 Voltage")
@@ -115,8 +118,8 @@ class SolArkRegisterMap(RegisterMap):
     LOAD_FREQ = FrequencyEntry(address=192, key="loadfreq", name="Load Frequency")
     INVERTER_FREQ = FrequencyEntry(address=193, key="inverterfreq", name="Inverter Output Frequency")
 
-    GRID_RLY_RAW = DiagnosticEntry(address=194, key="grid_rly_raw", name="Grid Relay Raw Value")
-    GEN_RLY_RAW = DiagnosticEntry(address=195, key="gen_rly_raw", name="Generator Relay Raw Value")
+    GRID_RLY_RAW = RawValueEntry(address=194, key="grid_rly_raw", name="Grid Relay Raw Value")
+    GEN_RLY_RAW = RawValueEntry(address=195, key="gen_rly_raw", name="Generator Relay Raw Value")
 
     GEN_FREQ = FrequencyEntry(address=196, key="genfreq", name="Generator Relay Frequency")
 

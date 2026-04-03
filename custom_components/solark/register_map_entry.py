@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Union
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -8,8 +9,9 @@ from homeassistant.const import (
     EntityCategory,
 )
 
+from .base_map_entry import BaseMapEntry
+from .register_value_types import NumericValue
 from .sensor_entity_description import SensorClass, UnitOfMeasure
-from .sensor_map_entry import SensorMapEntry
 
 
 # ----------------------------------
@@ -27,7 +29,15 @@ class DataType(Enum):
 # ----------------------------------
 # Register Map Entry
 # ----------------------------------
-class RegisterMapEntry(SensorMapEntry):
+class RegisterMapEntry(BaseMapEntry["RegisterMapEntry"]):
+    """
+    Modbus register-backed entry.
+
+    Adds:
+    - address
+    - data type
+    - register sizing logic
+    """
     address: int
     data_type: DataType
 
@@ -49,7 +59,7 @@ class RegisterMapEntry(SensorMapEntry):
         super()._validate()
         # Address must be non-negative
         if self.address < 0:
-            raise ValueError(f"RegisterMapEntry {self._entity_description.key} must have a non-negative address")
+            raise ValueError(f"RegisterMapEntry {self._entity_description.key}: address must be >= 0")
 
     @property
     def register_length(self) -> int:
@@ -62,6 +72,49 @@ class RegisterMapEntry(SensorMapEntry):
             return 4
         raise ValueError(f"Unknown DataType {self.data_type} for {self._entity_description.key}")
 
+
+    # -----------------------------
+    # Numeric helpers
+    # -----------------------------
+    def _get_numeric(self) -> NumericValue:
+        if isinstance(self.register_value, (int, float)):
+            return self.register_value
+        raise TypeError(
+            f"Non-numeric register_value for {self._entity_description.key}: "
+            f"{self.register_value}"
+        )
+
+    def __add__(self, other: Union[RegisterMapEntry, NumericValue]) -> NumericValue:
+        left = self._get_numeric()
+
+        if isinstance(other, RegisterMapEntry):
+            return left + other._get_numeric()
+
+        if isinstance(other, (int, float)):
+            return left + other
+
+        return NotImplemented
+
+    def __radd__(self, other: NumericValue) -> NumericValue:
+        if isinstance(other, (int, float)):
+            return other + self._get_numeric()
+        return NotImplemented
+
+    def __int__(self) -> int:
+        return int(self._get_numeric())
+
+    def __float__(self) -> float:
+        return float(self._get_numeric())
+
+    def split_bytes_uint16(self) -> tuple[int, int]:
+        """Split a UINT16 into two 8-bit integers (high byte, low byte)."""
+        value: int = int(self)
+        if not 0 <= value <= 0xFFFF:
+            raise ValueError("Value must be in range 0..65535 (UINT16)")
+
+        high = (value >> 8) & 0xFF
+        low = value & 0xFF
+        return high, low
 
 # ----------------------------
 # String
@@ -110,7 +163,7 @@ class GridVoltageEntry(RegisterMapEntry):
 class BatteryVoltageEntry(RegisterMapEntry):
     def __init__(self, **kwargs):
         kwargs.setdefault("data_type", DataType.UINT16)
-        kwargs.setdefault("icon", "mdi:battery")
+        kwargs.setdefault("icon", "mdi:battery-outline")
         kwargs.setdefault("scale", 0.01)
         kwargs.setdefault("unit_of_measurement", UnitOfMeasure.V)
         kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
@@ -239,12 +292,13 @@ class TimeOfUseTimeEntry(RegisterMapEntry):
 
 
 # ----------------------------
-# Diagnostic
+# RawValueEntry
 # ----------------------------
-class DiagnosticEntry(RegisterMapEntry):
+class RawValueEntry(RegisterMapEntry):
     def __init__(self, **kwargs):
         kwargs.setdefault("data_type", DataType.UINT16)
         kwargs.setdefault("entity_category", EntityCategory.DIAGNOSTIC)
+        kwargs.setdefault("icon", "mdi:code-braces")
 
         super().__init__(**kwargs)
 

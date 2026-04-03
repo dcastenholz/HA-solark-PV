@@ -39,6 +39,7 @@ class UnitOfMeasure(Enum):
     HZ = UnitOfFrequency.HERTZ
     NONE = None  # for sensors without a unit
 
+
 # ----------------------------------
 # Sensor Entity Description
 # ----------------------------------

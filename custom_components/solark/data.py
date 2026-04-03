@@ -47,8 +47,8 @@ class SolArkData:
 
         self.config_flow_state = ConfigFlowState.from_config_entry(self.config_entry)
         self.modbus_config = ModbusConfig(self.config_flow_state)
-        self.register_map = SolArkRegisterMap()
-        self.calculated_sensor_map = SolArkSensorMap(self.register_map)
+        self.register_map = SolArkRegisterMap(self)
+        self.calculated_sensor_map = SolArkSensorMap(self)
         self.modbus_client = SolArkModbusClient(self.modbus_config, self.register_map)
         self.device_info = DeviceInfo(
             identifiers={(DOMAIN, self.config_entry.name)},

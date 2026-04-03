@@ -7,7 +7,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .data import SolArkData
 from .device_info import update_device_firmware, update_device_serial
 from .modbus_client import SolArkModbusClient
-from .register_map import RegisterValue
+from .register_value_types import RegisterValue
 from .solark_register_map import SolArkRegisterMap
 from .solark_sensor_map import SolArkSensorMap
 
