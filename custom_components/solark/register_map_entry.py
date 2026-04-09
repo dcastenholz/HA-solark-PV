@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Union
+from typing import Union, cast
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -8,8 +8,9 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     EntityCategory,
 )
+from typing_extensions import Unpack
 
-from .base_map_entry import BaseMapEntry
+from .base_map_entry import BaseMapEntry, BaseMapEntryOptional, BaseMapEntryRequired
 from .register_value_types import NumericValue
 from .sensor_entity_description import SensorClass, UnitOfMeasure
 
@@ -24,6 +25,16 @@ class DataType(Enum):
     UINT32 = "uint32"
     INT64 = "int64"
     UINT64 = "uint64"
+
+
+class RegisterMapEntryRequired(BaseMapEntryRequired):
+    address: int
+
+class RegisterMapEntryOptional(BaseMapEntryOptional, total=False):
+    data_type: DataType
+
+class RegisterMapEntryKwargs(RegisterMapEntryRequired, RegisterMapEntryOptional):
+    pass
 
 
 # ----------------------------------
@@ -41,19 +52,18 @@ class RegisterMapEntry(BaseMapEntry["RegisterMapEntry"]):
     address: int
     data_type: DataType
 
-    def __init__(
-        self,
-        key: str,
-        address: int,
-        **kwargs,
-    ) -> None:
-        data_type = kwargs.pop("data_type", DataType.INT16)
-
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
+        # This pattern of reading kwargs and then poping the value to get rid of it
+        # helps the type checker at design time.
+        address = kwargs["address"]
         self.address = address
-        self.data_type = data_type
+        kwargs.pop("address")
 
-        super().__init__(key=key, **kwargs)
-        self._validate()
+        # When there is a non-None default value, pop with the appropriate default
+        # helps the type checking at design time.
+        self.data_type = kwargs.pop("data_type", DataType.INT16)
+
+        super().__init__(**kwargs)
 
     def _validate(self):
         super()._validate()
@@ -71,7 +81,6 @@ class RegisterMapEntry(BaseMapEntry["RegisterMapEntry"]):
         if self.data_type in (DataType.INT64, DataType.UINT64):
             return 4
         raise ValueError(f"Unknown DataType {self.data_type} for {self._entity_description.key}")
-
 
     # -----------------------------
     # Numeric helpers
@@ -119,11 +128,22 @@ class RegisterMapEntry(BaseMapEntry["RegisterMapEntry"]):
 # ----------------------------
 # String
 # ----------------------------
+
+class StringEntryRequired(RegisterMapEntryRequired):
+    length: int
+
+class StringEntryKwargs(StringEntryRequired,RegisterMapEntryOptional):
+    pass
+
 class StringEntry(RegisterMapEntry):
     length: int
 
-    def __init__(self, length: int, **kwargs):
+    def __init__(self, **kwargs: Unpack[StringEntryKwargs]) -> None:
+        # This pattern of reading kwargs and then poping the value to get rid of it
+        # helps the type checker at design time.
+        length = kwargs["length"]
         self.length = length
+        kwargs.pop("length")
 
         super().__init__(**kwargs,)
         self._validate()
@@ -147,7 +167,7 @@ class StringEntry(RegisterMapEntry):
 # Grid Voltage
 # ----------------------------
 class GridVoltageEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("data_type", DataType.UINT16)
         kwargs.setdefault("icon", "mdi:flash")
         kwargs.setdefault("scale", 0.1)
@@ -161,7 +181,7 @@ class GridVoltageEntry(RegisterMapEntry):
 # Battery Voltage
 # ----------------------------
 class BatteryVoltageEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("data_type", DataType.UINT16)
         kwargs.setdefault("icon", "mdi:battery-outline")
         kwargs.setdefault("scale", 0.01)
@@ -175,7 +195,7 @@ class BatteryVoltageEntry(RegisterMapEntry):
 # PV Voltage
 # ----------------------------
 class PVVoltageEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("data_type", DataType.UINT16)
         kwargs.setdefault("icon", "mdi:solar-power")
         kwargs.setdefault("scale", 0.1)
@@ -189,7 +209,7 @@ class PVVoltageEntry(RegisterMapEntry):
 # Frequency
 # ----------------------------
 class FrequencyEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("data_type", DataType.UINT16)
         kwargs.setdefault("scale", 0.01)
         kwargs.setdefault("unit_of_measurement", UnitOfMeasure.HZ)
@@ -204,7 +224,7 @@ class FrequencyEntry(RegisterMapEntry):
 # Current
 # ----------------------------
 class CurrentEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("scale", 0.01)
         kwargs.setdefault("unit_of_measurement", UnitOfMeasure.A)
         kwargs.setdefault("device_class", SensorDeviceClass.CURRENT)
@@ -217,7 +237,7 @@ class CurrentEntry(RegisterMapEntry):
 # Power
 # ----------------------------
 class PowerEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("device_class", SensorDeviceClass.POWER)
         kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
         kwargs.setdefault("unit_of_measurement", UnitOfMeasure.WATT)
@@ -229,7 +249,7 @@ class PowerEntry(RegisterMapEntry):
 # Energy
 # ----------------------------
 class EnergyEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("data_type", DataType.UINT32)
         kwargs.setdefault("scale", 0.1)
         kwargs.setdefault("unit_of_measurement", UnitOfMeasure.KWH)
@@ -243,7 +263,7 @@ class EnergyEntry(RegisterMapEntry):
 # Temperature
 # ----------------------------
 class TemperatureEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("data_type", DataType.UINT16)
         kwargs.setdefault("scale", 0.1)
         kwargs.setdefault("offset", 1000)
@@ -258,7 +278,7 @@ class TemperatureEntry(RegisterMapEntry):
 # State of Charge
 # ----------------------------
 class SOCEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("data_type", DataType.UINT16)
         kwargs.setdefault("unit_of_measurement", UnitOfMeasure.PERCENT)
         kwargs.setdefault("device_class", SensorDeviceClass.BATTERY)
@@ -271,7 +291,7 @@ class SOCEntry(RegisterMapEntry):
 # State of Charge
 # ----------------------------
 class TimeOfUseEnabledEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("data_type", DataType.UINT16)
         kwargs.setdefault("icon", "mdi:check-circle")
         kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
@@ -283,7 +303,7 @@ class TimeOfUseEnabledEntry(RegisterMapEntry):
 # Time
 # ----------------------------
 class TimeOfUseTimeEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("sensor_class", SensorClass.TOU_TIME)
         kwargs.setdefault("data_type", DataType.UINT16)
         kwargs.setdefault("icon", "mdi:clock-outline")
@@ -295,7 +315,7 @@ class TimeOfUseTimeEntry(RegisterMapEntry):
 # RawValueEntry
 # ----------------------------
 class RawValueEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("data_type", DataType.UINT16)
         kwargs.setdefault("entity_category", EntityCategory.DIAGNOSTIC)
         kwargs.setdefault("icon", "mdi:code-braces")
@@ -307,7 +327,7 @@ class RawValueEntry(RegisterMapEntry):
 # SystemTimeEntry
 # ----------------------------
 class SystemTimeEntry(RegisterMapEntry):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Unpack[RegisterMapEntryKwargs]) -> None:
         kwargs.setdefault("data_type", DataType.UINT16)
         kwargs.setdefault("entity_category", EntityCategory.DIAGNOSTIC)
         kwargs.setdefault("icon", "mdi:information-outline")

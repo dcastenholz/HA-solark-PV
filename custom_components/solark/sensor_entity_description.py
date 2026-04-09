@@ -1,5 +1,6 @@
-from dataclasses import dataclass
-from enum import Enum, StrEnum, auto
+from dataclasses import dataclass, field
+from enum import Enum, StrEnum
+from typing import TYPE_CHECKING, Any, Callable
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntityDescription, SensorStateClass
 from homeassistant.const import (
@@ -13,13 +14,11 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 
+from .sensor_class import SensorClass
 
-class SensorClass(Enum):
-    NORMAL = auto()
-    CONFIG = auto()
-    DATETIME = auto()
-    TOU_TIME = auto()
-
+if TYPE_CHECKING:
+    from .data import SolArkData
+    from .sensor import SolArkBaseSensor
 
 class BatteryChargeHelper(StrEnum):
     AH = "Ah"
@@ -59,6 +58,10 @@ class SolArkModbusSensorEntityDescription(SensorEntityDescription):
     description: str | None = None
     sensor_class: SensorClass = SensorClass.NORMAL
     exclude_from_recorder: bool = False
+    should_poll: bool | None = None
+    extra_state_attributes: dict[str, Any] = field(default_factory=dict)
+    post_process_sensor: Callable[["SolArkBaseSensor", "SolArkData"], None] | None
+
     # TODO - Add suggested_display_precision: int | None = None
 
     def __post_init__(self):
@@ -68,3 +71,7 @@ class SolArkModbusSensorEntityDescription(SensorEntityDescription):
                 "native_unit_of_measurement",
                 self.unit_of_measurement_enum.value,
             )
+
+    def update_extra_state_attributes(self, extra_state_attributes: dict[str, Any]):
+        '''Allow dynamic updates to the extra state attributes on the sensor.'''
+        object.__setattr__(self, "extra_state_attributes", extra_state_attributes)

@@ -38,7 +38,7 @@ class SolArkModbusClient():
 
         self.device_id = config.device_id
         self._lock = threading.Lock()
-        self.register_map = register_map
+        self._register_map = register_map
         self._connected = False
         self._stopped = False
 
@@ -78,33 +78,37 @@ class SolArkModbusClient():
 
         self._connected = True
 
-    def read_modbus_inverter_data(self):
+    def read_modbus_inverter_data(self) -> bool:
         """Read the static inverter data from the inverter and store the results in the register map."""
 
-        self._process_register_range(self.register_map.SN, self.register_map.INFO_RATED_POWER)   # R5 - R16
+        self._process_register_range(self._register_map.SN, self._register_map.INFO_RATED_POWER)   # R5 - R16
 
-        if self.register_map.is_error():
+        if self._register_map.is_error():
             _LOGGER.error("Reading inverter data failed!")
 
-    def read_modbus_realtime_data(self):
+        return self._register_map.is_error()
+
+    def read_modbus_realtime_data(self) -> bool:
         """Read the real-time data from the inverter and store the results in the register map."""
         # self._process_register_range(self.register_map.DAILYINV_E, self.register_map.GRIDFREQ)  # R60 - R79
         # self._process_register_range(self.register_map.DAILYLOAD_E, self.register_map.ACHSTempC)  # R84 - R91
 
-        self._process_register_range(self.register_map.INFO_MPPT_PHASE_COUNTS_RAW, self.register_map.SYSTEM_TIME_MS_RAW)  # R60 - R91
+        self._process_register_range(self._register_map.INFO_MPPT_PHASE_COUNTS_RAW, self._register_map.SYSTEM_TIME_MS_RAW)  # R60 - R91
 
-        self._process_register_range(self.register_map.DAILYINV_E, self.register_map.ACHSTempC)  # R60 - R91
+        self._process_register_range(self._register_map.DAILYINV_E, self._register_map.ACHSTempC)  # R60 - R91
 
         # self._process_register_range(self.register_map.TOTALINV_E, self.register_map.PV3_C)  # R96 - R114
 
-        self._process_register_range(self.register_map.TOTALINV_E, self.register_map.DAILYPV_E)  # R96 - R108
-        self._process_register_range(self.register_map.PV1_V, self.register_map.PV3_C)  # R109 - R114
+        self._process_register_range(self._register_map.TOTALINV_E, self._register_map.DAILYPV_E)  # R96 - R108
+        self._process_register_range(self._register_map.PV1_V, self._register_map.PV3_C)  # R109 - R114
 
-        self._process_register_range(self.register_map.GRIDL1N_V, self.register_map.GRIDLMTL1_P)  # R150 - R170
-        self._process_register_range(self.register_map.GRIDLMTL2_P, self.register_map.PV3_P)  # R171 - R188
-        self._process_register_range(self.register_map.BATT_P, self.register_map.GEN_FREQ)  # R190 - R196
-        self._process_register_range(self.register_map.TIMEOFUSE_ENABLED, self.register_map.TIMEOFUSE_ENABLED_6)  # R248 - R279
-        self._process_register_range(self.register_map.BMS_CHARGING_VOLTAGE, self.register_map.BMS_TEMP)  # R312 - R319
+        self._process_register_range(self._register_map.GRIDL1N_V, self._register_map.GRIDLMTL1_P)  # R150 - R170
+        self._process_register_range(self._register_map.GRIDLMTL2_P, self._register_map.PV3_P)  # R171 - R188
+        self._process_register_range(self._register_map.BATT_P, self._register_map.GEN_FREQ)  # R190 - R196
+        self._process_register_range(self._register_map.TIMEOFUSE_ENABLED, self._register_map.TIMEOFUSE_ENABLED_6)  # R248 - R279
+        self._process_register_range(self._register_map.BMS_CHARGING_VOLTAGE, self._register_map.BMS_TEMP)  # R312 - R319
+
+        return self._register_map.is_error()
 
     def _process_register_range(self, start_register: RegisterMapEntry, end_register: RegisterMapEntry | None = None):
         """Read the holding registers and decode the vlues for a range of RegisterMapEntry objects."""
@@ -115,7 +119,7 @@ class SolArkModbusClient():
         register_count = end_register.address + end_register.register_length - start_register.address
 
         # Init the register map entries prior to read attempt
-        self.register_map.init_register_range(start_register, end_register)
+        self._register_map.init_register_range(start_register, end_register)
 
         # Read the registers from the inverter
         modbus_response = self._read_holding_registers(address=start_register.address, count=register_count)
@@ -126,12 +130,12 @@ class SolArkModbusClient():
             _LOGGER.error(
                 "Processing registers %d-%d failed!", start_register.address, end_register.address + end_register.register_length - 1
             )
-            self.register_map.set_error()
+            self._register_map.set_error()
             return
 
         decoder = SolArkBinaryPayloadDecoder.fromRegisters(modbus_response.registers)
 
-        entries = self.register_map.entries_register_read_in_range(start_register, end_register)
+        entries = self._register_map.entries_register_read_in_range(start_register, end_register)
         self._decode_register_map_entries(decoder, entries)
 
     def _decode_register_map_entries(self, decoder: SolArkBinaryPayloadDecoder, entries: Iterator[RegisterMapEntry]):
@@ -148,13 +152,13 @@ class SolArkModbusClient():
 
             if entry.register_value is None:
                 _LOGGER.error("Failed to decode register %s with data type %s", entry.address, entry.data_type)
-                self.register_map.set_error()
+                self._register_map.set_error()
                 return
 
             next_address = entry.address + entry.register_length
 
     def _decode_register_map_entry(self, decoder: SolArkBinaryPayloadDecoder, entry: RegisterMapEntry) -> None:
-        """Decode a single register map entry using the specified decoder."""
+        """Decode a single register map entry using the specified decoder, and store the value into the register entry."""
 
         if isinstance(entry, StringEntry):
             entry.register_value = decoder.decode_string(entry.register_length * 2).decode("ascii")

@@ -37,11 +37,12 @@ class SolArkRegisterMap(RegisterMap):
     INFO_RATED_POWER = PowerEntry(address=16, key="info_rated_power", scale=0.1, name="Rated Power", icon="mdi:solar-power", data_type=DataType.UINT32, entity_category=EntityCategory.DIAGNOSTIC)
     INFO_MPPT_PHASE_COUNTS_RAW = RawValueEntry(address=18, key="info_mppt_phase_raw", name="MPPT & Phase Info Raw Value")
 
-    SYSTEM_TIME_YM_RAW = SystemTimeEntry(address=22, key="system_time_ym_raw", name="System Time Year Month Raw Value")
-    SYSTEM_TIME_DH_RAW = SystemTimeEntry(address=23, key="system_time_DH_raw", name="System Time Day Hour Raw Value")
-    SYSTEM_TIME_MS_RAW = SystemTimeEntry(address=24, key="system_time_ms_raw", name="System Time Minute Second Raw Value")
+    SYSTEM_TIME_YM_RAW = SystemTimeEntry(address=22, key="system_time_ym_raw", name="System Time Year Month Raw Value", exclude_from_recorder=True)
+    SYSTEM_TIME_DH_RAW = SystemTimeEntry(address=23, key="system_time_DH_raw", name="System Time Day Hour Raw Value", exclude_from_recorder=True)
+    SYSTEM_TIME_MS_RAW = SystemTimeEntry(address=24, key="system_time_ms_raw", name="System Time Minute Second Raw Value", exclude_from_recorder=True)
 
     DAILYINV_E = EnergyEntry(address=60, key="dailyinv_e", name="Daily Inverter Energy", data_type=DataType.INT16)
+#    DAILYREA_E = EnergyEntry(address=61, key="dailyrea_e", name="Daily Reactive Energy", data_type=DataType.INT16)
     TOTALGRID_E = EnergyEntry(address=63, key="totalgrid_e", name="Total Grid Breaker Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
     DAILYBATT_C_E = EnergyEntry(address=70, key="daybattc_e", name="Daily Battery Charge Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
     DAILYBATT_D_E = EnergyEntry(address=71, key="daybattd_e", name="Daily Battery Discharge Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)

@@ -27,6 +27,18 @@ class RegisterMap(BaseMap[RegisterMapEntry]):
                     )
             prev = entry
 
+    def is_error(self) -> bool:
+        """Return whether an error occurred."""
+        return self._error
+
+    def set_error(self, value: bool = True):
+        """Set error flag."""
+        self._error = value
+
+    def init(self):
+        """Initialize the register map before reading registers."""
+        self.set_error(False)
+
     # ---------- register range helpers ----------
     def init_register_range(self, start: RegisterMapEntry, end: RegisterMapEntry | None = None):
         """Initialize the register map entries in the range before reading."""

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, Optional
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -9,15 +10,16 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .config_flow_state import ConfigFlowState
 from .const import ATTR_MANUFACTURER, DOMAIN
+from .coordinator_data import CoordinatorData
+from .coordinator_metrics import CoordinatorMetrics
 from .modbus_client import SolArkModbusClient
 from .modbus_config import ModbusConfig
 from .solark_register_map import SolArkRegisterMap
-from .solark_sensor_map import SolArkSensorMap
 
 if TYPE_CHECKING:
     from .config_entry import SolArkConfigEntry
     from .coordinator import SolArkCoordinator
-
+    from .solark_sensor_map import SolArkSensorMap
 
 @dataclass
 class SolArkData:
@@ -29,6 +31,8 @@ class SolArkData:
     device_info: DeviceInfo
     register_map: SolArkRegisterMap
     calculated_sensor_map: SolArkSensorMap
+    coordinator_metrics: CoordinatorMetrics
+    last_successful_read_data: CoordinatorData | None
 
     _coordinator: Optional["SolArkCoordinator"] = None
 
@@ -39,6 +43,7 @@ class SolArkData:
     ):
         # Local import prevents circular import
         from .config_entry import SolArkConfigEntry  # pylint: disable=C0415
+        from .solark_sensor_map import SolArkSensorMap
 
         self.hass = hass
         # Set the config entry first to enable the read-only properties
@@ -55,6 +60,9 @@ class SolArkData:
             name=self.config_entry.name,
             manufacturer=ATTR_MANUFACTURER,
         )
+        self.coordinator_metrics = CoordinatorMetrics()
+
+        self.last_successful_read_data = None
 
     @property
     def name(self) -> str:
@@ -80,3 +88,25 @@ class SolArkData:
         if self._coordinator:
             await self._coordinator.async_stop()  # if async, you can run with asyncio.create_task or call in async context
             self._coordinator = None
+
+    @property
+    def current_data(self) -> dict[str, Any]:
+        return {**self.register_map.as_dict(), **self.calculated_sensor_map.as_dict()}
+
+    def on_startup(self):
+        self.coordinator_metrics.on_startup()
+        return
+
+    def on_start(self):
+        self.coordinator_metrics.on_start()
+        return
+
+    def on_success(self):
+        self.last_successful_read_data = CoordinatorData(data=self.current_data, timestamp=datetime.now())
+        # Increment update counter
+        self.coordinator_metrics.on_success()
+        return
+
+    def on_failure(self):
+        self.coordinator_metrics.on_failure()
+        return

@@ -1,4 +1,5 @@
 import logging
+from abc import ABC
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Iterator, Type, TypeVar, cast
 
 from homeassistant.const import EntityCategory
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
     from .data import SolArkData
 
 
-class BaseMap(Generic[TEntry]):
+class BaseMap(Generic[TEntry], ABC):
     """Generic base class for entry-based maps using class attribute collection."""
     _entry_type: ClassVar[type[Any]]
     _class_entries: ClassVar[list[Any]]
@@ -37,8 +38,9 @@ class BaseMap(Generic[TEntry]):
     def post_process(self):
         """Post-process the register map entries after reading the raw values from the inverter."""
         # TODO - Handle case where the dependency registers were not read. Value is None
-        for entry in self.entries_post_process:
-            entry.post_process(self.runtime_data)
+        for entry in self:
+            if entry.post_process is not None:
+                entry.do_post_process(self.runtime_data)
 
     @staticmethod
     def _collect_entries(mro: tuple[type, ...], entry_cls: Type[Any]) -> list[TEntry]:
@@ -77,14 +79,6 @@ class BaseMap(Generic[TEntry]):
     def __iter__(self) -> Iterator[TEntry]:
         return iter(self._entries)
 
-    def is_error(self) -> bool:
-        """Return whether an error occurred."""
-        return self._error
-
-    def set_error(self, value: bool = True):
-        """Set error flag."""
-        self._error = value
-
     def get_descriptions(self) -> list[SolArkModbusSensorEntityDescription]:
         return [
             entry.entity_description
@@ -98,14 +92,3 @@ class BaseMap(Generic[TEntry]):
             entry.entity_description.key: entry.register_value
             for entry in self._entries
         }
-
-    def init(self):
-        """Initialize the register map before reading registers."""
-        self.set_error(False)
-
-    @property
-    def entries_post_process(self) -> Iterator[TEntry]:
-        """Return all register map entries that have a post_process_method."""
-        for entry in self:
-            if entry.post_process_method is not None:
-                yield entry
