@@ -1,6 +1,6 @@
 import logging
 from abc import ABC
-from typing import TYPE_CHECKING, Any, Callable, Generic, TypedDict, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, TypedDict, TypeVar
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import EntityCategory
@@ -22,15 +22,10 @@ _LOGGER = logging.getLogger(__name__)
 
 TEntry = TypeVar("TEntry", bound="BaseMapEntry")
 
-class BaseMapEntryRequired(TypedDict):
-    key: str
-    name: str
-
-
 class BaseMapEntryOptional(TypedDict, total=False):
     unit_of_measurement: UnitOfMeasure
     device_class: SensorDeviceClass
-    state_class: SensorStateClass
+    state_class: Optional[SensorStateClass]
     icon: str
     entity_registry_enabled_default: bool
     entity_category: EntityCategory
@@ -41,11 +36,9 @@ class BaseMapEntryOptional(TypedDict, total=False):
     extra_state_attributes: dict[str, Any]
     post_process: Callable[["BaseMapEntry[Any]", "SolArkData"], None]
     post_process_sensor: Callable[["SolArkBaseSensor", "SolArkData"], None]
+
     scale: float
     offset: int
-
-class BaseMapEntryKwargs(BaseMapEntryRequired,BaseMapEntryOptional):
-    pass
 
 class BaseMapEntry(Generic[TEntry], ABC):
     """
@@ -61,23 +54,13 @@ class BaseMapEntry(Generic[TEntry], ABC):
 
     state_class: SensorStateClass | None
     post_process: Callable[["BaseMapEntry[Any]", "SolArkData"], None] | None
-    post_process_sensor: Callable[["SolArkBaseSensor", "SolArkData"], None] | None
     scale: float
     offset: int
 
-    def __init__(self, **kwargs: Unpack[BaseMapEntryKwargs]) -> None:
+    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseMapEntryOptional]) -> None:
         # -----------------------------
         # unpack once (HERE)
         # -----------------------------
-        key = kwargs["key"]
-        name = kwargs["name"]
-
-        # if not key:
-        #     raise ValueError(f"{self.__class__.__name__} must define 'key'")
-
-        # if not name:
-        #     raise ValueError(f"{self.__class__.__name__} must define 'name'")
-
         unit_of_measurement = kwargs.get("unit_of_measurement")
         device_class = kwargs.get("device_class")
         state_class = kwargs.get("state_class")
@@ -91,6 +74,7 @@ class BaseMapEntry(Generic[TEntry], ABC):
         extra_state_attributes = kwargs.get("extra_state_attributes") or {}
         post_process = kwargs.get("post_process")
         post_process_sensor = kwargs.get("post_process_sensor")
+
         scale = kwargs.get("scale", 1.0)
         offset = kwargs.get("offset", 0)
 
@@ -100,9 +84,7 @@ class BaseMapEntry(Generic[TEntry], ABC):
         self._entity_description = SolArkModbusSensorEntityDescription(
             key=key,
             name=name,
-            native_unit_of_measurement=(
-                unit_of_measurement.value if unit_of_measurement else None
-            ),
+
             unit_of_measurement_enum=unit_of_measurement,
             device_class=device_class,
             state_class=state_class,
@@ -115,17 +97,18 @@ class BaseMapEntry(Generic[TEntry], ABC):
             should_poll=should_poll,
             extra_state_attributes=extra_state_attributes,
             post_process_sensor=post_process_sensor,
+
+            native_unit_of_measurement=(
+                unit_of_measurement.value if unit_of_measurement else None
+            ),
         )
 
         # -----------------------------
         # store fields
         # -----------------------------
         self.post_process = post_process
-        self.post_process_sensor = post_process_sensor
         self.scale = scale
         self.offset = offset
-
-        self.processed_value: int | None = None
 
         self._validate()
 

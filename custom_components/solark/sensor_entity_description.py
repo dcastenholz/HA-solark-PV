@@ -71,7 +71,3 @@ class SolArkModbusSensorEntityDescription(SensorEntityDescription):
                 "native_unit_of_measurement",
                 self.unit_of_measurement_enum.value,
             )
-
-    def update_extra_state_attributes(self, extra_state_attributes: dict[str, Any]):
-        '''Allow dynamic updates to the extra state attributes on the sensor.'''
-        object.__setattr__(self, "extra_state_attributes", extra_state_attributes)

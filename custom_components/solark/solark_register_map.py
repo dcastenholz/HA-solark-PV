@@ -170,5 +170,5 @@ class SolArkRegisterMap(RegisterMap):
     BMS_DISCHARGE_CURRENT_LIMIT = CurrentEntry(address=315, key="bms_discharge_current_limit", scale=1.0, data_type=DataType.UINT16, name="BMS Discharge Current Limit", entity_registry_enabled_default=False)
     BMS_SOC = SOCEntry(address=316, key="bms_soc", name="BMS SOC", entity_registry_enabled_default=False)
     BMS_VOLTAGE = BatteryVoltageEntry(address=317, key="bms_voltage", name="BMS Voltage", entity_registry_enabled_default=False)
-    BMS_CURRENT = CurrentEntry(address=318, key="bms_current", scale=1.0, name="BMS Current", entity_registry_enabled_default=False)
+    BMS_CURRENT = CurrentEntry(address=318, key="bms_current", scale=1.0, data_type=DataType.INT16, name="BMS Current", entity_registry_enabled_default=False)
     BMS_TEMP = TemperatureEntry(address=319, key="bms_temp", name="BMS Temperature", entity_registry_enabled_default=False)
