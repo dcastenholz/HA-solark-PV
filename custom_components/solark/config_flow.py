@@ -8,8 +8,9 @@ from homeassistant.config_entries import CONN_CLASS_LOCAL_POLL, ConfigFlow, Conf
 from homeassistant.const import CONF_NAME, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 
-from .config_flow_state import CONF_CONNECTION_TYPE, ConfigFlowState
-from .config_schema import SolArkConfigSchema
+from .config_connection_type import ConnectionType
+from .config_data import ConfigData
+from .config_schema import CONF_CONNECTION_TYPE, SolArkConfigSchema
 from .const import (
     DEFAULT_HOST,
     DEFAULT_NAME,
@@ -18,7 +19,6 @@ from .const import (
     DOMAIN,
 )
 from .modbus_config import (
-    ConnectionType,
     is_valid_device_id,
     is_valid_rtu_port,
     is_valid_tcp_host,
@@ -39,13 +39,14 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
     """SolArk Modbus config flow."""
 
     # This is the version number for the config_entry as stored in the config_entries storage
-    VERSION = 1
+    VERSION: int = 1
     CONNECTION_CLASS = CONN_CLASS_LOCAL_POLL
+
     is_reconfiguration: bool = False
 
     def __init__(self) -> None:
-        self._state = ConfigFlowState()
-        self._schema = SolArkConfigSchema(self._state)
+        self._config_data = ConfigData()
+        self._schema = SolArkConfigSchema(self._config_data)
         # Prevent overwriting user input when reconfiguring: load entry data only once
         self._reconfigure_loaded = False
 
@@ -82,11 +83,11 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors[CONF_NAME] = "name_already_configured"
 
             if not errors:
-                self._state.name = name
-                self._state.scan_interval = user_input[CONF_SCAN_INTERVAL]
-                self._state.connection_type = user_input[CONF_CONNECTION_TYPE]
+                self._config_data.name = name
+                self._config_data.scan_interval = user_input[CONF_SCAN_INTERVAL]
+                self._config_data.connection_type = user_input[CONF_CONNECTION_TYPE]
 
-                if self._state.connection_type == ConnectionType.TCP:
+                if self._config_data.connection_type == ConnectionType.TCP:
                     return await self.async_step_tcp()
                 return await self.async_step_rtu()
 
@@ -131,9 +132,9 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors[CONF_DEVICE_ID] = "device_id_out_of_range"
 
             if not errors:
-                self._state.tcp_host = user_input[CONF_TCP_HOST]
-                self._state.tcp_port = tcp_port
-                self._state.device_id = device_id
+                self._config_data.tcp_host = user_input[CONF_TCP_HOST]
+                self._config_data.tcp_port = tcp_port
+                self._config_data.device_id = device_id
 
                 return self._finish_flow()
 
@@ -170,8 +171,8 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors[CONF_DEVICE_ID] = "device_id_out_of_range"
 
             if not errors:
-                self._state.rtu_port = user_input[CONF_RTU_PORT]
-                self._state.device_id = device_id
+                self._config_data.rtu_port = user_input[CONF_RTU_PORT]
+                self._config_data.device_id = device_id
 
                 return self._finish_flow()
 
@@ -194,20 +195,20 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
         entry = self._get_reconfigure_entry()
 
         if not self._reconfigure_loaded:
-            state: ConfigFlowState = ConfigFlowState.from_config_entry(entry)
+            config_data: ConfigData = ConfigData.from_storage_data(entry)
             self._reconfigure_loaded = True
 
-            self._state.name = entry.data.get(CONF_NAME, DEFAULT_NAME)
-            self._state.scan_interval = entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-            self._state.device_id = state.device_id
+            self._config_data.name = entry.data.get(CONF_NAME, DEFAULT_NAME)
+            self._config_data.scan_interval = entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+            self._config_data.device_id = config_data.device_id
 
-            if state.connection_type == ConnectionType.TCP:
-                self._state.connection_type = ConnectionType.TCP
-                self._state.tcp_host = state.tcp_host or DEFAULT_HOST
-                self._state.tcp_port = state.tcp_port
+            if config_data.connection_type == ConnectionType.TCP:
+                self._config_data.connection_type = ConnectionType.TCP
+                self._config_data.tcp_host = config_data.tcp_host or DEFAULT_HOST
+                self._config_data.tcp_port = config_data.tcp_port
             else:
-                self._state.connection_type = ConnectionType.RTU
-                self._state.rtu_port = state.rtu_port or DEFAULT_PORT_RTU
+                self._config_data.connection_type = ConnectionType.RTU
+                self._config_data.rtu_port = config_data.rtu_port or DEFAULT_PORT_RTU
 
         return await self.async_step_user(user_input)
 
@@ -217,13 +218,13 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
 
     @callback
     def _finish_flow(self) -> ConfigFlowResult:
-        data: dict[str, Any] = self._state.get_config_entry_data()
+        data: dict[str, Any] = self._config_data.to_storage_data(self.VERSION)
 
         if self.context.get("source") == "reconfigure":
             entry = self._get_reconfigure_entry()
             return self.async_update_reload_and_abort(entry, data=data, reason="reconfigure_successful")
 
-        return self.async_create_entry(title=self._state.name, data=data)
+        return self.async_create_entry(title=self._config_data.name, data=data)
 
 # ------------------------------------------------------------
 # Helpers

@@ -37,3 +37,25 @@ custom_components/solark/
 
 
 Handled buffer overrun in BinaryPayloadDecoder._decode()
+
+Renamed "Total Grid Breaker Energy" to "Total Inverter Energy". This value is the net cumulative total energy supplied to loads by the inverter.
+It is essentially the cumulative load energy, minus the cumulative energy supplied by the grid.
+            {"aliases":[],"area_id":null,"categories":{},"capabilities":{"state_class":"total"},"config_entry_id":"01KMKHAE5NES17WEZPCSS23DNP",
+            "config_subentry_id":null,"created_at":"2026-03-03T15:51:56.977576+00:00","device_class":null,"device_id":"ad08a99f98242e0b2539b02e19aabac7",
+            "disabled_by":null,"entity_category":null,
+
+      "entity_id":"sensor.solark_total_grid_breaker_energy",
+
+            "hidden_by":null,"icon":null,"id":"e39c090970758d80c7bf637f3d29e14c","has_entity_name":false,"labels":[],"modified_at":"2026-04-02T20:00:51.133410+00:00","name":null,
+
+      "object_id_base":"SolArk Total Grid Breaker Energy",
+
+            "options":{"conversation":{"should_expose":false},"sensor":{"suggested_display_precision":2}},"original_device_class":"energy","original_icon":null,
+
+      "original_name":"SolArk Total Grid Breaker Energy",
+
+            "platform":"solark_modbus","suggested_object_id":null,"supported_features":0,"translation_key":null,
+
+      "unique_id":"SolArk_totalgrid_e",
+
+            "previous_unique_id":null,"unit_of_measurement":"kWh"},

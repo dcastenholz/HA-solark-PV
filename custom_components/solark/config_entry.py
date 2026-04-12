@@ -10,7 +10,8 @@ if TYPE_CHECKING:
     from .data import SolArkData
 
 class SolArkConfigEntry(ConfigEntry):
-    """ConfigEntry wrapper with cross-version runtime_data support."""
+    """ConfigEntry wrapper with cross-version runtime_data support.
+       This class can be removed if manifest.json has "homeassistant": "2024.6.0" or greater."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         self._hass = hass

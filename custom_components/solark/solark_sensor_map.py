@@ -5,9 +5,11 @@ from typing import TYPE_CHECKING
 from homeassistant.components.sensor import EntityCategory, SensorStateClass
 from homeassistant.util import dt
 
+from .config_sensor import ConfigSensor
 from .const import GEN_RELAY_STATUS, GRID_RELAY_STATUS
 from .fault_info import translate_fault_code_to_messages
 from .sensor_class import SensorClass
+from .sensor_dynamic_icon import SensorDynamicIcon
 from .sensor_map import SensorMap
 from .sensor_map_entry import (
     ConfigEntry,
@@ -148,7 +150,7 @@ def config_info_post_process(self: "SensorMapEntry", runtime_data: "SolArkData")
 
 @staticmethod
 def config_info_post_process_sensor(sensor: "SolArkBaseSensor", runtime_data: "SolArkData") -> None:
-    sensor.extra_state_attributes = runtime_data.config_flow_state.get_config_sensor_data(runtime_data.config_entry)
+    sensor.extra_state_attributes = ConfigSensor.get_data(runtime_data.config_entry)
     return
 
 class SolArkSensorMap(SensorMap):
@@ -175,8 +177,8 @@ class SolArkSensorMap(SensorMap):
     PV_P = PowerEntry(
         key="pv_p", name="PV Input Power", icon="mdi:solar-power", entity_registry_enabled_default=True, post_process=pv_p_post_process
         )
-    GRID_RLY = SensorMapEntry(key="grid_rly", name="Grid Relay", icon="mdi:electric-switch", post_process=grid_rly_post_process)
-    GEN_RLY = SensorMapEntry(key="gen_rly", name="Generator Relay", icon="mdi:electric-switch", post_process=gen_rly_post_process)
+    GRID_RLY = SensorMapEntry(key="grid_rly", name="Grid Relay", icon="mdi:electric-switch", post_process=grid_rly_post_process, dynamic_icon=SensorDynamicIcon.RELAY)
+    GEN_RLY = SensorMapEntry(key="gen_rly", name="Generator Relay", icon="mdi:electric-switch", post_process=gen_rly_post_process, dynamic_icon=SensorDynamicIcon.GENERATOR_RELAY)
     TOTALGRIDBUY_E = EnergyEntry(key="totalgridbuy_e", name="Total Grid Buy Energy", post_process=totalgridbuy_e_post_process)
 
     UPDATE_COUNTER = SensorMapEntry(

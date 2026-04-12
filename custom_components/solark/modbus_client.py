@@ -15,8 +15,9 @@ from typing import Iterator
 
 from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
+from .config_connection_type import ConnectionType
 from .const import MODBUS_EXCEPTIONS
-from .modbus_config import ConnectionType, ModbusConfig
+from .modbus_config import ModbusConfig
 from .pymodbus_wrapper import ModbusClientWrapper, ModbusResponse, ModbusResponseError
 from .register_map import RegisterMapEntry
 from .register_map_entry import DataType, StringEntry

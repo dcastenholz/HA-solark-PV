@@ -5,7 +5,8 @@ from dataclasses import dataclass
 
 import voluptuous as vol
 
-from .config_flow_state import ConfigFlowState, ConnectionType
+from .config_connection_type import ConnectionType
+from .config_data import ConfigData
 from .const import MAX_DEVICE_ID, MAX_PORT_NUMBER
 
 
@@ -23,16 +24,16 @@ class ModbusConfig:
     # Serial
     serial_port: str | None
 
-    def __init__(self, config_flow_state: ConfigFlowState):
-        self.name = config_flow_state.name
-        self.device_id = config_flow_state.device_id
-        self.connection_type = config_flow_state.connection_type
+    def __init__(self, config_data: ConfigData):
+        self.name = config_data.name
+        self.device_id = config_data.device_id
+        self.connection_type = config_data.connection_type
 
         if self.connection_type == ConnectionType.RTU:
-            self.serial_port = config_flow_state.rtu_port
+            self.serial_port = config_data.rtu_port
         else:
-            self.host = config_flow_state.tcp_host
-            self.port = config_flow_state.tcp_port
+            self.host = config_data.tcp_host
+            self.port = config_data.tcp_port
 
 # TODO - Remove if unused
 def validate_tcp_host_1(value: str) -> str:

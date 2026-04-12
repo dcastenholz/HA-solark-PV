@@ -9,8 +9,8 @@ from typing_extensions import Unpack
 from .register_value_types import RegisterValue
 from .sensor_class import SensorClass
 from .sensor_entity_description import (
+    NativeUnit,
     SolArkModbusSensorEntityDescription,
-    UnitOfMeasure,
 )
 
 if TYPE_CHECKING:
@@ -23,19 +23,21 @@ _LOGGER = logging.getLogger(__name__)
 TEntry = TypeVar("TEntry", bound="BaseMapEntry")
 
 class BaseMapEntryOptional(TypedDict, total=False):
-    unit_of_measurement: UnitOfMeasure
+    native_unit: NativeUnit
     device_class: SensorDeviceClass
     state_class: Optional[SensorStateClass]
     icon: str
     entity_registry_enabled_default: bool
     entity_category: EntityCategory
     description: str
+    suggested_display_precision: int
     sensor_class: SensorClass
     exclude_from_recorder: bool
     should_poll: bool
     extra_state_attributes: dict[str, Any]
     post_process: Callable[["BaseMapEntry[Any]", "SolArkData"], None]
     post_process_sensor: Callable[["SolArkBaseSensor", "SolArkData"], None]
+    dynamic_icon: Callable[[RegisterValue], str | None]
 
     scale: float
     offset: int
@@ -59,24 +61,16 @@ class BaseMapEntry(Generic[TEntry], ABC):
 
     def __init__(self, key: str, name: str, **kwargs: Unpack[BaseMapEntryOptional]) -> None:
         # -----------------------------
-        # unpack once (HERE)
+        # Normalize kwargs once
         # -----------------------------
-        unit_of_measurement = kwargs.get("unit_of_measurement")
-        device_class = kwargs.get("device_class")
-        state_class = kwargs.get("state_class")
-        icon = kwargs.get("icon")
-        entity_registry_enabled_default = kwargs.get("entity_registry_enabled_default", False)
-        entity_category = kwargs.get("entity_category")
-        description = kwargs.get("description")
-        sensor_class = kwargs.get("sensor_class", SensorClass.NORMAL)
-        exclude_from_recorder = kwargs.get("exclude_from_recorder", False)
-        should_poll = kwargs.get("should_poll")
-        extra_state_attributes = kwargs.get("extra_state_attributes") or {}
-        post_process = kwargs.get("post_process")
-        post_process_sensor = kwargs.get("post_process_sensor")
-
-        scale = kwargs.get("scale", 1.0)
-        offset = kwargs.get("offset", 0)
+        opts = {
+            "entity_registry_enabled_default": False,
+            "sensor_class": SensorClass.NORMAL,
+            "exclude_from_recorder": False,
+            "scale": 1.0,
+            "offset": 0,
+            **kwargs,
+        }
 
         # -----------------------------
         # entity description build
@@ -84,31 +78,28 @@ class BaseMapEntry(Generic[TEntry], ABC):
         self._entity_description = SolArkModbusSensorEntityDescription(
             key=key,
             name=name,
-
-            unit_of_measurement_enum=unit_of_measurement,
-            device_class=device_class,
-            state_class=state_class,
-            icon=icon,
-            entity_registry_enabled_default=entity_registry_enabled_default,
-            entity_category=entity_category,
-            description=description,
-            sensor_class=sensor_class,
-            exclude_from_recorder=exclude_from_recorder,
-            should_poll=should_poll,
-            extra_state_attributes=extra_state_attributes,
-            post_process_sensor=post_process_sensor,
-
-            native_unit_of_measurement=(
-                unit_of_measurement.value if unit_of_measurement else None
-            ),
+            native_unit=opts.get("native_unit"),
+            device_class=opts.get("device_class"),
+            state_class=opts.get("state_class"),
+            icon=opts.get("icon"),
+            entity_registry_enabled_default=opts["entity_registry_enabled_default"],
+            entity_category=opts.get("entity_category"),
+            description=opts.get("description"),
+            suggested_display_precision=opts.get("suggested_display_precision"),
+            sensor_class=opts["sensor_class"],
+            exclude_from_recorder=opts["exclude_from_recorder"],
+            should_poll=opts.get("should_poll"),
+            extra_state_attributes=opts.get("extra_state_attributes") or {},
+            post_process_sensor=opts.get("post_process_sensor"),
+            dynamic_icon=opts.get("dynamic_icon"),
         )
 
         # -----------------------------
         # store fields
         # -----------------------------
-        self.post_process = post_process
-        self.scale = scale
-        self.offset = offset
+        self.post_process = opts.get("post_process")
+        self.scale = opts["scale"]
+        self.offset = opts["offset"]
 
         self._validate()
 

@@ -8,7 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .config_flow_state import ConfigFlowState
+from .config_data import ConfigData
 from .const import ATTR_MANUFACTURER, DOMAIN
 from .coordinator_data import CoordinatorData
 from .coordinator_metrics import CoordinatorMetrics
@@ -17,6 +17,7 @@ from .modbus_config import ModbusConfig
 from .solark_register_map import SolArkRegisterMap
 
 if TYPE_CHECKING:
+    # This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
     from .config_entry import SolArkConfigEntry
     from .coordinator import SolArkCoordinator
     from .solark_sensor_map import SolArkSensorMap
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 class SolArkData:
     hass: HomeAssistant
     config_entry: "SolArkConfigEntry"
-    config_flow_state: ConfigFlowState
+    config_data: ConfigData
     modbus_config: ModbusConfig
     modbus_client: SolArkModbusClient
     device_info: DeviceInfo
@@ -50,8 +51,8 @@ class SolArkData:
         self.config_entry = SolArkConfigEntry(hass, entry)
         self.config_entry.runtime_data = self
 
-        self.config_flow_state = ConfigFlowState.from_config_entry(self.config_entry)
-        self.modbus_config = ModbusConfig(self.config_flow_state)
+        self.config_data = ConfigData.from_storage_data(self.config_entry)
+        self.modbus_config = ModbusConfig(self.config_data)
         self.register_map = SolArkRegisterMap(self)
         self.calculated_sensor_map = SolArkSensorMap(self)
         self.modbus_client = SolArkModbusClient(self.modbus_config, self.register_map)

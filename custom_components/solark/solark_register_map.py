@@ -5,14 +5,18 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 
+from custom_components.solark.sensor_dynamic_icon import SensorDynamicIcon
+
 from .register_map import RegisterMap
 from .register_map_entry import (
+    BatteryCurrentEntry,
     BatteryVoltageEntry,
     CurrentEntry,
     DataType,
     EnergyEntry,
     FrequencyEntry,
     GridVoltageEntry,
+    NativeUnit,
     PowerEntry,
     PVVoltageEntry,
     RawValueEntry,
@@ -23,7 +27,6 @@ from .register_map_entry import (
     TemperatureEntry,
     TimeOfUseEnabledEntry,
     TimeOfUseTimeEntry,
-    UnitOfMeasure,
 )
 
 T = TypeVar("T", bound="RegisterMap")  # T is the real subclass
@@ -43,7 +46,8 @@ class SolArkRegisterMap(RegisterMap):
 
     DAILYINV_E = EnergyEntry(address=60, key="dailyinv_e", name="Daily Inverter Energy", data_type=DataType.INT16)
 #    DAILYREA_E = EnergyEntry(address=61, key="dailyrea_e", name="Daily Reactive Energy", data_type=DataType.INT16)
-    TOTALGRID_E = EnergyEntry(address=63, key="totalgrid_e", name="Total Grid Breaker Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
+    # TODO - The keys for some registers are very misleading. Review and rename, handling history.
+    TOTALGRID_E = EnergyEntry(address=63, key="totalgrid_e", name="Total Inverter Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
     DAILYBATT_C_E = EnergyEntry(address=70, key="daybattc_e", name="Daily Battery Charge Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
     DAILYBATT_D_E = EnergyEntry(address=71, key="daybattd_e", name="Daily Battery Discharge Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
     TOTALBATT_C_E = EnergyEntry(address=72, key="totalbattc_e", name="Total Battery Charge Energy", data_type=DataType.INT32)
@@ -58,9 +62,10 @@ class SolArkRegisterMap(RegisterMap):
     TOTALLOAD_E = EnergyEntry(address=85, key="totalload_e", name="Total Load Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
     DCHSTempC = TemperatureEntry(address=90, key="dchstempc", name="DC Heatsink Temperature")
     ACHSTempC = TemperatureEntry(address=91, key="achstempc", name="AC Heatsink Temperature")
+    # TODO - The keys for some registers are very misleading. Review and rename, handling history.
     TOTALINV_E = EnergyEntry(address=96, key="totalinv_e", name="Total PV Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
     FAULT_INFO_RAW = RawValueEntry(address=103, key="fault_info_raw", name="Inverter Fault Information Raw Value", data_type=DataType.UINT64, icon="mdi:message-alert-outline")
-    CORR_BATT_CAP = RegisterMapEntry(address=107, key="corr_batt_cap", name="Corrected Battery Capacity", data_type=DataType.UINT16, icon="mdi:battery", unit_of_measurement=UnitOfMeasure.AH, state_class=None)
+    CORR_BATT_CAP = RegisterMapEntry(address=107, key="corr_batt_cap", name="Corrected Battery Capacity", data_type=DataType.UINT16, icon="mdi:battery", native_unit=NativeUnit.AH, state_class=None)
     DAILYPV_E = EnergyEntry(address=108, key="dailypv_e", name="Daily PV Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
 
     PV1_V = PVVoltageEntry(address=109, key="pv1_v", name="PV1 Voltage")
@@ -90,7 +95,7 @@ class SolArkRegisterMap(RegisterMap):
     GEN_P = PowerEntry(address=166, key="gen_p", name="Gen Power", icon="mdi:solar-power", entity_registry_enabled_default=True)
     GRIDL1_P = PowerEntry(address=167, key="gridl1_p", name="Grid L1 Power", icon="mdi:solar-power")
     GRIDL2_P = PowerEntry(address=168, key="gridl2_p", name="Grid L2 Power", icon="mdi:solar-power")
-    GRID_P = PowerEntry(address=169, key="grid_p", name="Total Grid Power", icon="mdi:solar-power", entity_registry_enabled_default=True)
+    GRID_P = PowerEntry(address=169, key="grid_p", name="Grid Power", icon="mdi:solar-power", entity_registry_enabled_default=True)
     GRIDLMTL1_P = PowerEntry(address=170, key="gridlmtl1_p", name="Grid Limiter L1 Power", icon="mdi:solar-power")
     GRIDLMTL2_P = PowerEntry(address=171, key="gridlmtl2_p", name="Grid Limiter L2 Power", icon="mdi:solar-power")
     GRIDEXT_P = PowerEntry(address=172, key="gridext_p", name="Grid External Total Power", icon="mdi:solar-power")
@@ -109,12 +114,12 @@ class SolArkRegisterMap(RegisterMap):
     BATT_V = BatteryVoltageEntry(address=183, key="batt_v", name="Battery Voltage", entity_registry_enabled_default=True)
     BATT_SOC = SOCEntry(address=184, key="batt_soc", name="Battery State of Charge")
 
-    PV1_P = PowerEntry(address=186, key="pv1_p", name="PV1 Input Power", icon="mdi:solar-power", entity_registry_enabled_default=True)
-    PV2_P = PowerEntry(address=187, key="pv2_p", name="PV2 Input Power", icon="mdi:solar-power", entity_registry_enabled_default=True)
-    PV3_P = PowerEntry(address=188, key="pv3_p", name="PV3 Input Power", icon="mdi:solar-power", entity_registry_enabled_default=True)
+    PV1_P = PowerEntry(address=186, key="pv1_p", name="PV1 Input Power", icon="mdi:solar-power", data_type=DataType.UINT16, entity_registry_enabled_default=True)
+    PV2_P = PowerEntry(address=187, key="pv2_p", name="PV2 Input Power", icon="mdi:solar-power", data_type=DataType.UINT16, entity_registry_enabled_default=True)
+    PV3_P = PowerEntry(address=188, key="pv3_p", name="PV3 Input Power", icon="mdi:solar-power", data_type=DataType.UINT16, entity_registry_enabled_default=True)
 
-    BATT_P = PowerEntry(address=190, key="batt_p", name="Battery Power", icon="mdi:solar-power", entity_registry_enabled_default=True)
-    BATT_C = CurrentEntry(address=191, key="batt_c", name="Battery Current", icon="mdi:current-dc", entity_registry_enabled_default=True)
+    BATT_P = PowerEntry(address=190, key="batt_p", name="Battery Power", icon="mdi:solar-power", data_type=DataType.INT16, entity_registry_enabled_default=True)
+    BATT_C = CurrentEntry(address=191, key="batt_c", name="Battery Current", icon="mdi:current-dc", data_type=DataType.INT16, entity_registry_enabled_default=True)
 
     LOAD_FREQ = FrequencyEntry(address=192, key="loadfreq", name="Load Frequency")
     INVERTER_FREQ = FrequencyEntry(address=193, key="inverterfreq", name="Inverter Output Frequency")
@@ -127,7 +132,7 @@ class SolArkRegisterMap(RegisterMap):
     # ----------------------------
     # Time of use
     # ----------------------------
-    TIMEOFUSE_ENABLED = RegisterMapEntry(address=248, key="timeofuse_enabled", data_type=DataType.UINT16, name="Time of Use Enabled")
+    TIMEOFUSE_ENABLED = RegisterMapEntry(address=248, key="timeofuse_enabled", name="Time of Use Enabled", data_type=DataType.UINT16, dynamic_icon=SensorDynamicIcon.CHECK_BOX)
 
     TIMEOFUSE_TIME_1 = TimeOfUseTimeEntry(address=250, key="timeofuse_time_1", name="Time of Use Time 1")
     TIMEOFUSE_TIME_2 = TimeOfUseTimeEntry(address=251, key="timeofuse_time_2", name="Time of Use Time 2")
@@ -136,12 +141,12 @@ class SolArkRegisterMap(RegisterMap):
     TIMEOFUSE_TIME_5 = TimeOfUseTimeEntry(address=254, key="timeofuse_time_5", name="Time of Use Time 5")
     TIMEOFUSE_TIME_6 = TimeOfUseTimeEntry(address=255, key="timeofuse_time_6", name="Time of Use Time 6")
 
-    TIMEOFUSE_POWER_1 = PowerEntry(address=256, key="timeofuse_power_1", name="Time of Use Power 1")
-    TIMEOFUSE_POWER_2 = PowerEntry(address=257, key="timeofuse_power_2", name="Time of Use Power 2")
-    TIMEOFUSE_POWER_3 = PowerEntry(address=258, key="timeofuse_power_3", name="Time of Use Power 3")
-    TIMEOFUSE_POWER_4 = PowerEntry(address=259, key="timeofuse_power_4", name="Time of Use Power 4")
-    TIMEOFUSE_POWER_5 = PowerEntry(address=260, key="timeofuse_power_5", name="Time of Use Power 5")
-    TIMEOFUSE_POWER_6 = PowerEntry(address=261, key="timeofuse_power_6", name="Time of Use Power 6")
+    TIMEOFUSE_POWER_1 = PowerEntry(address=256, key="timeofuse_power_1", name="Time of Use Power 1", data_type=DataType.UINT16)
+    TIMEOFUSE_POWER_2 = PowerEntry(address=257, key="timeofuse_power_2", name="Time of Use Power 2", data_type=DataType.UINT16)
+    TIMEOFUSE_POWER_3 = PowerEntry(address=258, key="timeofuse_power_3", name="Time of Use Power 3", data_type=DataType.UINT16)
+    TIMEOFUSE_POWER_4 = PowerEntry(address=259, key="timeofuse_power_4", name="Time of Use Power 4", data_type=DataType.UINT16)
+    TIMEOFUSE_POWER_5 = PowerEntry(address=260, key="timeofuse_power_5", name="Time of Use Power 5", data_type=DataType.UINT16)
+    TIMEOFUSE_POWER_6 = PowerEntry(address=261, key="timeofuse_power_6", name="Time of Use Power 6", data_type=DataType.UINT16)
 
     TIMEOFUSE_VOLTAGE_1 = BatteryVoltageEntry(address=262, key="timeofuse_voltage_1", name="Time of Use Voltage 1")
     TIMEOFUSE_VOLTAGE_2 = BatteryVoltageEntry(address=263, key="timeofuse_voltage_2", name="Time of Use Voltage 2")
@@ -166,9 +171,9 @@ class SolArkRegisterMap(RegisterMap):
 
     BMS_CHARGING_VOLTAGE = BatteryVoltageEntry(address=312, key="bms_charging_voltage", name="BMS Charging Voltage", entity_registry_enabled_default=False)
     BMS_DISCHARGE_VOLTAGE = BatteryVoltageEntry(address=313, key="bms_discharge_voltage", name="BMS Discharge Voltage", entity_registry_enabled_default=False)
-    BMS_CHARGE_CURRENT_LIMIT = CurrentEntry(address=314, key="bms_charge_current_limit", scale=1.0, data_type=DataType.UINT16, name="BMS Charge Current Limit", entity_registry_enabled_default=False)
-    BMS_DISCHARGE_CURRENT_LIMIT = CurrentEntry(address=315, key="bms_discharge_current_limit", scale=1.0, data_type=DataType.UINT16, name="BMS Discharge Current Limit", entity_registry_enabled_default=False)
+    BMS_CHARGE_CURRENT_LIMIT = BatteryCurrentEntry(address=314, key="bms_charge_current_limit", name="BMS Charge Current Limit", entity_registry_enabled_default=False)
+    BMS_DISCHARGE_CURRENT_LIMIT = BatteryCurrentEntry(address=315, key="bms_discharge_current_limit", name="BMS Discharge Current Limit", entity_registry_enabled_default=False)
     BMS_SOC = SOCEntry(address=316, key="bms_soc", name="BMS SOC", entity_registry_enabled_default=False)
     BMS_VOLTAGE = BatteryVoltageEntry(address=317, key="bms_voltage", name="BMS Voltage", entity_registry_enabled_default=False)
-    BMS_CURRENT = CurrentEntry(address=318, key="bms_current", scale=1.0, data_type=DataType.INT16, name="BMS Current", entity_registry_enabled_default=False)
+    BMS_CURRENT = BatteryCurrentEntry(address=318, key="bms_current", data_type=DataType.INT16, name="BMS Current", entity_registry_enabled_default=False)
     BMS_TEMP = TemperatureEntry(address=319, key="bms_temp", name="BMS Temperature", entity_registry_enabled_default=False)

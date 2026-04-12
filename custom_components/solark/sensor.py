@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+# This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
 from .config_entry import SolArkConfigEntry
 from .data import SolArkData
 from .sensor_class import SensorClass
@@ -49,7 +50,7 @@ class SolArkBaseSensor(SensorEntity):
         super().__init__()
         # self.description = description
         self.runtime_data = runtime_data
-        self.entity_description = description
+        self.entity_description: SolArkModbusSensorEntityDescription = description
 
         self._attr_device_info = runtime_data.device_info
         self._attr_name = f"{runtime_data.name} {description.name}"
@@ -66,6 +67,14 @@ class SolArkBaseSensor(SensorEntity):
     def native_value(self) -> Any | None:
         data = self.runtime_data.coordinator.data
         return None if data is None else data.get(self.entity_description.key)
+
+    @property
+    def icon(self) -> str | None:
+        if (strategy := self.entity_description.dynamic_icon) is not None:
+            if (icon := strategy(self.native_value)) is not None:
+                return icon
+
+        return self.entity_description.icon
 
 class SolArkSensor(CoordinatorEntity, SolArkBaseSensor):
     """Sensor reading from Modbus via the coordinator."""
