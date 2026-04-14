@@ -21,7 +21,7 @@ from .modbus_config import ModbusConfig
 from .pymodbus_wrapper import ModbusClientWrapper, ModbusResponse, ModbusResponseError
 from .register_map import RegisterMapEntry
 from .register_map_entry import DataType, StringEntry
-from .register_value_types import NumericValue
+from .register_value_types import NumericValue, SensorValue
 from .solark_binary_payload_decoder import ModbusDecodeError, SolArkBinaryPayloadDecoder
 from .solark_register_map import SolArkRegisterMap
 
@@ -152,7 +152,7 @@ class SolArkModbusClient():
             self._decode_register_map_entry(decoder, entry)
 
             if entry.register_value is None:
-                _LOGGER.error("Failed to decode register %s with data type %s", entry.address, entry.data_type)
+                _LOGGER.error("Failed to decode register %s with data type %s: value is None", entry.address, entry.data_type)
                 self._register_map.set_error()
                 return
 
@@ -164,30 +164,32 @@ class SolArkModbusClient():
         if isinstance(entry, StringEntry):
             entry.register_value = decoder.decode_string(entry.register_length * 2).decode("ascii")
         else:
-            numeric_value: NumericValue
+            int_value: int
             if entry.data_type == DataType.INT16:
-                numeric_value = decoder.decode_16bit_int()
+                int_value = decoder.decode_16bit_int()
             elif entry.data_type == DataType.UINT16:
-                numeric_value = decoder.decode_16bit_uint()
+                int_value = decoder.decode_16bit_uint()
             elif entry.data_type == DataType.INT32:
-                numeric_value = decoder.decode_32bit_int()
+                int_value = decoder.decode_32bit_int()
             elif entry.data_type == DataType.UINT32:
-                numeric_value = decoder.decode_32bit_uint()
+                int_value = decoder.decode_32bit_uint()
             elif entry.data_type == DataType.INT64:
-                numeric_value = decoder.decode_64bit_int()
+                int_value = decoder.decode_64bit_int()
             elif entry.data_type == DataType.UINT64:
-                numeric_value = decoder.decode_64bit_uint()
+                int_value = decoder.decode_64bit_uint()
             else:
                 raise ModbusDecodeError(f"Failed to decode register {entry.address} having data type {entry.data_type})")
 
+            entry.register_value = int_value
+
             # Apply offset
-            numeric_value -= entry.offset
+            sensor_value: NumericValue = int_value - entry.offset
 
             # Apply scale if needed
             if entry.scale != 1.0:
-                numeric_value *= entry.scale
+                sensor_value *= entry.scale
 
-            entry.register_value = numeric_value
+            entry.sensor_value = sensor_value
 
     def _read_holding_registers(self, address: int, count: int) -> ModbusResponse:
         """Reads a block of holding registers from the inverter via Modbus

@@ -1,28 +1,98 @@
 import logging
-from typing import Unpack
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict, Unpack, cast
 
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorStateClass,
-)
-from homeassistant.const import (
-    EntityCategory,
-)
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.const import EntityCategory
 
-from .base_map_entry import BaseMapEntry, BaseMapEntryOptional
-from .register_map_entry import RegisterMapEntry
-from .sensor_entity_description import NativeUnit, SensorClass
+from .base_map_entry import BaseMapEntry
+from .map_entry_lookup import MapEntryLookup
+from .register_value_types import SensorValue
+from .sensor_entity_description import NativeUnit, SensorClass, SolArkSensorEntityDescription
+
+if TYPE_CHECKING:
+    from .data import SolArkData
+    from .sensor import SolArkSensor
 
 _LOGGER = logging.getLogger(__name__)
 
-class SensorMapEntry(BaseMapEntry[RegisterMapEntry]):
-    pass
+
+class SensorMapEntryOptional(TypedDict, total=False):
+    icon: str
+    entity_registry_enabled_default: bool
+    entity_category: EntityCategory
+    description: str
+    exclude_from_recorder: bool
+    should_poll: bool
+    extra_state_attributes: dict[str, Any]
+    dynamic_icon: Callable[["SensorValue"], str | None]
+
+    post_process_sensor: Callable[["SolArkSensor", "SolArkData"], None]
+    device_class: SensorDeviceClass
+    sensor_class: SensorClass
+
+    suggested_display_precision: int
+    state_class: Optional[SensorStateClass]
+    native_unit: NativeUnit
+
+    post_process: Callable[[Any, "SolArkData"], None]
+    scale: float
+    offset: int
+
+
+class SensorMapEntry(BaseMapEntry["SensorMapEntry"]):
+    def __init__(self, key: str, name: str, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
+        # -----------------------------
+        # Set defaults in kwargs once
+        # -----------------------------
+        opts = {
+            "entity_registry_enabled_default": False,
+            "sensor_class": SensorClass.NORMAL,
+            "exclude_from_recorder": False,
+            "scale": 1.0,
+            "offset": 0,
+            **kwargs,
+        }
+
+        # -----------------------------
+        # entity description build
+        # -----------------------------
+        self._entity_description = SolArkSensorEntityDescription(
+            key=key,
+            name=name,
+
+            icon=opts.get("icon"),
+            entity_registry_enabled_default=opts["entity_registry_enabled_default"],
+            entity_category=opts.get("entity_category"),
+            description=opts.get("description"),
+            exclude_from_recorder=opts["exclude_from_recorder"],
+            should_poll=opts.get("should_poll"),
+            extra_state_attributes=opts.get("extra_state_attributes") or {},
+            dynamic_icon=opts.get("dynamic_icon"),
+
+            post_process_sensor=opts.get("post_process_sensor"),
+            device_class=opts.get("device_class"),
+            sensor_class=opts["sensor_class"],
+
+            suggested_display_precision=opts.get("suggested_display_precision"),
+            state_class=opts.get("state_class"),
+            native_unit=opts.get("native_unit"),
+        )
+
+        # -----------------------------
+        # store fields
+        # -----------------------------
+        self.post_process = opts.get("post_process")
+        self.scale = opts["scale"]
+        self.offset = opts["offset"]
+
+        self._validate()
+
 
 # ----------------------------
 # Power
 # ----------------------------
 class PowerEntry(SensorMapEntry):
-    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseMapEntryOptional]) -> None:
+    def __init__(self, key: str, name: str, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
         kwargs.setdefault("native_unit", NativeUnit.WATT)
         kwargs.setdefault("device_class", SensorDeviceClass.POWER)
         kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
@@ -31,14 +101,14 @@ class PowerEntry(SensorMapEntry):
 
 
 # ----------------------------
-# Energy
+# Energy Total Increasing
 # ----------------------------
-class EnergyEntry(SensorMapEntry):
-    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseMapEntryOptional]) -> None:
+class EnergyTotalIncreasingEntry(SensorMapEntry):
+    def __init__(self, key: str, name: str, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
         kwargs.setdefault("scale", 0.1)
         kwargs.setdefault("native_unit", NativeUnit.KWH)
         kwargs.setdefault("device_class", SensorDeviceClass.ENERGY)
-        kwargs.setdefault("state_class", SensorStateClass.TOTAL)
+        kwargs.setdefault("state_class", SensorStateClass.TOTAL_INCREASING)
 
         super().__init__(key, name, **kwargs)
 
@@ -47,7 +117,7 @@ class EnergyEntry(SensorMapEntry):
 # Diagnostic
 # ----------------------------
 class DiagnosticEntry(SensorMapEntry):
-    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseMapEntryOptional]) -> None:
+    def __init__(self, key: str, name: str, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
         kwargs.setdefault("icon", "mdi:information-outline")
         kwargs.setdefault("entity_category", EntityCategory.DIAGNOSTIC)
 
@@ -55,12 +125,36 @@ class DiagnosticEntry(SensorMapEntry):
 
 
 # ----------------------------
-# ConfigEntry
+# Config
 # ----------------------------
 class ConfigEntry(SensorMapEntry):
-    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseMapEntryOptional]) -> None:
+    def __init__(self, key: str, name: str, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
         kwargs.setdefault("icon", "mdi:information-outline")
         kwargs.setdefault("entity_category", EntityCategory.DIAGNOSTIC)
         kwargs.setdefault("sensor_class", SensorClass.BASE)
 
         super().__init__(key, name, **kwargs)
+
+
+# ----------------------------
+# Generator Relay
+# ----------------------------
+class GeneratorRelayEntry(MapEntryLookup, SensorMapEntry):
+    LOOKUP_MAP = {
+        0: ("Open", "mdi:electric-switch"),
+        1: ("Closed", "mdi:electric-switch-closed"),
+        2: ("No Connection", "mdi:connection"),
+        3: ("Closed when Generator is on", "mdi:generator-portable"),
+    }
+
+    def __init__(self, key: str, name: str, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
+        kwargs.setdefault("state_class", None)
+        kwargs.setdefault("post_process", self.post_process_method)
+
+        super().__init__(key, name, **kwargs)
+
+    @staticmethod
+    def post_process_method(entry: GeneratorRelayEntry, runtime_data: "SolArkData") -> None:
+        raw: int = cast(int, runtime_data.register_map.GEN_RLY_RAW.register_value) & 0x0F  # mask low 4 bits
+        entry.sensor_value = entry.get_label_from_raw(raw)
+

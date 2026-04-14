@@ -3,10 +3,10 @@ from abc import ABC
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Iterator, Type, TypeVar, cast
 
 from homeassistant.const import EntityCategory
+from homeassistant.helpers.entity import EntityDescription
 
 from .base_map_entry import BaseMapEntry
-from .register_value_types import RegisterValue
-from .sensor_entity_description import SolArkModbusSensorEntityDescription
+from .register_value_types import SensorValue
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +20,7 @@ class BaseMap(Generic[TEntry], ABC):
     """Generic base class for entry-based maps using class attribute collection."""
     _entry_type: ClassVar[type[Any]]
     _class_entries: ClassVar[list[Any]]
+
     _entries: list[TEntry]
     runtime_data: "SolArkData"
 
@@ -38,7 +39,11 @@ class BaseMap(Generic[TEntry], ABC):
     def post_process(self):
         """Post-process the register map entries after reading the raw values from the inverter."""
         # TODO - Handle case where the dependency registers were not read. Value is None
+        from .binary_sensor_map_entry import BinaryEntry
+
         for entry in self:
+            if isinstance(entry, BinaryEntry):
+                pass
             if entry.post_process is not None:
                 entry.do_post_process(self.runtime_data)
 
@@ -79,7 +84,7 @@ class BaseMap(Generic[TEntry], ABC):
     def __iter__(self) -> Iterator[TEntry]:
         return iter(self._entries)
 
-    def get_descriptions(self) -> list[SolArkModbusSensorEntityDescription]:
+    def get_descriptions(self) -> list[EntityDescription]:
         return [
             entry.entity_description
             for entry in self._entries
@@ -87,8 +92,8 @@ class BaseMap(Generic[TEntry], ABC):
             if entry.entity_description.entity_category != EntityCategory.CONFIG
         ]
 
-    def as_dict(self) -> dict[str, RegisterValue]:
+    def as_dict(self) -> dict[str, SensorValue]:
         return {
-            entry.entity_description.key: entry.register_value
+            entry.entity_description.key: entry.sensor_value
             for entry in self._entries
         }

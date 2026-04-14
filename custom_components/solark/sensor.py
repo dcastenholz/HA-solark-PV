@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import EntityDescription, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -10,9 +10,10 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 # This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
 from .config_entry import SolArkConfigEntry
+from .const import FORMAT_TOU_SENSORS_24HOUR
 from .data import SolArkData
 from .sensor_class import SensorClass
-from .sensor_entity_description import SolArkModbusSensorEntityDescription
+from .sensor_entity_description import SolArkSensorEntityDescription
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
@@ -22,35 +23,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     runtime_data: SolArkData = entry.runtime_data
 
     entities = []
-    descriptions: list[SolArkModbusSensorEntityDescription] = runtime_data.register_map.get_descriptions() + runtime_data.calculated_sensor_map.get_descriptions()
+    descriptions: list[EntityDescription] = runtime_data.register_map.get_descriptions() + runtime_data.calculated_sensor_map.get_descriptions()
 
-    # Normal Modbus sensors
-    for sensor_entity_description in descriptions:
-        entity_cls: type[SolArkBaseSensor] = _get_sensor_class(sensor_entity_description.sensor_class)
-        sensor = entity_cls(
-            runtime_data,
-            sensor_entity_description,
-        )
-        entities.append(sensor)
+    # Normal sensors
+    for entity_description in descriptions:
+        if isinstance(entity_description, SolArkSensorEntityDescription):
+            sensor_entity_description: SolArkSensorEntityDescription = cast(SolArkSensorEntityDescription, entity_description)
+            entity_cls: type[SolArkSensor] = _get_sensor_class(sensor_entity_description.sensor_class)
+
+            if entity_cls:
+                sensor = entity_cls(
+                    runtime_data,
+                    entity_description,
+                )
+                entities.append(sensor)
 
     async_add_entities(entities)
     return True
 
 
-class SolArkBaseSensor(SensorEntity):
-    """Single diagnostic sensor exposing config values as attributes."""
-
-    # description: SolArkModbusSensorEntityDescription
-
+class SolArkSensor(SensorEntity):
     def __init__(
         self,
         runtime_data: SolArkData,
-        description: SolArkModbusSensorEntityDescription,
+        description: SolArkSensorEntityDescription,
     ):
-        super().__init__()
-        # self.description = description
         self.runtime_data = runtime_data
-        self.entity_description: SolArkModbusSensorEntityDescription = description
+        self.entity_description: SolArkSensorEntityDescription = description
 
         self._attr_device_info = runtime_data.device_info
         self._attr_name = f"{runtime_data.name} {description.name}"
@@ -65,8 +64,7 @@ class SolArkBaseSensor(SensorEntity):
 
     @property
     def native_value(self) -> Any | None:
-        data = self.runtime_data.coordinator.data
-        return None if data is None else data.get(self.entity_description.key)
+        return None if self.data is None else self.data.get(self.entity_description.key)
 
     @property
     def icon(self) -> str | None:
@@ -76,27 +74,33 @@ class SolArkBaseSensor(SensorEntity):
 
         return self.entity_description.icon
 
-class SolArkSensor(CoordinatorEntity, SolArkBaseSensor):
+    @property
+    def data(self):
+        return self.runtime_data.coordinator.data
+
+
+class SolArkCoordinatorSensor(CoordinatorEntity, SolArkSensor):
     """Sensor reading from Modbus via the coordinator."""
 
     def __init__(
         self,
         runtime_data: SolArkData,
-        description: SolArkModbusSensorEntityDescription,
+        description: SolArkSensorEntityDescription,
     ):
-        SolArkBaseSensor.__init__(self, runtime_data, description)
+        SolArkSensor.__init__(self, runtime_data, description)
         CoordinatorEntity.__init__(self, runtime_data.coordinator)
 
 
-class SolArkTOU_TimeSensor(SolArkSensor):
+class SolArkTOU_TimeSensor(SolArkCoordinatorSensor):
     @property
     def native_value(self) -> str | None:
-        data = self.coordinator.data.get(self.entity_description.key) if self.coordinator.data else None
-        if not isinstance(data, int):
+        raw_value = self.data.get(self.entity_description.key) if self.data else None
+        if not isinstance(raw_value, int):
             return None  # return None if no value yet
+
         # Convert HHMM integer to a 12-hour formatted string.
         try:
-            value = int(data) # type: ignore
+            value = int(raw_value) # type: ignore
         except (TypeError, ValueError):
             return ""
 
@@ -107,10 +111,7 @@ class SolArkTOU_TimeSensor(SolArkSensor):
 
         suffix = ""
 
-        # TODO - Add option for 24 hour time display
-        FORMAT_24HOUR: bool = False
-
-        if not FORMAT_24HOUR:
+        if not FORMAT_TOU_SENSORS_24HOUR:
             suffix += " "
             suffix += "AM" if hours < 12 else "PM"
             hours = hours % 12
@@ -120,10 +121,10 @@ class SolArkTOU_TimeSensor(SolArkSensor):
         return f"{hours}:{minutes:02d}{suffix}"
 
 
-class SolArkDateTimeSensor(SolArkSensor):
+class SolArkDateTimeSensor(SolArkCoordinatorSensor):
     @property
     def native_value(self) -> str | None:
-        dt = self.coordinator.data.get(self.entity_description.key) if self.coordinator.data else None
+        dt = self.data.get(self.entity_description.key) if self.data else None
         if dt is None:
             return None  # return None if no value yet
         # dt is a datetime object, safe to format now
@@ -131,12 +132,12 @@ class SolArkDateTimeSensor(SolArkSensor):
 
 
 SENSOR_CLASS_MAP = {
-    SensorClass.NORMAL: SolArkSensor,
-    SensorClass.BASE: SolArkBaseSensor,
+    SensorClass.NORMAL: SolArkCoordinatorSensor,
+    SensorClass.BASE: SolArkSensor,
     SensorClass.DATETIME: SolArkDateTimeSensor,
     SensorClass.TOU_TIME: SolArkTOU_TimeSensor,
 }
 
 @staticmethod
-def _get_sensor_class(sensor_class: SensorClass) -> type[SolArkBaseSensor]:
-    return SENSOR_CLASS_MAP[sensor_class]
+def _get_sensor_class(sensor_class: SensorClass) -> type[SolArkSensor] | None:
+    return SENSOR_CLASS_MAP.get(sensor_class)

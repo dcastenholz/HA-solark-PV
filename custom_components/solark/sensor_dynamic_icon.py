@@ -1,6 +1,6 @@
 from enum import Enum
 
-from .register_value_types import RegisterValue
+from .register_value_types import SensorValue
 
 
 class SensorDynamicIcon(Enum):
@@ -24,7 +24,7 @@ class SensorDynamicIcon(Enum):
         else None
     )
 
-    def __call__(self, value: RegisterValue | None) -> str | None:
+    def __call__(self, value: SensorValue | None) -> str | None:
         if value is None:
             return None
         return self.value(value)

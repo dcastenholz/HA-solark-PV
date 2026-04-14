@@ -18,6 +18,8 @@ MAX_DEVICE_ID: int = 247
 MIN_PORT: int = 1
 MAX_PORT_NUMBER: int = 65535
 
+# TODO - Add option for 24 hour time display
+FORMAT_TOU_SENSORS_24HOUR: bool = False
 
 # Define FAULT_TABLE as dict[int, tuple[str, str, str]]
 FAULT_TABLE: dict[int, tuple[str, str, str]] = {
@@ -69,16 +71,4 @@ MODBUS_EXCEPTIONS = {
     0x0B: "Gateway Target Failed - Target not responding",
     0x0C: "Timeout",
     0x0D: "Invalid data type",
-}
-
-GRID_RELAY_STATUS: dict[int, str] = {
-    0: "Open",
-    1: "Closed",
-}
-
-GEN_RELAY_STATUS: dict[int, str] = {
-    0: "Open",
-    1: "Closed",
-    2: "No Connection",
-    3: "Closed when Generator is on",
 }

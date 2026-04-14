@@ -1,10 +1,11 @@
 """Since pymodbus BinaryPayloadDecoder is deprecated, create our own to replace it."""
 
+import warnings
 from array import array
 from struct import pack, unpack
-import warnings
 
 from pymodbus.exceptions import ParameterException
+
 # TODO - Move to standard HA LOGGING
 # import logging
 # _LOGGER = logging.getLogger(__name__)

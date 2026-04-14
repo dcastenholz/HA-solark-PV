@@ -1,20 +1,20 @@
 import calendar
 import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from homeassistant.components.sensor import EntityCategory, SensorStateClass
 from homeassistant.util import dt
 
+from .binary_sensor_map_entry import BinaryEntry
 from .config_sensor import ConfigSensor
-from .const import GEN_RELAY_STATUS, GRID_RELAY_STATUS
 from .fault_info import translate_fault_code_to_messages
 from .sensor_class import SensorClass
-from .sensor_dynamic_icon import SensorDynamicIcon
 from .sensor_map import SensorMap
 from .sensor_map_entry import (
     ConfigEntry,
     DiagnosticEntry,
-    EnergyEntry,
+    EnergyTotalIncreasingEntry,
+    GeneratorRelayEntry,
     PowerEntry,
     SensorMapEntry,
 )
@@ -22,7 +22,7 @@ from .solark_register_map import SolArkRegisterMap
 
 if TYPE_CHECKING:
     from .data import SolArkData
-    from .sensor import SolArkBaseSensor
+    from .sensor import SolArkSensor
 
 # ----------------------------
 # Helpers
@@ -69,19 +69,19 @@ def firmware_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") ->
     firmware: str = f"M {get_firmware(int(runtime_data.register_map.INFO_FIRMWARE_M))} / "
     firmware += f"S {get_firmware(int(runtime_data.register_map.INFO_FIRMWARE_S))} / "
     firmware += f"C {get_firmware(int(runtime_data.register_map.INFO_FIRMWARE_C))}"
-    self.register_value = firmware
+    self.sensor_value = firmware
     return
 
 @staticmethod
 def info_mppt_count_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
     info: tuple[int, int] = get_mppt_phase_info(int(runtime_data.register_map.INFO_MPPT_PHASE_COUNTS_RAW))
-    self.register_value = f"{plural(info[0], 'MPPT')}"
+    self.sensor_value = f"{plural(info[0], 'MPPT')}"
     return
 
 @staticmethod
 def info_phase_count_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
     info: tuple[int, int] = get_mppt_phase_info(int(runtime_data.register_map.INFO_MPPT_PHASE_COUNTS_RAW))
-    self.register_value = f"{plural(info[1], 'phase')}"
+    self.sensor_value = f"{plural(info[1], 'phase')}"
     return
 
 @staticmethod
@@ -91,30 +91,18 @@ def system_date_time_post_process(self: "SensorMapEntry", runtime_data: "SolArkD
     day_hour: tuple[int, int] = register_map.SYSTEM_TIME_DH_RAW.split_bytes_uint16()
     minute_second: tuple[int, int] = register_map.SYSTEM_TIME_MS_RAW.split_bytes_uint16()
     local_dt = dt.as_local(datetime.datetime(2000 + year_month[0], year_month[1], day_hour[0], day_hour[1], minute_second[0], minute_second[1]))
-    self.register_value = local_dt  # ready for SensorDeviceClass.TIMESTAMP
+    self.sensor_value = local_dt  # ready for SensorDeviceClass.TIMESTAMP
     return
 
 @staticmethod
 def faultmsg_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
     fault_message_list = translate_fault_code_to_messages(int(runtime_data.register_map.FAULT_INFO_RAW))
-    self.register_value = ", ".join(fault_message_list)
+    self.sensor_value = ", ".join(fault_message_list)
     return
 
 @staticmethod
 def pv_p_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-    self.register_value = runtime_data.register_map.PV1_P + runtime_data.register_map.PV2_P + runtime_data.register_map.PV3_P
-    return
-
-@staticmethod
-def grid_rly_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-    raw: int = int(runtime_data.register_map.GRID_RLY_RAW)
-    self.register_value = GRID_RELAY_STATUS.get(int(raw), "Unknown") if raw is not None else "Unknown"
-    return
-
-@staticmethod
-def gen_rly_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-    raw: int = int(runtime_data.register_map.GEN_RLY_RAW) & 0x0F  # mask low 4 bits
-    self.register_value = GEN_RELAY_STATUS.get(raw, "Unknown") if raw is not None else "Unknown"
+    self.sensor_value = runtime_data.register_map.PV1_P + runtime_data.register_map.PV2_P + runtime_data.register_map.PV3_P
     return
 
 @staticmethod
@@ -124,7 +112,7 @@ def totalgridbuy_e_post_process(self: "SensorMapEntry", runtime_data: "SolArkDat
     value = (high << 16) | low
     # We need to handle scale here because of the discontiguous component registers
     value *= self.scale
-    self.register_value = value
+    self.sensor_value = value
     return
 
 @staticmethod
@@ -135,22 +123,29 @@ def update_count_post_process(self: "SensorMapEntry", runtime_data: "SolArkData"
         DeprecationWarning,
         stacklevel=2,
     )
-    self.register_value = runtime_data.coordinator_metrics.update_count & 0xFFFF
+    self.sensor_value = runtime_data.coordinator_metrics.update_count & 0xFFFF
     return
 
 @staticmethod
 def update_cnt_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-    self.register_value = runtime_data.coordinator_metrics.update_count
+    self.sensor_value = runtime_data.coordinator_metrics.update_count
     return
 
 @staticmethod
 def config_info_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-    self.register_value = runtime_data.name
+    self.sensor_value = runtime_data.name
     return
 
 @staticmethod
-def config_info_post_process_sensor(sensor: "SolArkBaseSensor", runtime_data: "SolArkData") -> None:
+def config_info_post_process_sensor(sensor: "SolArkSensor", runtime_data: "SolArkData") -> None:
     sensor.extra_state_attributes = ConfigSensor.get_data(runtime_data.config_entry)
+    return
+
+
+@staticmethod
+def has_fault_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+
+    self.sensor_value = cast(int, runtime_data.register_map.SYSTEM_TIME_MS_RAW.register_value) % 3 == 0
     return
 
 class SolArkSensorMap(SensorMap):
@@ -177,9 +172,9 @@ class SolArkSensorMap(SensorMap):
     PV_P = PowerEntry(
         key="pv_p", name="PV Input Power", icon="mdi:solar-power", entity_registry_enabled_default=True, post_process=pv_p_post_process
         )
-    GRID_RLY = SensorMapEntry(key="grid_rly", name="Grid Relay", icon="mdi:electric-switch", post_process=grid_rly_post_process, dynamic_icon=SensorDynamicIcon.RELAY)
-    GEN_RLY = SensorMapEntry(key="gen_rly", name="Generator Relay", icon="mdi:electric-switch", post_process=gen_rly_post_process, dynamic_icon=SensorDynamicIcon.GENERATOR_RELAY)
-    TOTALGRIDBUY_E = EnergyEntry(key="totalgridbuy_e", name="Total Grid Buy Energy", post_process=totalgridbuy_e_post_process)
+    # GRID_RLY = SensorMapEntry(key="grid_rly", name="Grid Relay", icon="mdi:electric-switch", post_process=grid_rly_post_process, dynamic_icon=SensorDynamicIcon.RELAY)
+    GEN_RLY = GeneratorRelayEntry(key="gen_rly", name="Generator Relay")
+    TOTALGRIDBUY_E = EnergyTotalIncreasingEntry(key="totalgridbuy_e", name="Total Grid Buy Energy", post_process=totalgridbuy_e_post_process)
 
     UPDATE_COUNTER = SensorMapEntry(
         key="update_count", name="Update Count", icon="mdi:information-outline", state_class=SensorStateClass.TOTAL,
@@ -198,3 +193,7 @@ class SolArkSensorMap(SensorMap):
         key="config_info", name="Configuration Information", exclude_from_recorder=True, post_process=config_info_post_process,
         post_process_sensor=config_info_post_process_sensor, should_poll=False
         )
+
+    HAS_FAULT = BinaryEntry(
+        key="has_fault", name="ZZ Has Inverter Fault", post_process=has_fault_post_process
+    )

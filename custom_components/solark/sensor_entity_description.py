@@ -13,12 +13,12 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 
-from .register_value_types import RegisterValue
+from .register_value_types import SensorValue
 from .sensor_class import SensorClass
 
 if TYPE_CHECKING:
     from .data import SolArkData
-    from .sensor import SolArkBaseSensor
+    from .sensor import SolArkSensor
 
 
 class BatteryChargeHelper(StrEnum):
@@ -44,26 +44,27 @@ class NativeUnit(Enum):
 # Sensor Entity Description
 # ----------------------------------
 @dataclass(kw_only=True, frozen=True)
-class SolArkModbusSensorEntityDescription(SensorEntityDescription):
+class SolArkSensorEntityDescription(SensorEntityDescription):
     """SolArk-specific sensor description."""
     key: str
     name: str = ""
 
-    native_unit: InitVar[NativeUnit | None] = None
-
-    device_class: SensorDeviceClass | None = None
-    state_class: SensorStateClass | None = None
     icon: str | None = None
     entity_registry_enabled_default: bool = True
     entity_category: EntityCategory | None = None
     description: str | None = None
-    suggested_display_precision: int | None = None
-    sensor_class: SensorClass = SensorClass.NORMAL
     exclude_from_recorder: bool = False
     should_poll: bool | None = None
     extra_state_attributes: dict[str, Any] = field(default_factory=dict)
-    post_process_sensor: Callable[["SolArkBaseSensor", "SolArkData"], None] | None = None
-    dynamic_icon: Callable[[RegisterValue], str] | None = None
+    dynamic_icon: Callable[["SensorValue"], str] | None = None
+
+    post_process_sensor: Callable[["SolArkSensor", "SolArkData"], None] | None = None
+    device_class: SensorDeviceClass | None = None
+    sensor_class: SensorClass = SensorClass.NORMAL
+
+    suggested_display_precision: int | None = None
+    state_class: SensorStateClass | None = None
+    native_unit: InitVar[NativeUnit | None] = None
 
     def __post_init__(self, native_unit: NativeUnit | None):
         if native_unit is not None:

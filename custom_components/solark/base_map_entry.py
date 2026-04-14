@@ -1,46 +1,36 @@
 import logging
 from abc import ABC
-from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, TypedDict, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, Self, TypedDict, TypeVar, Union
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.components.sensor import EntityDescription, SensorStateClass
 from homeassistant.const import EntityCategory
 from typing_extensions import Unpack
 
-from .register_value_types import RegisterValue
-from .sensor_class import SensorClass
-from .sensor_entity_description import (
-    NativeUnit,
-    SolArkModbusSensorEntityDescription,
-)
+from .register_value_types import NumericValue, SensorValue
 
 if TYPE_CHECKING:
     from .data import SolArkData
-    from .sensor import SolArkBaseSensor
+    from .sensor import SolArkSensor
 
 _LOGGER = logging.getLogger(__name__)
 
-
 TEntry = TypeVar("TEntry", bound="BaseMapEntry")
+# TSensor = TypeVar("TSensor", bound="")
 
-class BaseMapEntryOptional(TypedDict, total=False):
-    native_unit: NativeUnit
-    device_class: SensorDeviceClass
-    state_class: Optional[SensorStateClass]
+class BaseMapEntryOptional(Generic[TEntry], TypedDict, total=False):
     icon: str
     entity_registry_enabled_default: bool
     entity_category: EntityCategory
     description: str
-    suggested_display_precision: int
-    sensor_class: SensorClass
     exclude_from_recorder: bool
     should_poll: bool
     extra_state_attributes: dict[str, Any]
-    post_process: Callable[["BaseMapEntry[Any]", "SolArkData"], None]
-    post_process_sensor: Callable[["SolArkBaseSensor", "SolArkData"], None]
-    dynamic_icon: Callable[[RegisterValue], str | None]
+    dynamic_icon: Callable[["SensorValue"], str | None]
 
-    scale: float
-    offset: int
+    post_process_sensor: Callable[[Any, "SolArkData"], None]
+
+    post_process: Callable[[Any, "SolArkData"], None]
+
 
 class BaseMapEntry(Generic[TEntry], ABC):
     """
@@ -52,55 +42,31 @@ class BaseMapEntry(Generic[TEntry], ABC):
     - Post-processing hook
     - Numeric conversion helpers
     """
-    register_value: RegisterValue = None
+    _sensor_value: SensorValue = None
+
+    _entity_description: EntityDescription
 
     state_class: SensorStateClass | None
-    post_process: Callable[["BaseMapEntry[Any]", "SolArkData"], None] | None
+    post_process: Callable[[Self, "SolArkData"], None] | None
     scale: float
     offset: int
 
+    # -----------------------------
+    # Entity access
+    # -----------------------------
+    @property
+    def entity_description(self) -> EntityDescription:
+        return self._entity_description
+
+    @property
+    def sensor_value(self) -> SensorValue:
+        return self._sensor_value
+
+    @sensor_value.setter
+    def sensor_value(self, value: SensorValue) -> None:
+        self._sensor_value = value
+
     def __init__(self, key: str, name: str, **kwargs: Unpack[BaseMapEntryOptional]) -> None:
-        # -----------------------------
-        # Normalize kwargs once
-        # -----------------------------
-        opts = {
-            "entity_registry_enabled_default": False,
-            "sensor_class": SensorClass.NORMAL,
-            "exclude_from_recorder": False,
-            "scale": 1.0,
-            "offset": 0,
-            **kwargs,
-        }
-
-        # -----------------------------
-        # entity description build
-        # -----------------------------
-        self._entity_description = SolArkModbusSensorEntityDescription(
-            key=key,
-            name=name,
-            native_unit=opts.get("native_unit"),
-            device_class=opts.get("device_class"),
-            state_class=opts.get("state_class"),
-            icon=opts.get("icon"),
-            entity_registry_enabled_default=opts["entity_registry_enabled_default"],
-            entity_category=opts.get("entity_category"),
-            description=opts.get("description"),
-            suggested_display_precision=opts.get("suggested_display_precision"),
-            sensor_class=opts["sensor_class"],
-            exclude_from_recorder=opts["exclude_from_recorder"],
-            should_poll=opts.get("should_poll"),
-            extra_state_attributes=opts.get("extra_state_attributes") or {},
-            post_process_sensor=opts.get("post_process_sensor"),
-            dynamic_icon=opts.get("dynamic_icon"),
-        )
-
-        # -----------------------------
-        # store fields
-        # -----------------------------
-        self.post_process = opts.get("post_process")
-        self.scale = opts["scale"]
-        self.offset = opts["offset"]
-
         self._validate()
 
     # -----------------------------
@@ -115,16 +81,9 @@ class BaseMapEntry(Generic[TEntry], ABC):
         return
 
     # -----------------------------
-    # Entity access
-    # -----------------------------
-    @property
-    def entity_description(self) -> SolArkModbusSensorEntityDescription:
-        return self._entity_description
-
-    # -----------------------------
     # Post processing
     # -----------------------------
-    def do_post_process(self, runtime_data: "SolArkData") -> None:
+    def do_post_process(self: Self, runtime_data: "SolArkData") -> None:
         """ Execute post-processing method. """
         if self.post_process:
             try:
@@ -134,3 +93,46 @@ class BaseMapEntry(Generic[TEntry], ABC):
                     "Error post-processing entry %s",
                     self._entity_description.key,
                 )
+
+    # -----------------------------
+    # Numeric helpers
+    # -----------------------------
+    def _get_numeric(self) -> NumericValue:
+        if isinstance(self.sensor_value, (int, float)):
+            return self.sensor_value
+        raise TypeError(
+            f"Non-numeric register_value for {self._entity_description.key}: "
+            f"{self.sensor_value}"
+        )
+
+    def __add__(self, other: Union[BaseMapEntry, NumericValue]) -> NumericValue:
+        left = self._get_numeric()
+
+        if isinstance(other, BaseMapEntry):
+            return left + other._get_numeric()
+
+        if isinstance(other, (int, float)):
+            return left + other
+
+        return NotImplemented
+
+    def __radd__(self, other: NumericValue) -> NumericValue:
+        if isinstance(other, (int, float)):
+            return other + self._get_numeric()
+        return NotImplemented
+
+    def __int__(self) -> int:
+        return int(self._get_numeric())
+
+    def __float__(self) -> float:
+        return float(self._get_numeric())
+
+    def split_bytes_uint16(self) -> tuple[int, int]:
+        """Split a UINT16 into two 8-bit integers (high byte, low byte)."""
+        value: int = int(self)
+        if not 0 <= value <= 0xFFFF:
+            raise ValueError("Value must be in range 0..65535 (UINT16)")
+
+        high = (value >> 8) & 0xFF
+        low = value & 0xFF
+        return high, low

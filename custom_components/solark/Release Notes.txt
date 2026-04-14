@@ -59,3 +59,13 @@ It is essentially the cumulative load energy, minus the cumulative energy suppli
       "unique_id":"SolArk_totalgrid_e",
 
             "previous_unique_id":null,"unit_of_measurement":"kWh"},
+
+
+SensorStateClass.TOTAL_INCREASING:
+      Similar to SensorStateClass.TOTAL, with the restriction that the state represents a monotonically increasing positive
+      total which periodically restarts counting from 0, e.g. a daily amount of consumed gas, weekly water consumption or
+      lifetime energy consumption. Statistics of the accumulated growth of the sensor's value since it was first added is
+      updated every 5 minutes. A decreasing value is interpreted as the start of a new meter cycle or the replacement of the
+      meter.
+
+      TOTALINV_E can go up or down.

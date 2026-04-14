@@ -8,7 +8,7 @@ from .coordinator_data import CoordinatorData
 from .data import SolArkData
 from .device_info import update_device_firmware, update_device_serial
 from .modbus_client import SolArkModbusClient
-from .register_value_types import RegisterValue
+from .register_value_types import SensorValue
 from .solark_register_map import SolArkRegisterMap
 from .solark_sensor_map import SolArkSensorMap
 
@@ -24,7 +24,7 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
 
         self._runtime_data.on_startup()
 
-        self._last_successful_data: dict[str, RegisterValue] | None = None
+        self._last_successful_data: dict[str, SensorValue] | None = None
         self._last_successful_timestamp: datetime | None = None
         self.max_stale_data_age_seconds = 300  # seconds
 
@@ -65,8 +65,8 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
                 _LOGGER.exception("Unexpected error reading inverter data: %s", e)
 
             if not error:
-                if register_map.SN.register_value is not None:
-                    update_device_serial(self.hass, self.name, str(register_map.SN.register_value))
+                if register_map.SN.sensor_value is not None:
+                    update_device_serial(self.hass, self.name, str(register_map.SN.sensor_value))
                     self.has_inverter_data = True
 
                 # if(register_map.FIRMWARE.register_value is not None):
@@ -89,10 +89,11 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
             # Just record the failure.
             self._runtime_data.on_failure()
 
-        _LOGGER.debug(f"Last Update Duration: {self._runtime_data.coordinator_metrics.last_update_duration}")
+        _LOGGER.debug("Last Update Duration: %s", self._runtime_data.coordinator_metrics.last_update_duration)
 
         if not error:
             try:
+                await self.hass.async_add_executor_job(register_map.post_process)
                 await self.hass.async_add_executor_job(calculated_sensor_map.post_process)
 
             except Exception as e:
@@ -102,7 +103,7 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
         # Return combined data safely
         return self._handle_results(error)
 
-    def _handle_results(self, error: bool) -> dict[str, RegisterValue]:
+    def _handle_results(self, error: bool) -> dict[str, SensorValue]:
         """ Update the register map with the latest values read from the inverter and return a combined dictionary of all data.
 
         Class is responsible for reading the data from the inverter and returning it as a dictionary.

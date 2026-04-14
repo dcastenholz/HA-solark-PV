@@ -13,7 +13,7 @@ from .coordinator import SolArkCoordinator
 from .data import SolArkData
 
 _LOGGER = logging.getLogger(__name__)
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 # TODO - Complete version logic and delete this
 ALLOW_VERSION_UPDATE: bool = False

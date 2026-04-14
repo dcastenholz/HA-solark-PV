@@ -5,8 +5,6 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 
-from custom_components.solark.sensor_dynamic_icon import SensorDynamicIcon
-
 from .register_map import RegisterMap
 from .register_map_entry import (
     BatteryCurrentEntry,
@@ -14,7 +12,9 @@ from .register_map_entry import (
     CurrentEntry,
     DataType,
     EnergyEntry,
+    EnergyTotalIncreasingEntry,
     FrequencyEntry,
+    GridRelayEntry,
     GridVoltageEntry,
     NativeUnit,
     PowerEntry,
@@ -28,6 +28,7 @@ from .register_map_entry import (
     TimeOfUseEnabledEntry,
     TimeOfUseTimeEntry,
 )
+from .sensor_dynamic_icon import SensorDynamicIcon
 
 T = TypeVar("T", bound="RegisterMap")  # T is the real subclass
 
@@ -48,25 +49,25 @@ class SolArkRegisterMap(RegisterMap):
 #    DAILYREA_E = EnergyEntry(address=61, key="dailyrea_e", name="Daily Reactive Energy", data_type=DataType.INT16)
     # TODO - The keys for some registers are very misleading. Review and rename, handling history.
     TOTALGRID_E = EnergyEntry(address=63, key="totalgrid_e", name="Total Inverter Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
-    DAILYBATT_C_E = EnergyEntry(address=70, key="daybattc_e", name="Daily Battery Charge Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
-    DAILYBATT_D_E = EnergyEntry(address=71, key="daybattd_e", name="Daily Battery Discharge Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
-    TOTALBATT_C_E = EnergyEntry(address=72, key="totalbattc_e", name="Total Battery Charge Energy", data_type=DataType.INT32)
-    TOTALBATT_D_E = EnergyEntry(address=74, key="totalbattd_e", name="Total Battery Discharge Energy", data_type=DataType.INT32)
-    DAILYGRIDBUY_E = EnergyEntry(address=76, key="dailygridbuy_e", name="Daily Grid Buy Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
-    DAILYGRIDSELL_E = EnergyEntry(address=77, key="dailygridsell_e", name="Daily Grid Sell Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
+    DAILYBATT_C_E = EnergyTotalIncreasingEntry(address=70, key="daybattc_e", name="Daily Battery Charge Energy", data_type=DataType.UINT16, entity_registry_enabled_default=True)
+    DAILYBATT_D_E = EnergyTotalIncreasingEntry(address=71, key="daybattd_e", name="Daily Battery Discharge Energy", data_type=DataType.UINT16, entity_registry_enabled_default=True)
+    TOTALBATT_C_E = EnergyTotalIncreasingEntry(address=72, key="totalbattc_e", name="Total Battery Charge Energy", data_type=DataType.UINT32)
+    TOTALBATT_D_E = EnergyTotalIncreasingEntry(address=74, key="totalbattd_e", name="Total Battery Discharge Energy", data_type=DataType.UINT32)
+    DAILYGRIDBUY_E = EnergyTotalIncreasingEntry(address=76, key="dailygridbuy_e", name="Daily Grid Buy Energy", data_type=DataType.UINT16, entity_registry_enabled_default=True)
+    DAILYGRIDSELL_E = EnergyTotalIncreasingEntry(address=77, key="dailygridsell_e", name="Daily Grid Sell Energy", data_type=DataType.UINT16, entity_registry_enabled_default=True)
     TOTALGRIDBUY_E_LOW_RAW = RawValueEntry(address=78, key="totalgridbuy_e_low", name="Total Grid Buy Energy - low word")
     GRIDFREQ = FrequencyEntry(address=79, key="gridfreq", name="Grid Frequency", entity_registry_enabled_default=True)
     TOTALGRIDBUY_E_HIGH_RAW = RawValueEntry(address=80, key="totalgridbuy_e_high", name="Total Grid Buy Energy - high word")
-    TOTALGRIDSELL_E = EnergyEntry(address=81, key="totalsell_e", name="Total Grid Sell Energy", data_type=DataType.INT32)
-    DAILYLOAD_E = EnergyEntry(address=84, key="dailyload_e", name="Daily Load Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING)
-    TOTALLOAD_E = EnergyEntry(address=85, key="totalload_e", name="Total Load Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
+    TOTALGRIDSELL_E = EnergyTotalIncreasingEntry(address=81, key="totalsell_e", name="Total Grid Sell Energy", data_type=DataType.UINT32)
+    DAILYLOAD_E = EnergyTotalIncreasingEntry(address=84, key="dailyload_e", name="Daily Load Energy", data_type=DataType.UINT16)
+    TOTALLOAD_E = EnergyTotalIncreasingEntry(address=85, key="totalload_e", name="Total Load Energy", data_type=DataType.UINT32, entity_registry_enabled_default=True)
     DCHSTempC = TemperatureEntry(address=90, key="dchstempc", name="DC Heatsink Temperature")
     ACHSTempC = TemperatureEntry(address=91, key="achstempc", name="AC Heatsink Temperature")
     # TODO - The keys for some registers are very misleading. Review and rename, handling history.
     TOTALINV_E = EnergyEntry(address=96, key="totalinv_e", name="Total PV Energy", data_type=DataType.INT32, entity_registry_enabled_default=True)
     FAULT_INFO_RAW = RawValueEntry(address=103, key="fault_info_raw", name="Inverter Fault Information Raw Value", data_type=DataType.UINT64, icon="mdi:message-alert-outline")
     CORR_BATT_CAP = RegisterMapEntry(address=107, key="corr_batt_cap", name="Corrected Battery Capacity", data_type=DataType.UINT16, icon="mdi:battery", native_unit=NativeUnit.AH, state_class=None)
-    DAILYPV_E = EnergyEntry(address=108, key="dailypv_e", name="Daily PV Energy", data_type=DataType.UINT16, state_class=SensorStateClass.TOTAL_INCREASING, entity_registry_enabled_default=True)
+    DAILYPV_E = EnergyTotalIncreasingEntry(address=108, key="dailypv_e", name="Daily PV Energy", data_type=DataType.UINT16, entity_registry_enabled_default=True)
 
     PV1_V = PVVoltageEntry(address=109, key="pv1_v", name="PV1 Voltage")
     PV1_C = CurrentEntry(address=110, key="pv1_c", name="PV1 Current")
@@ -124,8 +125,8 @@ class SolArkRegisterMap(RegisterMap):
     LOAD_FREQ = FrequencyEntry(address=192, key="loadfreq", name="Load Frequency")
     INVERTER_FREQ = FrequencyEntry(address=193, key="inverterfreq", name="Inverter Output Frequency")
 
-    GRID_RLY_RAW = RawValueEntry(address=194, key="grid_rly_raw", name="Grid Relay Raw Value")
-    GEN_RLY_RAW = RawValueEntry(address=195, key="gen_rly_raw", name="Generator Relay Raw Value")
+    GRID_RLY = GridRelayEntry(address=194, key="grid_rly", name="Grid Relay")
+    GEN_RLY_RAW = RawValueEntry(address=195, key="gen_relay_status_raw", name="Generator Relay Status Raw Value")
 
     GEN_FREQ = FrequencyEntry(address=196, key="genfreq", name="Generator Relay Frequency")
 
