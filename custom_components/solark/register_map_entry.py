@@ -49,6 +49,12 @@ class RegisterMapEntry(SensorMapEntry):
 
     _register_value: RegisterValue
 
+    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
+        self.address = address
+        self.data_type = data_type
+
+        super().__init__(key, name, **kwargs)
+
     @property
     def register_value(self) -> RegisterValue:
         return self._register_value
@@ -67,20 +73,6 @@ class RegisterMapEntry(SensorMapEntry):
     @sensor_value.setter
     def sensor_value(self, value: SensorValue) -> None:
         self._sensor_value = value
-
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        # This pattern of reading kwargs and then poping the value to get rid of it
-        # helps the type checker at design time.
-        #address = kwargs["address"]
-        self.address = address
-        #kwargs.pop("address")
-
-        # When there is a non-None default value, pop with the appropriate default
-        # helps the type checking at design time.
-        #self.data_type = kwargs.pop("data_type", DataType.INT16)
-        self.data_type = data_type
-
-        super().__init__(key, name, **kwargs)
 
     def _validate(self):
         super()._validate()

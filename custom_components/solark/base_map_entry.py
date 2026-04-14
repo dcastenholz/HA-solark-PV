@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 TEntry = TypeVar("TEntry", bound="BaseMapEntry")
-# TSensor = TypeVar("TSensor", bound="")
+TEntityDescription = TypeVar("TEntityDescription", bound=EntityDescription)
 
 class BaseMapEntryOptional(Generic[TEntry], TypedDict, total=False):
     icon: str
@@ -32,7 +32,7 @@ class BaseMapEntryOptional(Generic[TEntry], TypedDict, total=False):
     post_process: Callable[[Any, "SolArkData"], None]
 
 
-class BaseMapEntry(Generic[TEntry], ABC):
+class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
     """
     Base class for all SolArk map entries.
 
@@ -44,7 +44,7 @@ class BaseMapEntry(Generic[TEntry], ABC):
     """
     _sensor_value: SensorValue = None
 
-    _entity_description: EntityDescription
+    _entity_description: TEntityDescription
 
     state_class: SensorStateClass | None
     post_process: Callable[[Self, "SolArkData"], None] | None
@@ -55,7 +55,7 @@ class BaseMapEntry(Generic[TEntry], ABC):
     # Entity access
     # -----------------------------
     @property
-    def entity_description(self) -> EntityDescription:
+    def entity_description(self) -> TEntityDescription:
         return self._entity_description
 
     @property

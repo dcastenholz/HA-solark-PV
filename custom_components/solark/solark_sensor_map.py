@@ -109,10 +109,10 @@ def pv_p_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> Non
 def totalgridbuy_e_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
     high: int = int(runtime_data.register_map.TOTALGRIDBUY_E_HIGH_RAW)
     low: int = int(runtime_data.register_map.TOTALGRIDBUY_E_LOW_RAW)
-    value = (high << 16) | low
+    value_int: int = (high << 16) | low
     # We need to handle scale here because of the discontiguous component registers
-    value *= self.scale
-    self.sensor_value = value
+    value_float: float = value_int * self.scale
+    self.sensor_value = value_float
     return
 
 @staticmethod

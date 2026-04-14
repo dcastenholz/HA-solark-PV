@@ -39,19 +39,23 @@ class SensorMapEntryOptional(TypedDict, total=False):
     offset: int
 
 
-class SensorMapEntry(BaseMapEntry["SensorMapEntry"]):
+class SensorMapEntry(BaseMapEntry["SensorMapEntry", "SolArkSensorEntityDescription"]):
     def __init__(self, key: str, name: str, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
         # -----------------------------
         # Set defaults in kwargs once
         # -----------------------------
-        opts = {
-            "entity_registry_enabled_default": False,
-            "sensor_class": SensorClass.NORMAL,
-            "exclude_from_recorder": False,
-            "scale": 1.0,
-            "offset": 0,
-            **kwargs,
-        }
+        kwargs.setdefault("entity_registry_enabled_default", False)
+        kwargs.setdefault("exclude_from_recorder", False)
+
+        kwargs.setdefault("sensor_class", SensorClass.NORMAL)
+
+        kwargs.setdefault("scale", 1.0)
+        kwargs.setdefault("offset", 0)
+
+        # -----------------------------
+        # Normalize into guaranteed dict
+        # -----------------------------
+        opts: dict[str, Any] = dict(kwargs)
 
         # -----------------------------
         # entity description build
@@ -60,7 +64,7 @@ class SensorMapEntry(BaseMapEntry["SensorMapEntry"]):
             key=key,
             name=name,
 
-            icon=opts.get("icon"),
+            icon=kwargs.get("icon"),
             entity_registry_enabled_default=opts["entity_registry_enabled_default"],
             entity_category=opts.get("entity_category"),
             description=opts.get("description"),
@@ -86,7 +90,6 @@ class SensorMapEntry(BaseMapEntry["SensorMapEntry"]):
         self.offset = opts["offset"]
 
         self._validate()
-
 
 # ----------------------------
 # Power
@@ -157,4 +160,3 @@ class GeneratorRelayEntry(MapEntryLookup, SensorMapEntry):
     def post_process_method(entry: GeneratorRelayEntry, runtime_data: "SolArkData") -> None:
         raw: int = cast(int, runtime_data.register_map.GEN_RLY_RAW.register_value) & 0x0F  # mask low 4 bits
         entry.sensor_value = entry.get_label_from_raw(raw)
-

@@ -85,11 +85,6 @@ class SolArkBinarySensor(BinarySensorEntity):
         # fallback: assume raw boolean/int
         return bool(value)
 
-    # @property
-    # def device_class(self) -> BinarySensorDeviceClass | None:
-    #     return BinarySensorDeviceClass.PROBLEM
-
-
 
 BINARYSENSOR_CLASS_MAP = {
     BinarySensorClass.BINARY: SolArkBinarySensor,

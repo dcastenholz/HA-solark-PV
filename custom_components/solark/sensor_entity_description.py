@@ -37,7 +37,6 @@ class NativeUnit(Enum):
     CELSIUS = UnitOfTemperature.CELSIUS
     PERCENT = PERCENTAGE
     HZ = UnitOfFrequency.HERTZ
-    # NONE = None  # for sensors without a unit
 
 
 # ----------------------------------
@@ -54,6 +53,7 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
     entity_category: EntityCategory | None = None
     description: str | None = None
     exclude_from_recorder: bool = False
+    # TODO - Determine if this is ever needed with coordinator
     should_poll: bool | None = None
     extra_state_attributes: dict[str, Any] = field(default_factory=dict)
     dynamic_icon: Callable[["SensorValue"], str] | None = None

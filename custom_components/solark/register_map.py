@@ -1,3 +1,4 @@
+''' Class for defining and processing entries that are read from registers.'''
 from typing import Iterator
 
 from .base_map import BaseMap
@@ -5,6 +6,7 @@ from .register_map_entry import RegisterMapEntry
 
 
 class RegisterMap(BaseMap[RegisterMapEntry]):
+    '''Register map may contain only entries that are, or are a subclass of, RegisterMapEntry'''
     _entry_type = RegisterMapEntry
 
     # ---------- sorting ----------
