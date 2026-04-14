@@ -1,5 +1,5 @@
 import logging
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Iterator, Type, TypeVar, cast
 
 from homeassistant.const import EntityCategory
@@ -24,6 +24,20 @@ class BaseMap(Generic[TEntry], ABC):
     _entries: list[TEntry]
     runtime_data: "SolArkData"
 
+    def __init__(self, runtime_data: "SolArkData"):
+        self.runtime_data = runtime_data
+
+        self._entries: list[TEntry] = cast(
+            list[TEntry],
+            list(self.__class__._class_entries),
+        )
+
+        self._error = False
+
+        self._sort()
+        self.validate()
+
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
@@ -33,17 +47,33 @@ class BaseMap(Generic[TEntry], ABC):
 
         cls._class_entries = cls._collect_entries(cls.__mro__, entry_type)
 
+    def _validate_entry(self, entry: BaseMapEntry) -> None:
+        for cls in reversed(type(entry).mro()):
+            if cls is BaseMapEntry:
+                continue
+
+            if "_validate" not in cls.__dict__:
+                continue
+
+            cls.__dict__["_validate"](entry)
+
+    def validate(self) -> None:
+        """Full validation pipeline (map + entries)."""
+
+        # 1. map-level validation
+        self._validate()
+
+        # 2. entry-level validation (additive via MRO)
+        for entry in self._entries:
+            self._validate_entry(entry)
+
     # ----------------------------------
     # Post process methods
     # ----------------------------------
     def post_process(self):
         """Post-process the register map entries after reading the raw values from the inverter."""
         # TODO - Handle case where the dependency registers were not read. Value is None
-        from .binary_sensor_map_entry import BinaryEntry
-
         for entry in self:
-            if isinstance(entry, BinaryEntry):
-                pass
             if entry.post_process is not None:
                 entry.do_post_process(self.runtime_data)
 
@@ -59,19 +89,6 @@ class BaseMap(Generic[TEntry], ABC):
                     entries.append(cast(TEntry, value))
 
         return entries
-
-    def __init__(self, runtime_data: "SolArkData"):
-        self.runtime_data = runtime_data
-
-        self._entries: list[TEntry] = cast(
-            list[TEntry],
-            list(self.__class__._class_entries),
-        )
-
-        self._error = False
-
-        self._sort()
-        self._validate()
 
     # ---- override points ----
     def _sort(self):

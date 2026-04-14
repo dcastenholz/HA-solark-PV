@@ -34,7 +34,7 @@ class BaseMapEntryOptional(Generic[TEntry], TypedDict, total=False):
 
 class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
     """
-    Base class for all SolArk map entries.
+    Abstract base class for all SolArk map entries.
 
     Provides:
     - Entity metadata wrapper
@@ -42,14 +42,39 @@ class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
     - Post-processing hook
     - Numeric conversion helpers
     """
-    _sensor_value: SensorValue = None
+    DEFAULTS: dict[str, Any] = {}
+    _merged_defaults: dict[str, Any]
 
+    opts: dict[str, Any] = {}
+
+    key: str
+    name: str
+    _sensor_value: SensorValue = None
     _entity_description: TEntityDescription
 
-    state_class: SensorStateClass | None
     post_process: Callable[[Self, "SolArkData"], None] | None
-    scale: float
-    offset: int
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
+        # -----------------------------
+        # MRO merge DEFAULTS once
+        # -----------------------------
+        merged: dict[str, Any] = {}
+
+        for base in reversed(cls.mro()):
+            defaults = getattr(base, "DEFAULTS", None)
+            if defaults:
+                merged.update(defaults)
+
+        cls._merged_defaults = merged
+
+    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseMapEntryOptional]) -> None:
+        self.key = key
+        self.name = name
+
+        # Set defaults in kwargs
+        self.opts = {**self._merged_defaults, **kwargs}
 
     # -----------------------------
     # Entity access
@@ -66,16 +91,12 @@ class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
     def sensor_value(self, value: SensorValue) -> None:
         self._sensor_value = value
 
-    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseMapEntryOptional]) -> None:
-        self._validate()
-
     # -----------------------------
     # Validation hook
     # -----------------------------
     def _validate(self) -> None:
         """
         Base validation for all entries.
-
         Subclasses may extend this.
         """
         return

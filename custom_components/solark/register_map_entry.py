@@ -75,7 +75,6 @@ class RegisterMapEntry(SensorMapEntry):
         self._sensor_value = value
 
     def _validate(self):
-        super()._validate()
         # Address must be non-negative
         if self.address < 0:
             raise ValueError(f"RegisterMapEntry {self._entity_description.key}: address must be >= 0")
@@ -105,10 +104,8 @@ class StringEntry(RegisterMapEntry):
         #kwargs.pop("length")
 
         super().__init__(address, key, name, data_type, **kwargs)
-        self._validate()
 
     def _validate(self):
-        super()._validate()
         # STRING type must have string_register_length defined
         if self.length is None:
             raise ValueError(f"StringEntry {self._entity_description.key} must have length")
@@ -126,187 +123,172 @@ class StringEntry(RegisterMapEntry):
 # Grid Voltage
 # ----------------------------
 class GridVoltageEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("icon", "mdi:flash")
-        kwargs.setdefault("scale", 0.1)
-        kwargs.setdefault("native_unit", NativeUnit.V)
-        kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "icon": "mdi:flash",
+        "scale": 0.1,
+        "native_unit": NativeUnit.V,
+        "state_class": SensorStateClass.MEASUREMENT,
+    }
 
 
 # ----------------------------
 # Battery Voltage
 # ----------------------------
 class BatteryVoltageEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("icon", "mdi:battery-plus-outline")
-        kwargs.setdefault("scale", 0.01)
-        kwargs.setdefault("native_unit", NativeUnit.V)
-        kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
-        kwargs.setdefault("suggested_display_precision", 2)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "icon": "mdi:battery-plus-outline",
+        "scale": 0.01,
+        "native_unit": NativeUnit.V,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "suggested_display_precision": 2,
+    }
 
 
 # ----------------------------
 # PV Voltage
 # ----------------------------
 class PVVoltageEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("icon", "mdi:solar-power")
-        kwargs.setdefault("scale", 0.1)
-        kwargs.setdefault("native_unit", NativeUnit.V)
-        kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "icon": "mdi:solar-power",
+        "scale": 0.1,
+        "native_unit": NativeUnit.V,
+        "state_class": SensorStateClass.MEASUREMENT,
+    }
 
 
 # ----------------------------
 # Frequency
 # ----------------------------
 class FrequencyEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("icon", "mdi:sine-wave")
-        kwargs.setdefault("scale", 0.01)
-        kwargs.setdefault("native_unit", NativeUnit.HZ)
-        kwargs.setdefault("device_class", SensorDeviceClass.FREQUENCY)
-        kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "icon": "mdi:sine-wave",
+        "scale": 0.01,
+        "native_unit": NativeUnit.HZ,
+        "device_class": SensorDeviceClass.FREQUENCY,
+        "state_class": SensorStateClass.MEASUREMENT,
+    }
 
 
 # ----------------------------
 # Current
 # ----------------------------
 class CurrentEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("scale", 0.01)
-        kwargs.setdefault("native_unit", NativeUnit.A)
-        kwargs.setdefault("device_class", SensorDeviceClass.CURRENT)
-        kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "scale": 0.01,
+        "native_unit": NativeUnit.A,
+        "device_class": SensorDeviceClass.CURRENT,
+        "state_class": SensorStateClass.MEASUREMENT,
+    }
 
 
 # ----------------------------
 # Battery Current
 # ----------------------------
 class BatteryCurrentEntry(CurrentEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("icon", "mdi:current-dc")
-        kwargs.setdefault("scale", 1.0)
-        kwargs.setdefault("suggested_display_precision", 0)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "icon": "mdi:current-dc",
+        "scale": 1.0,
+        "suggested_display_precision": 0,
+    }
 
 
 # ----------------------------
 # Power
 # ----------------------------
 class PowerEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("device_class", SensorDeviceClass.POWER)
-        kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
-        kwargs.setdefault("native_unit", NativeUnit.WATT)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "native_unit": NativeUnit.WATT,
+    }
 
 
 # ----------------------------
 # Energy
 # ----------------------------
 class EnergyEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT32, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("scale", 0.1)
-        kwargs.setdefault("native_unit", NativeUnit.KWH)
-        kwargs.setdefault("device_class", SensorDeviceClass.ENERGY)
-        kwargs.setdefault("state_class", SensorStateClass.TOTAL)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "scale": 0.1,
+        "native_unit": NativeUnit.KWH,
+        "device_class": SensorDeviceClass.ENERGY,
+        "state_class": SensorStateClass.TOTAL,
+    }
 
 
 # ----------------------------
 # Energy Total Increasing
 # ----------------------------
 class EnergyTotalIncreasingEntry(EnergyEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT32, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("state_class", SensorStateClass.TOTAL_INCREASING)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "state_class": SensorStateClass.TOTAL_INCREASING,
+    }
 
 
 # ----------------------------
 # Temperature
 # ----------------------------
 class TemperatureEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("scale", 0.1)
-        kwargs.setdefault("offset", 1000)
-        kwargs.setdefault("native_unit", NativeUnit.CELSIUS)
-        kwargs.setdefault("device_class", SensorDeviceClass.TEMPERATURE)
-        kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "scale": 0.1,
+        "offset": 1000,
+        "native_unit": NativeUnit.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+    }
 
 
 # ----------------------------
 # State of Charge
 # ----------------------------
 class SOCEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("native_unit", NativeUnit.PERCENT)
-        kwargs.setdefault("device_class", SensorDeviceClass.BATTERY)
-        kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "native_unit": NativeUnit.PERCENT,
+        "device_class": SensorDeviceClass.BATTERY,
+        "state_class": SensorStateClass.MEASUREMENT,
+    }
 
 
 # ----------------------------
 # State of Charge
 # ----------------------------
 class TimeOfUseEnabledEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("icon", "mdi:check-circle")
-        kwargs.setdefault("state_class", SensorStateClass.MEASUREMENT)
-        kwargs.setdefault("dynamic_icon", SensorDynamicIcon.CHECK_BOX)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "icon": "mdi:check-circle",
+        "state_class": SensorStateClass.MEASUREMENT,
+        "dynamic_icon": SensorDynamicIcon.CHECK_BOX,
+    }
 
 
 # ----------------------------
 # Time
 # ----------------------------
 class TimeOfUseTimeEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("icon", "mdi:clock-outline")
-        kwargs.setdefault("sensor_class", SensorClass.TOU_TIME)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "icon": "mdi:clock-outline",
+        "sensor_class": SensorClass.TOU_TIME,
+    }
 
 
 # ----------------------------
 # RawValueEntry
 # ----------------------------
 class RawValueEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("icon", "mdi:code-braces")
-        kwargs.setdefault("entity_category", EntityCategory.DIAGNOSTIC)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "icon": "mdi:code-braces",
+        "entity_category": EntityCategory.DIAGNOSTIC,
+    }
 
 
 # ----------------------------
 # SystemTimeEntry
 # ----------------------------
 class SystemTimeEntry(RegisterMapEntry):
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.UINT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("icon", "mdi:information-outline")
-        kwargs.setdefault("entity_category", EntityCategory.DIAGNOSTIC)
-        kwargs.setdefault("state_class", None)
-        kwargs.setdefault("exclude_from_recorder", True)
-
-        super().__init__(address, key, name, data_type, **kwargs)
+    DEFAULTS = {
+        "icon": "mdi:information-outline",
+        "entity_category": EntityCategory.DIAGNOSTIC,
+        "state_class": None,
+        "exclude_from_recorder": True,
+    }
 
 
 # ----------------------------
@@ -318,13 +300,12 @@ class GridRelayEntry(MapEntryLookup, RegisterMapEntry):
         1: ("Closed", "mdi:electric-switch-closed"),
     }
 
-    def __init__(self, address: int, key: str, name: str, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        kwargs.setdefault("state_class", None)
-        kwargs.setdefault("post_process", self.post_process_method)
-
-        super().__init__(address, key, name, **kwargs)
-
     @staticmethod
-    def post_process_method(entry: GridRelayEntry, runtime_data: "SolArkData") -> None:
+    def post_process_method(entry: "GridRelayEntry", runtime_data: "SolArkData") -> None:
         raw: int = int(entry)
         entry.sensor_value = entry.get_label_from_raw(raw)
+
+    DEFAULTS = {
+        "state_class": None,
+        "post_process": post_process_method,
+    }

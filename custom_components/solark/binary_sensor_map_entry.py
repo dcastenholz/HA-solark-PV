@@ -34,20 +34,29 @@ class BinarySensorMapEntryOptional(TypedDict, total=False):
 
 
 class BinarySensorMapEntry(BaseMapEntry["BinarySensorMapEntry", SolArkBinarySensorEntityDescription]):
+    DEFAULTS = {
+        "entity_registry_enabled_default": False,
+        "exclude_from_recorder": False,
+
+        "sensor_class": BinarySensorClass.BINARY,
+    }
+
     def __init__(self, key: str, name: str, **kwargs: Unpack[BinarySensorMapEntryOptional]) -> None:
+        super().__init__(key, name, **kwargs)
+
         # -----------------------------
         # Set defaults in kwargs once
         # -----------------------------
-        kwargs.setdefault("entity_registry_enabled_default", False)
-        kwargs.setdefault("exclude_from_recorder", False)
+        # kwargs.setdefault("entity_registry_enabled_default", False)
+        # kwargs.setdefault("exclude_from_recorder", False)
 
-        kwargs.setdefault("sensor_class", BinarySensorClass.BINARY)
+        # kwargs.setdefault("sensor_class", BinarySensorClass.BINARY)
 
         # -----------------------------
         # Normalize into guaranteed dict
         # -----------------------------
-        opts: dict[str, Any] = dict(kwargs)
-
+        # opts: dict[str, Any] = dict(kwargs)
+        opts = self.opts
         # -----------------------------
         # entity description build
         # -----------------------------
@@ -73,8 +82,6 @@ class BinarySensorMapEntry(BaseMapEntry["BinarySensorMapEntry", SolArkBinarySens
         # store fields
         # -----------------------------
         self.post_process = opts.get("post_process")
-
-        self._validate()
 
 
 # ----------------------------
