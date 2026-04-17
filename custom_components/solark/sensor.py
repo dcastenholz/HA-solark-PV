@@ -12,7 +12,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .config_entry import SolArkConfigEntry
 from .const import FORMAT_TOU_SENSORS_24HOUR
 from .data import SolArkData
-from .device_info import SolArkDeviceInfo
 from .register_value_types import SensorValue
 from .sensor_class import SensorClass
 from .sensor_entity_description import SolArkSensorEntityDescription
@@ -105,29 +104,6 @@ class SolArkCoordinatorSensor(SolArkCoordinatorEntity, SolArkSensorEntity):
             return None
         return data.get(self.entity_description.key)
 
-class SolArkSerialNumberSensor(SolArkCoordinatorSensor):
-    """Sensor for reading and processing the Serial Number."""
-
-    old_serial_number: str | None = None
-
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        serial_number = self.native_value
-
-        if serial_number and serial_number != self.old_serial_number:
-            # Update device info
-            SolArkDeviceInfo.set_serial_number(self.runtime_data)
-
-            # Store the serial number for comparison later.
-            # If it changes, the new one will be written.
-            self.old_serial_number = serial_number
-
-        # Write updated state to HA
-        self.async_write_ha_state()
-
-
-# TODO - Add Firmware class???
-
 
 class SolArkTOU_TimeSensor(SolArkCoordinatorSensor):
     @property
@@ -170,7 +146,6 @@ SENSOR_CLASS_MAP = {
     SensorClass.NORMAL: SolArkCoordinatorSensor,
     SensorClass.DATETIME: SolArkDateTimeSensor,
     SensorClass.TOU_TIME: SolArkTOU_TimeSensor,
-    SensorClass.SN: SolArkSerialNumberSensor,
 }
 
 def _get_sensor_class(sensor_class: SensorClass) -> type[SolArkSensorEntity]:

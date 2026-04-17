@@ -1,10 +1,11 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
+from .data_change_handlers import DatChangeHandlers
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import DEFAULT_MAX_STALE_DATA_AGE_SECONDS
+from .data_change_dispatcher import DataChangeDispatcher
 from .coordinator_data import CoordinatorData
 from .data import SolArkData
 from .modbus_client import SolArkModbusClient
@@ -39,9 +40,10 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
 
         self._runtime_data.on_startup()
 
-        self._last_successful_data: dict[str, SensorValue] | None = None
-        self._last_successful_timestamp: datetime | None = None
-        self.max_stale_data_age_seconds = DEFAULT_MAX_STALE_DATA_AGE_SECONDS  # seconds
+
+        self._dispatcher = DataChangeDispatcher()
+        self._data_change_handlers = DatChangeHandlers(self._runtime_data)
+        self._dispatcher.register(self._runtime_data.register_map.SN.key, self._data_change_handlers.SN_change_handler)
 
         name = self._runtime_data.name
 
@@ -53,10 +55,6 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
         )
 
         self.has_inverter_data = False
-
-    # @property
-    # def modbus_client(self) -> SolArkModbusClient:
-    #     return self._runtime_data.modbus_client
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Read the data from the inverter and return it as a dictionary."""
@@ -78,10 +76,12 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
                 data_read_successful = False
                 _LOGGER.exception("Unexpected error post processing inverter data: %s", e)
 
-            _LOGGER.debug("Last data read duration: %s", self._runtime_data.coordinator_metrics.last_update_duration)
+            _LOGGER.debug("Last data read duration: %s", self._runtime_data.coordinator_metrics.last_data_read_duration)
 
         # Return the current data if valid, otherwise return cached previously read data.
         if data_read_successful:
+            self._runtime_data.on_data_updated()
+            self._dispatcher.dispatch(self._runtime_data)
             return self._runtime_data.current_data
         else:
             return self._get_fallback_data()
@@ -128,21 +128,27 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
          Logs warnings or errors as needed."""
 
         # Error: fallback to last known data
-        if  self._runtime_data.last_successful_read_data:
-            data: CoordinatorData = self._runtime_data.last_successful_read_data
+        if self._runtime_data.last_data_updated:
+            data: CoordinatorData = self._runtime_data.last_data_updated
 
-            if data.age.seconds < self.max_stale_data_age_seconds:
+            # Test cached data to see if the user config says it is too stale
+            if data.age.seconds < self._runtime_data.config_data.max_stale_data_age_seconds:
+                # Data is NOT too stale, so use it
                 _LOGGER.warning(
-                "Using last known values (%.1f seconds old) due to communication error",
-                data.age.seconds,
-            )
-            return self._runtime_data.last_successful_read_data.data
+                    "Using last known values (%.1f seconds old) due to communication error",
+                    data.age.seconds,
+                )
+                return self._runtime_data.last_data_updated.data
 
-        # No valid data to return
-        _LOGGER.error(
-            "No recent valid data available (last successful read: %s)",
-            self._last_successful_timestamp.strftime("%Y-%m-%d %H:%M:%S") if self._last_successful_timestamp else "never",
-        )
+            # Data is too stale, so log error
+            _LOGGER.error(
+                "No recent valid data available (last successful read: %s)",
+                data.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            )
+        else:
+            _LOGGER.error("No successful data read since integration was started")
+
+        # TODO - implement separate sensor for this
         return {"faultmsg": "Communication lost with inverter"}
 
     async def async_stop(self, *_):

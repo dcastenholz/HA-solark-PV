@@ -6,32 +6,41 @@ class CoordinatorMetrics:
 
     _last_startup_timestamp: datetime
     _last_shutdown_timestamp: datetime
-    _last_updating_timestamp: datetime
-    _last_updated_timestamp: datetime
-    _last_update_failed_timestamp: datetime
 
+    _last_data_reading_timestamp: datetime
+    _last_data_read_timestamp: datetime
+    _last_data_read_failed_timestamp: datetime
+    _last_data_updated_timestamp: datetime
+    _last_updated_timestamp: datetime
+
+    # ----------------------------------
+    # Update data lifecycle events
+    # ----------------------------------
     def on_startup(self):
+        self._last_startup_timestamp = datetime.now()
         self._update_count = 0
+        return
+
+    def on_data_reading(self):
+        self._last_data_reading_timestamp = datetime.now()
+        return
+
+    def on_data_read(self):
+        self._last_data_read_timestamp = datetime.now()
+        return
+
+    def on_data_read_failed(self):
+        self._last_data_read_failed_timestamp = datetime.now()
+        return
+
+    def on_data_updated(self):
+        # Increment update counter
+        self._update_count += 1
+        self._last_data_updated_timestamp = datetime.now()
         return
 
     def on_shutdown(self):
         self._last_shutdown_timestamp = datetime.now()
-        return
-
-    def on_updating(self):
-        self._last_startup_timestamp = datetime.now()
-        return
-
-    def on_updated(self):
-        self._last_updating_timestamp = datetime.now()
-        # Increment update counter
-        self._update_count += 1
-        self._last_updated_timestamp = datetime.now()
-        return
-
-    def on_update_failed(self):
-        self._last_updating_timestamp = datetime.now()
-        self._last_update_failed_timestamp = datetime.now()
         return
 
     @property
@@ -39,13 +48,13 @@ class CoordinatorMetrics:
         return self._update_count
 
     @property
-    def last_successful_timestamp(self) -> datetime:
+    def last_updated_timestamp(self) -> datetime:
         return self._last_updated_timestamp
 
     @property
-    def last_failure_timestamp(self) -> datetime:
-        return self._last_update_failed_timestamp
+    def last_data_read_failed_timestamp(self) -> datetime:
+        return self._last_data_read_failed_timestamp
 
     @property
-    def last_update_duration(self) -> timedelta:
-        return self._last_updating_timestamp - self._last_startup_timestamp
+    def last_data_read_duration(self) -> timedelta:
+        return self._last_data_read_timestamp - self._last_data_reading_timestamp

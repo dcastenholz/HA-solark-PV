@@ -12,6 +12,7 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_PORT_RTU,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_MAX_STALE_DATA_AGE_SECONDS,
 )
 
 
@@ -27,6 +28,9 @@ class ConfigData:
     tcp_port: int = DEFAULT_PORT
     rtu_port: str = DEFAULT_PORT_RTU
     device_id: int = DEFAULT_DEVICE_ID
+
+    # TODO - handle user setting these values
+    max_stale_data_age_seconds: int = DEFAULT_MAX_STALE_DATA_AGE_SECONDS
 
     @staticmethod
     def from_storage_data(entry: ConfigEntry) ->  ConfigData:

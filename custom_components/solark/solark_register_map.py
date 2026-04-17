@@ -35,7 +35,7 @@ T = TypeVar("T", bound="RegisterMap")  # T is the real subclass
 
 """SolArk Modbus Register Map class"""
 class SolArkRegisterMap(RegisterMap):
-    SN = StringEntry(address=3, length=5, key="sn", name="Serial Number", icon="mdi:information-outline", sensor_class=SensorClass.SN)
+    SN = StringEntry(address=3, length=5, key="sn", name="Serial Number", icon="mdi:information-outline")
     INFO_FIRMWARE_S = RawInfoEntry(address=11, key="info_firmware_s", name="Firmware S", icon="mdi:information-outline")
     INFO_FIRMWARE_M = RawInfoEntry(address=13, key="info_firmware_m", name="Firmware Control Board", icon="mdi:information-outline")
     INFO_FIRMWARE_C = RawInfoEntry(address=14, key="info_firmware_c", name="Firmware Communication Board", icon="mdi:information-outline")

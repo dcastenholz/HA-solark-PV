@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional, TypeVar
 
@@ -35,12 +35,15 @@ class SolArkData:
     modbus_client: SolArkModbusClient
     device_info: DeviceInfo
     coordinator_metrics: CoordinatorMetrics
-    last_successful_read_data: CoordinatorData | None
 
     register_map: SolArkRegisterMap
     calculated_sensor_map: SolArkSensorMap
 
     entry_maps: List[BaseMap]
+
+    # This MUST be initialized so the
+    previous_data_updated: CoordinatorData = field(default_factory=lambda: CoordinatorData({}, datetime.now()))
+    last_data_updated: CoordinatorData = field(default_factory=lambda: CoordinatorData({}, datetime.now()))
 
     _coordinator: Optional["SolArkCoordinator"] = None
 
@@ -72,8 +75,6 @@ class SolArkData:
         self.entry_maps = [self.register_map, self.calculated_sensor_map]
 
         self.coordinator_metrics = CoordinatorMetrics()
-
-        self.last_successful_read_data = None
 
     @property
     def name(self) -> str:
@@ -122,24 +123,28 @@ class SolArkData:
         return {**self.register_map.as_dict(), **self.calculated_sensor_map.as_dict()}
 
     # ----------------------------------
-    # Update data events
+    # Update data lifecycle events
     # ----------------------------------
     def on_startup(self):
         self.coordinator_metrics.on_startup()
         return
 
     def on_data_reading(self):
-        self.coordinator_metrics.on_updating()
+        self.coordinator_metrics.on_data_reading()
         return
 
     def on_data_read(self):
-        self.last_successful_read_data = CoordinatorData(data=self.current_data, timestamp=datetime.now())
-        # Increment update counter
-        self.coordinator_metrics.on_updated()
+        self.coordinator_metrics.on_data_read()
         return
 
     def on_data_read_failed(self):
-        self.coordinator_metrics.on_update_failed()
+        self.coordinator_metrics.on_data_read_failed()
+        return
+
+    def on_data_updated(self):
+        self.previous_data_updated = self.last_data_updated
+        self.last_data_updated = CoordinatorData(data=self.current_data, timestamp=datetime.now())
+        self.coordinator_metrics.on_data_updated()
         return
 
     def on_shutdown(self):
