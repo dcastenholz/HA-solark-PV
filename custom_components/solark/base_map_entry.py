@@ -2,7 +2,7 @@ import logging
 from abc import ABC
 from typing import TYPE_CHECKING, Any, Callable, Generic, Self, TypedDict, TypeVar, Union
 
-from homeassistant.components.sensor import EntityDescription, SensorStateClass
+from homeassistant.components.sensor import EntityDescription
 from homeassistant.const import EntityCategory
 from typing_extensions import Unpack
 
@@ -10,7 +10,6 @@ from .register_value_types import NumericValue, SensorValue
 
 if TYPE_CHECKING:
     from .data import SolArkData
-    from .sensor import SolArkSensor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,12 +23,11 @@ class BaseMapEntryOptional(Generic[TEntry], TypedDict, total=False):
     description: str
     exclude_from_recorder: bool
     should_poll: bool
-    extra_state_attributes: dict[str, Any]
     dynamic_icon: Callable[["SensorValue"], str | None]
 
-    post_process_sensor: Callable[[Any, "SolArkData"], None]
+    on_sensor_creating: Callable[[Any, "SolArkData"], None]
 
-    post_process: Callable[[Any, "SolArkData"], None]
+    on_data_updated: Callable[[Any, "SolArkData"], None]
 
 
 class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
@@ -42,7 +40,10 @@ class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
     - Post-processing hook
     - Numeric conversion helpers
     """
-    DEFAULTS: dict[str, Any] = {}
+    DEFAULTS: dict[str, Any] = {
+        "entity_registry_enabled_default": False,
+    }
+
     _merged_defaults: dict[str, Any]
 
     opts: dict[str, Any] = {}
@@ -52,7 +53,14 @@ class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
     _sensor_value: SensorValue = None
     _entity_description: TEntityDescription
 
-    post_process: Callable[[Self, "SolArkData"], None] | None
+    data_updated: Callable[[Self, "SolArkData"], None] | None
+
+    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseMapEntryOptional]) -> None:
+        self.key = key
+        self.name = name
+
+        # Set defaults in kwargs
+        self.opts = {**self._merged_defaults, **kwargs}
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -69,19 +77,16 @@ class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
 
         cls._merged_defaults = merged
 
-    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseMapEntryOptional]) -> None:
-        self.key = key
-        self.name = name
-
-        # Set defaults in kwargs
-        self.opts = {**self._merged_defaults, **kwargs}
-
     # -----------------------------
     # Entity access
     # -----------------------------
     @property
     def entity_description(self) -> TEntityDescription:
         return self._entity_description
+
+    @entity_description.setter
+    def entity_description(self, value: TEntityDescription) -> None:
+        self._entity_description = value
 
     @property
     def sensor_value(self) -> SensorValue:
@@ -104,14 +109,14 @@ class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
     # -----------------------------
     # Post processing
     # -----------------------------
-    def do_post_process(self: Self, runtime_data: "SolArkData") -> None:
+    def on_data_updated(self: Self, runtime_data: "SolArkData") -> None:
         """ Execute post-processing method. """
-        if self.post_process:
+        if self.data_updated:
             try:
-                self.post_process(self, runtime_data)
+                self.data_updated(self, runtime_data)
             except Exception:  # pylint: disable=broad-exception-caught
                 _LOGGER.exception(
-                    "Error post-processing entry %s",
+                    "Error while running data updated event of entry %s",
                     self._entity_description.key,
                 )
 

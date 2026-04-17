@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -18,6 +18,7 @@ from .sensor_map_entry import SensorMapEntry, SensorMapEntryOptional
 
 if TYPE_CHECKING:
     from .data import SolArkData
+    from .sensor import SolArkSensorEntity
 
 
 # ----------------------------------
@@ -75,7 +76,7 @@ class RegisterMapEntry(SensorMapEntry):
         self._sensor_value = value
 
     def _validate(self):
-        # Address must be non-negative
+        # RegisterMapEntry must have non-negative address
         if self.address < 0:
             raise ValueError(f"RegisterMapEntry {self._entity_description.key}: address must be >= 0")
 
@@ -91,22 +92,75 @@ class RegisterMapEntry(SensorMapEntry):
         raise ValueError(f"Unknown DataType {self.data_type} for {self._entity_description.key}")
 
 # ----------------------------
+# Raw Value
+# ----------------------------
+class RawValueEntry(RegisterMapEntry):
+    '''Values read from registers that are not normally displayed in UI screens.
+    These are values that change over time and will produce history if enabled.'''
+
+    RAW_PREFIX = "Raw Value -"
+
+    @staticmethod
+    def sensor_creating(sensor: "SolArkSensorEntity", runtime_data: "SolArkData") -> None:
+        name = str(sensor.name)
+        if name and not name.startswith(RawValueEntry.RAW_PREFIX):
+            sensor.name = RawValueEntry.RAW_PREFIX + name
+
+    DEFAULTS = {
+        "icon": "mdi:code-braces",
+        "entity_category": EntityCategory.DIAGNOSTIC,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "on_sensor_creating": sensor_creating,
+    }
+
+
+# ----------------------------
+# Raw Value
+# ----------------------------
+class RawInfoEntry(RegisterMapEntry):
+    '''Values read from registers that are not normally displayed in UI screens.
+    These are mostly static values that do not typically change over time.'''
+
+    RAW_PREFIX = "Raw Info -"
+
+    @staticmethod
+    def sensor_creating(sensor: "SolArkSensorEntity", runtime_data: "SolArkData") -> None:
+        name = str(sensor.name)
+        if name and not name.startswith(RawValueEntry.RAW_PREFIX):
+            sensor.name = RawValueEntry.RAW_PREFIX + name
+
+    DEFAULTS = {
+        "state_class": None,
+        "on_sensor_creating": sensor_creating,
+    }
+
+
+# ----------------------------
+# Raw Value System Time
+# ----------------------------
+class RawValueSystemTimeEntry(RawValueEntry):
+    '''Values read from registers that are not normally displayed in UI screens.
+    These are values that are based on the inverter system time but are specifically
+    excluded from history to avoid pointless database entries.'''
+
+    DEFAULTS = {
+        "exclude_from_recorder": True,
+    }
+
+
+# ----------------------------
 # String
 # ----------------------------
 class StringEntry(RegisterMapEntry):
     length: int
 
     def __init__(self, address: int, key: str, name: str, length: int, data_type: DataType = DataType.INT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
-        # This pattern of reading kwargs and then poping the value to get rid of it
-        # helps the type checker at design time.
-        #length = kwargs["length"]
         self.length = length
-        #kwargs.pop("length")
 
         super().__init__(address, key, name, data_type, **kwargs)
 
     def _validate(self):
-        # STRING type must have string_register_length defined
+        # StringEntry must have string_register_length defined
         if self.length is None:
             raise ValueError(f"StringEntry {self._entity_description.key} must have length")
 
@@ -270,29 +324,7 @@ class TimeOfUseTimeEntry(RegisterMapEntry):
 
 
 # ----------------------------
-# RawValueEntry
-# ----------------------------
-class RawValueEntry(RegisterMapEntry):
-    DEFAULTS = {
-        "icon": "mdi:code-braces",
-        "entity_category": EntityCategory.DIAGNOSTIC,
-    }
-
-
-# ----------------------------
-# SystemTimeEntry
-# ----------------------------
-class SystemTimeEntry(RegisterMapEntry):
-    DEFAULTS = {
-        "icon": "mdi:information-outline",
-        "entity_category": EntityCategory.DIAGNOSTIC,
-        "state_class": None,
-        "exclude_from_recorder": True,
-    }
-
-
-# ----------------------------
-# GridRelayEntry
+# Grid Relay
 # ----------------------------
 class GridRelayEntry(MapEntryLookup, RegisterMapEntry):
     LOOKUP_MAP = {
@@ -301,11 +333,11 @@ class GridRelayEntry(MapEntryLookup, RegisterMapEntry):
     }
 
     @staticmethod
-    def post_process_method(entry: "GridRelayEntry", runtime_data: "SolArkData") -> None:
+    def data_updated(entry: "GridRelayEntry", runtime_data: "SolArkData") -> None:
         raw: int = int(entry)
         entry.sensor_value = entry.get_label_from_raw(raw)
 
     DEFAULTS = {
         "state_class": None,
-        "post_process": post_process_method,
+        "on_data_updated": data_updated,
     }

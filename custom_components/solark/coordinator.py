@@ -4,9 +4,9 @@ from typing import Any
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from .const import DEFAULT_MAX_STALE_DATA_AGE_SECONDS
 from .coordinator_data import CoordinatorData
 from .data import SolArkData
-from .device_info import update_device_firmware, update_device_serial
 from .modbus_client import SolArkModbusClient
 from .register_value_types import SensorValue
 from .solark_register_map import SolArkRegisterMap
@@ -15,7 +15,22 @@ from .solark_sensor_map import SolArkSensorMap
 _LOGGER = logging.getLogger(__name__)
 
 class SolArkCoordinator(DataUpdateCoordinator[dict]):
+    """ Update the register map with the latest values read from the inverter and return a combined
+    dictionary of all data.
+
+    Class is responsible for reading the data from the inverter and returning it as a dictionary.
+    The class maintains the last successful reading and timestamp, and if a read fails,
+    it will return the last known values if they are not too old, otherwise it will return an error message.
+
+    Philosopy here is  to perform a series of modbus reads, setting a single error flag for the whole dataset
+    on the failure of any read.
+    read, check for a successful read of all data, and return the last complete data.
+    If the read was not successful, then return the last known values if they are not too old,
+    otherwise return an error message.
+    """
+
     _runtime_data: SolArkData
+    _data_read_error: bool = False
 
     def __init__(self, runtime_data: SolArkData):
         # Register the coordinator with the runtime_data
@@ -26,7 +41,7 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
 
         self._last_successful_data: dict[str, SensorValue] | None = None
         self._last_successful_timestamp: datetime | None = None
-        self.max_stale_data_age_seconds = 300  # seconds
+        self.max_stale_data_age_seconds = DEFAULT_MAX_STALE_DATA_AGE_SECONDS  # seconds
 
         name = self._runtime_data.name
 
@@ -47,82 +62,70 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
         """Read the data from the inverter and return it as a dictionary."""
         register_map: SolArkRegisterMap = self._runtime_data.register_map
         calculated_sensor_map: SolArkSensorMap = self._runtime_data.calculated_sensor_map
-        modbus_client: SolArkModbusClient = self._runtime_data.modbus_client
 
-        error: bool = False
-
-            # TODO - Move to runtime_data??
+        # TODO - Move to runtime_data??
         register_map.set_error(False)  # Initialize the register map before reading
 
-        self._runtime_data.on_start()
+        data_read_successful = await self._async_data_read()
+
+        if data_read_successful:
+            # If we already have a read failure, post processing is unnecessary and may fail as well.
+            try:
+                await self.hass.async_add_executor_job(register_map.on_data_updated)
+                await self.hass.async_add_executor_job(calculated_sensor_map.on_data_updated)
+
+            except Exception as e:
+                data_read_successful = False
+                _LOGGER.exception("Unexpected error post processing inverter data: %s", e)
+
+            _LOGGER.debug("Last data read duration: %s", self._runtime_data.coordinator_metrics.last_update_duration)
+
+        # Return the current data if valid, otherwise return cached previously read data.
+        if data_read_successful:
+            return self._runtime_data.current_data
+        else:
+            return self._get_fallback_data()
+
+    async def _async_data_read(self) -> bool:
+        # ----------------------------------
+        # Data update started
+        # ----------------------------------
+        self._runtime_data.on_data_reading()
+
+        modbus_client: SolArkModbusClient = self._runtime_data.modbus_client
 
         if not self.has_inverter_data:  # Inverter serial number is only fetched once
             try:
-                error = await self.hass.async_add_executor_job(modbus_client.read_modbus_inverter_data)
+                # TODO - revisit the success and has_inverter_data logic.
+                success = await self.hass.async_add_executor_job(modbus_client.read_modbus_inverter_data)
+                self.has_inverter_data = True
 
             except Exception as e:
-                error = True
+                success = False
                 _LOGGER.exception("Unexpected error reading inverter data: %s", e)
 
-            if not error:
-                if register_map.SN.sensor_value is not None:
-                    update_device_serial(self.hass, self.name, str(register_map.SN.sensor_value))
-                    self.has_inverter_data = True
+        success: bool = False
+        try:
+            # Read realtime data
+            success = await self.hass.async_add_executor_job(modbus_client.read_modbus_realtime_data)
 
-                # if(register_map.FIRMWARE.register_value is not None):
-                #     update_device_firmware(self.hass, self.name, str(register_map.FIRMWARE.register_value))
-                #     self.has_inverter_data = True
+        except Exception as e:
+            _LOGGER.exception("Unexpected error reading realtime data: %s", e)
 
-        if not error:
-            try:
-                # Read realtime data
-                error = await self.hass.async_add_executor_job(modbus_client.read_modbus_realtime_data)
-
-            except Exception as e:
-                error = True
-                _LOGGER.exception("Unexpected error reading inverter data: %s", e)
-
-        if not error:
-            self._runtime_data.on_success()
+        if success:
+            self._runtime_data.on_data_read()
         else:
-            # If we already have a read failure, post processing is unnecessary and may fail as well.
             # Just record the failure.
-            self._runtime_data.on_failure()
+            self._runtime_data.on_data_read_failed()
 
-        _LOGGER.debug("Last Update Duration: %s", self._runtime_data.coordinator_metrics.last_update_duration)
+        # ----------------------------------
+        # Data update completed
+        # ----------------------------------
+        return success
 
-        if not error:
-            try:
-                await self.hass.async_add_executor_job(register_map.post_process)
-                await self.hass.async_add_executor_job(calculated_sensor_map.post_process)
-
-            except Exception as e:
-                error = True
-                _LOGGER.exception("Unexpected error post processing inverter data: %s", e)
-
-        # Return combined data safely
-        return self._handle_results(error)
-
-    def _handle_results(self, error: bool) -> dict[str, SensorValue]:
-        """ Update the register map with the latest values read from the inverter and return a combined dictionary of all data.
-
-        Class is responsible for reading the data from the inverter and returning it as a dictionary.
-        The class maintains the last successful reading and timestamp, and if a read fails,
-        it will return the last known values if they are not too old, otherwise it will return an error message.
-
-        Philosopy here is  to perform a series of modbus reads, setting a single error flag for the whole dataset
-        on the failure of any read.
-        read, check for a successful read of all data, and return the last complete data.
-        If the read was not successful, then return the last known values if they are not too old, otherwise return an error message.
-        """
-        """
-        Return the current data if valid, otherwise handle stale caching.
-
-        Uses last successful data if it's not too old. Logs warnings or errors
-        as needed.
-        """
-        if not error:
-            return self._runtime_data.current_data
+    def _get_fallback_data(self) -> dict[str, SensorValue]:
+        """Use last successful data if it's not too old.
+         Logs warnings or errors as needed."""
 
         # Error: fallback to last known data
         if  self._runtime_data.last_successful_read_data:

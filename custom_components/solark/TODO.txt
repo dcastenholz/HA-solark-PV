@@ -1,0 +1,4 @@
+2026-04-15 21:50:38.041 WARNING (MainThread) [asyncio] Executing <TimerHandle when=209251.349605276 _run_async_call_action(<HomeAssistant RUNNING>, <Job None Has...ea35c97aa50>>>) at /workspaces/core/homeassistant/helpers/event.py:1570 created at /workspaces/core/homeassistant/helpers/event.py:1617> took 0.446 seconds
+2026-04-15 21:50:40.146 ERROR (SyncWorker_0) [custom_components.solark.modbus_client] Ensure connected failed: Modbus Error: [Connection] Modbus client is not initialized
+2026-04-15 21:50:40.147 ERROR (SyncWorker_0) [custom_components.solark.modbus_client] Processing registers 312-319 failed!
+2026-04-15 21:50:41.482 WARNING (MainThread) [asyncio] Executing <Task finished name='config entry reload SolArk solark_modbus 01KMKHAE5NES17WEZPCSS23DNP' coro=<ConfigEntries.async_reload() done, defined at /workspaces/core/homeassistant/config_entries.py:2301> result=True created at /workspaces/core/homeassistant/util/async_.py:44> took 0.334 seconds

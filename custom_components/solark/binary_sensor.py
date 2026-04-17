@@ -1,6 +1,5 @@
-from typing import cast
 
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity, EntityDescription
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -20,47 +19,40 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     runtime_data: SolArkData = entry.runtime_data
 
     entities = []
-    descriptions: list[EntityDescription] = runtime_data.register_map.get_descriptions() + runtime_data.calculated_sensor_map.get_descriptions()
 
     # Only binary sensors
-    for entity_description in descriptions:
-        if isinstance(entity_description, SolArkBinarySensorEntityDescription):
-            binary_sensor_entity_description: SolArkBinarySensorEntityDescription = cast(SolArkBinarySensorEntityDescription, entity_description)
-            entity_cls: type[SolArkBinarySensor] = _get_sensor_class(binary_sensor_entity_description.sensor_class)
-
-            if entity_cls:
-                sensor = entity_cls(
-                    runtime_data,
-                    entity_description,
-                )
-                entities.append(sensor)
+    for entity_description in runtime_data.descriptions_of_type(SolArkBinarySensorEntityDescription):
+        entity_cls: type[SolArkBinarySensor] = _get_sensor_class(entity_description.sensor_class)
+        entities.append(entity_cls(runtime_data, entity_description))
 
     async_add_entities(entities)
     return True
 
 
 class SolArkBinarySensor(BinarySensorEntity):
-    """Standard SolArk binary sensor."""
+    """Base binary sensor entity.
+    All binary sensor classes used in a BinarySensorMap must inherit from this."""
+
     def __init__(
         self,
         runtime_data: SolArkData,
         description: SolArkBinarySensorEntityDescription,
     ):
+        if description.on_sensor_creating:
+            description.on_sensor_creating(self, runtime_data)
+
         self.runtime_data = runtime_data
         self.entity_description: SolArkBinarySensorEntityDescription = description
 
-        self._attr_device_info = runtime_data.device_info
+        # Setting the entity_description on a BinarySensorEntity handles most properties,
+        # but some need to be set specifically or modified
         self._attr_name = f"{runtime_data.name} {description.name}"
         self._attr_unique_id = f"{runtime_data.name}_{description.key}"
+        self._attr_device_info = runtime_data.device_info
         self._attr_exclude_from_recorder = description.exclude_from_recorder
+        self._attr_should_poll = description.should_poll
 
-        if description.should_poll:
-            self.should_poll = description.should_poll
-
-        if description.post_process_sensor:
-            description.post_process_sensor(self, self.runtime_data)
-
-        self._attr_device_class = BinarySensorDeviceClass.PROBLEM
+        self._attr_device_class = description.device_class
 
     @property
     def data(self):
@@ -90,6 +82,11 @@ BINARYSENSOR_CLASS_MAP = {
     BinarySensorClass.BINARY: SolArkBinarySensor,
 }
 
-@staticmethod
-def _get_sensor_class(sensor_class: BinarySensorClass) -> type[SolArkBinarySensor] | None:
-    return BINARYSENSOR_CLASS_MAP.get(sensor_class)
+def _get_sensor_class(sensor_class: BinarySensorClass) -> type[SolArkBinarySensor]:
+    try:
+        return BINARYSENSOR_CLASS_MAP[sensor_class]
+    except KeyError as err:
+        raise ValueError(
+            f"Unhandled SensorClass: {sensor_class}. "
+            f"BINARYSENSOR_CLASS_MAP is incomplete."
+        ) from err

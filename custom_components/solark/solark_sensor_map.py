@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING, cast
 from homeassistant.components.sensor import EntityCategory, SensorStateClass
 from homeassistant.util import dt
 
-from .binary_sensor_map_entry import BinaryEntry
-from .config_sensor import ConfigSensor
+from .binary_sensor_map_entry import BinaryProblemEntry
 from .fault_info import translate_fault_code_to_messages
 from .sensor_class import SensorClass
 from .sensor_map import SensorMap
@@ -22,7 +21,7 @@ from .solark_register_map import SolArkRegisterMap
 
 if TYPE_CHECKING:
     from .data import SolArkData
-    from .sensor import SolArkSensor
+    from .sensor import SolArkSensorEntity
 
 # ----------------------------
 # Helpers
@@ -65,87 +64,76 @@ def plural(value: int, word: str) -> str:
 # Post processed sensor method definitions
 # ----------------------------------
 @staticmethod
-def firmware_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def firmware_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
     firmware: str = f"M {get_firmware(int(runtime_data.register_map.INFO_FIRMWARE_M))} / "
     firmware += f"S {get_firmware(int(runtime_data.register_map.INFO_FIRMWARE_S))} / "
     firmware += f"C {get_firmware(int(runtime_data.register_map.INFO_FIRMWARE_C))}"
-    self.sensor_value = firmware
+    entry.sensor_value = firmware
     return
 
 @staticmethod
-def info_mppt_count_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def info_mppt_count_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
     info: tuple[int, int] = get_mppt_phase_info(int(runtime_data.register_map.INFO_MPPT_PHASE_COUNTS_RAW))
-    self.sensor_value = f"{plural(info[0], 'MPPT')}"
+    entry.sensor_value = f"{plural(info[0], 'MPPT')}"
     return
 
 @staticmethod
-def info_phase_count_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def info_phase_count_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
     info: tuple[int, int] = get_mppt_phase_info(int(runtime_data.register_map.INFO_MPPT_PHASE_COUNTS_RAW))
-    self.sensor_value = f"{plural(info[1], 'phase')}"
+    entry.sensor_value = f"{plural(info[1], 'phase')}"
     return
 
 @staticmethod
-def system_date_time_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def system_date_time_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
     register_map: SolArkRegisterMap = runtime_data.register_map
     year_month: tuple[int, int] = register_map.SYSTEM_TIME_YM_RAW.split_bytes_uint16()
     day_hour: tuple[int, int] = register_map.SYSTEM_TIME_DH_RAW.split_bytes_uint16()
     minute_second: tuple[int, int] = register_map.SYSTEM_TIME_MS_RAW.split_bytes_uint16()
     local_dt = dt.as_local(datetime.datetime(2000 + year_month[0], year_month[1], day_hour[0], day_hour[1], minute_second[0], minute_second[1]))
-    self.sensor_value = local_dt  # ready for SensorDeviceClass.TIMESTAMP
+    entry.sensor_value = local_dt  # ready for SensorDeviceClass.TIMESTAMP
     return
 
 @staticmethod
-def faultmsg_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def faultmsg_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
     fault_message_list = translate_fault_code_to_messages(int(runtime_data.register_map.FAULT_INFO_RAW))
-    self.sensor_value = ", ".join(fault_message_list)
+    entry.sensor_value = ", ".join(fault_message_list)
     return
 
 @staticmethod
-def pv_p_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-    self.sensor_value = runtime_data.register_map.PV1_P + runtime_data.register_map.PV2_P + runtime_data.register_map.PV3_P
+def pv_p_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+    entry.sensor_value = runtime_data.register_map.PV1_P + runtime_data.register_map.PV2_P + runtime_data.register_map.PV3_P
     return
 
 @staticmethod
-def totalgridbuy_e_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def totalgridbuy_e_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
     high: int = int(runtime_data.register_map.TOTALGRIDBUY_E_HIGH_RAW)
     low: int = int(runtime_data.register_map.TOTALGRIDBUY_E_LOW_RAW)
     value_int: int = (high << 16) | low
     # We need to handle scale here because of the discontiguous component registers
-    value_float: float = value_int * self.scale
-    self.sensor_value = value_float
+    value_float: float = value_int * entry.scale
+    entry.sensor_value = value_float
     return
 
 @staticmethod
-def update_count_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def update_count_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
     import warnings
     warnings.warn(
         "update_cnt is deprecated, use update_count",
         DeprecationWarning,
         stacklevel=2,
     )
-    self.sensor_value = runtime_data.coordinator_metrics.update_count & 0xFFFF
+    entry.sensor_value = runtime_data.coordinator_metrics.update_count & 0xFFFF
     return
 
 @staticmethod
-def update_cnt_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-    self.sensor_value = runtime_data.coordinator_metrics.update_count
+def update_cnt_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+    entry.sensor_value = runtime_data.coordinator_metrics.update_count
     return
 
 @staticmethod
-def config_info_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-    self.sensor_value = runtime_data.name
-    return
+def has_fault_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
 
-@staticmethod
-def config_info_post_process_sensor(sensor: "SolArkSensor", runtime_data: "SolArkData") -> None:
-    sensor.extra_state_attributes = ConfigSensor.get_data(runtime_data.config_entry)
-    return
-
-
-@staticmethod
-def has_fault_post_process(self: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-
-    self.sensor_value = cast(int, runtime_data.register_map.SYSTEM_TIME_MS_RAW.register_value) % 3 == 0
+    entry.sensor_value = cast(int, runtime_data.register_map.SYSTEM_TIME_MS_RAW.register_value) % 3 == 0
     return
 
 class SolArkSensorMap(SensorMap):
@@ -153,32 +141,30 @@ class SolArkSensorMap(SensorMap):
     # ----------------------------------
     # Post processed sensor definitions
     # ----------------------------------
-    FIRMWARE = DiagnosticEntry(key="firmware", name="Firmware Versions", post_process=firmware_post_process)
-    MPPT_INFO = DiagnosticEntry(key="info_mppt_count", name="MPPT Count", post_process=info_mppt_count_post_process)
-    PHASE_INFO = DiagnosticEntry(key="info_phase_count", name="Phase Count", post_process=info_phase_count_post_process)
+    FIRMWARE = DiagnosticEntry(key="firmware", name="Firmware Versions", on_data_updated=firmware_data_updated)
+    MPPT_INFO = DiagnosticEntry(key="info_mppt_count", name="MPPT Count", on_data_updated=info_mppt_count_data_updated)
+    PHASE_INFO = DiagnosticEntry(key="info_phase_count", name="Phase Count", on_data_updated=info_phase_count_data_updated)
     SYSTEM_DATE_TIME = SensorMapEntry(
         key="system_date_time", name="System Date Time", icon="mdi:clock", sensor_class=SensorClass.DATETIME, exclude_from_recorder=True,
-        post_process=system_date_time_post_process
+        on_data_updated=system_date_time_data_updated
         )
 
-    # TODO - get concensus on changing entiity name(s) to match the SolArk documentation.
+    # TODO - Add 2 separate sensors or get concensus on changing entiity name(s) to match the SolArk documentation.
     # Caution: this is used by the hub to indicate a communication error with the device.
     # TODO - Another option is to create another entity, with the old one set to be not enabled by default.
     FAULTMSG = SensorMapEntry(
-        key="faultmsg", name="Inverter error Message", icon="mdi:message-alert-outline", entity_registry_enabled_default=True,
-        post_process=faultmsg_post_process
+        key="faultmsg", name="Inverter error Message", icon="mdi:message-alert-outline",
+        on_data_updated=faultmsg_data_updated
         )
 
     PV_P = PowerEntry(
-        key="pv_p", name="PV Input Power", icon="mdi:solar-power", entity_registry_enabled_default=True, post_process=pv_p_post_process
-        )
-    # GRID_RLY = SensorMapEntry(key="grid_rly", name="Grid Relay", icon="mdi:electric-switch", post_process=grid_rly_post_process, dynamic_icon=SensorDynamicIcon.RELAY)
+        key="pv_p", name="PV Input Power", icon="mdi:solar-power", on_data_updated=pv_p_data_updated)
     GEN_RLY = GeneratorRelayEntry(key="gen_rly", name="Generator Relay")
-    TOTALGRIDBUY_E = EnergyTotalIncreasingEntry(key="totalgridbuy_e", name="Total Grid Buy Energy", post_process=totalgridbuy_e_post_process)
+    TOTALGRIDBUY_E = EnergyTotalIncreasingEntry(key="totalgridbuy_e", name="Total Grid Buy Energy", on_data_updated=totalgridbuy_e_data_updated)
 
     UPDATE_COUNTER = SensorMapEntry(
         key="update_count", name="Update Count", icon="mdi:information-outline", state_class=SensorStateClass.TOTAL,
-        post_process=update_count_post_process
+        on_data_updated=update_count_data_updated
         )
 
     '''For backwards compatibility.
@@ -186,14 +172,11 @@ class SolArkSensorMap(SensorMap):
     This will prevent the appearance of a restart, when in fact, the counter has just rolled over.'''
     UPDATE_CNT = SensorMapEntry(
         key="update_cnt", name="Update Count - 16 bit rollover", icon="mdi:information-outline", state_class=SensorStateClass.TOTAL,
-        entity_registry_enabled_default=False, entity_category = EntityCategory.DIAGNOSTIC, post_process=update_cnt_post_process
+        entity_category = EntityCategory.DIAGNOSTIC, on_data_updated=update_cnt_data_updated
         )
 
-    CONFIG_INFO = ConfigEntry(
-        key="config_info", name="Configuration Information", exclude_from_recorder=True, post_process=config_info_post_process,
-        post_process_sensor=config_info_post_process_sensor, should_poll=False
-        )
+    CONFIG_INFO = ConfigEntry(key="config_info", name="Configuration Information")
 
-    HAS_FAULT = BinaryEntry(
-        key="has_fault", name="ZZ Has Inverter Fault", post_process=has_fault_post_process
-    )
+    HAS_FAULT = BinaryProblemEntry(key="has_fault", name="ZZ Has Inverter Fault", on_data_updated=has_fault_data_updated)
+
+    UPDATE_LAST_DURATION = DiagnosticEntry(key="update_last_duration", name="Update - Last Duration")

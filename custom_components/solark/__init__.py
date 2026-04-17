@@ -6,6 +6,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
+from .base_map_list import BaseMapEntryList
+
 # This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
 from .config_entry import SolArkConfigEntry
 from .config_versions import ConfigVersions
@@ -31,6 +33,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Make sure the first data read completes before adding entities. This prevents empty/None data
     await coordinator.async_config_entry_first_refresh()
+
+    # Set the configured entities to be enabled by default
+    BaseMapEntryList.set_config_enabled_by_default(entry)
 
     # Forward to the normal sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

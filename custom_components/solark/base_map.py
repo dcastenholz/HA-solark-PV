@@ -11,6 +11,7 @@ from .register_value_types import SensorValue
 _LOGGER = logging.getLogger(__name__)
 
 TEntry = TypeVar("TEntry", bound=BaseMapEntry)
+TFilter = TypeVar("TFilter", bound=EntityDescription)
 
 if TYPE_CHECKING:
     from .data import SolArkData
@@ -47,6 +48,10 @@ class BaseMap(Generic[TEntry], ABC):
 
         cls._class_entries = cls._collect_entries(cls.__mro__, entry_type)
 
+    def set_enabled_by_default(self, ):
+        for entry in self._entries:
+            entry.entity_description.entity_registry_enabled_default = True
+
     def _validate_entry(self, entry: BaseMapEntry) -> None:
         for cls in reversed(type(entry).mro()):
             if cls is BaseMapEntry:
@@ -70,12 +75,12 @@ class BaseMap(Generic[TEntry], ABC):
     # ----------------------------------
     # Post process methods
     # ----------------------------------
-    def post_process(self):
+    def on_data_updated(self):
         """Post-process the register map entries after reading the raw values from the inverter."""
         # TODO - Handle case where the dependency registers were not read. Value is None
         for entry in self:
-            if entry.post_process is not None:
-                entry.do_post_process(self.runtime_data)
+            if entry.data_updated is not None:
+                entry.on_data_updated(self.runtime_data)
 
     @staticmethod
     def _collect_entries(mro: tuple[type, ...], entry_cls: Type[Any]) -> list[TEntry]:
@@ -90,6 +95,27 @@ class BaseMap(Generic[TEntry], ABC):
 
         return entries
 
+    # @property
+    # def descriptions(self) -> list[EntityDescription]:
+    #     return [
+    #         entry.entity_description
+    #         for entry in self._entries
+    #         # Modern HA does not allow use EntityCategory.CONFIG for sensors.
+    #         if entry.entity_description.entity_category != EntityCategory.CONFIG
+    #     ]
+
+    # def entries_of(self, entry_type: type[TFilter]) -> list[TFilter]:
+    #     return [e for e in self._entries if isinstance(e, entry_type)]
+
+    def descriptions_of_type(self, entry_type: type[TFilter]) -> list[TFilter]:
+        return [
+            entry.entity_description
+            for entry in self._entries
+            # Modern HA does not allow use EntityCategory.CONFIG for sensors.
+            if isinstance(entry.entity_description, entry_type)
+            and entry.entity_description.entity_category != EntityCategory.CONFIG
+        ]
+
     # ---- override points ----
     def _sort(self):
         pass
@@ -100,14 +126,6 @@ class BaseMap(Generic[TEntry], ABC):
     # ---- shared API ----
     def __iter__(self) -> Iterator[TEntry]:
         return iter(self._entries)
-
-    def get_descriptions(self) -> list[EntityDescription]:
-        return [
-            entry.entity_description
-            for entry in self._entries
-            # Modern HA does not allow use EntityCategory.CONFIG for sensors.
-            if entry.entity_description.entity_category != EntityCategory.CONFIG
-        ]
 
     def as_dict(self) -> dict[str, SensorValue]:
         return {

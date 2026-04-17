@@ -21,7 +21,7 @@ from .modbus_config import ModbusConfig
 from .pymodbus_wrapper import ModbusClientWrapper, ModbusResponse, ModbusResponseError
 from .register_map import RegisterMapEntry
 from .register_map_entry import DataType, StringEntry
-from .register_value_types import NumericValue, SensorValue
+from .register_value_types import NumericValue
 from .solark_binary_payload_decoder import ModbusDecodeError, SolArkBinaryPayloadDecoder
 from .solark_register_map import SolArkRegisterMap
 
@@ -87,7 +87,7 @@ class SolArkModbusClient():
         if self._register_map.is_error():
             _LOGGER.error("Reading inverter data failed!")
 
-        return self._register_map.is_error()
+        return not self._register_map.is_error()
 
     def read_modbus_realtime_data(self) -> bool:
         """Read the real-time data from the inverter and store the results in the register map."""
@@ -109,7 +109,7 @@ class SolArkModbusClient():
         self._process_register_range(self._register_map.TIMEOFUSE_ENABLED, self._register_map.TIMEOFUSE_ENABLED_6)  # R248 - R279
         self._process_register_range(self._register_map.BMS_CHARGING_VOLTAGE, self._register_map.BMS_TEMP)  # R312 - R319
 
-        return self._register_map.is_error()
+        return not self._register_map.is_error()
 
     def _process_register_range(self, start_register: RegisterMapEntry, end_register: RegisterMapEntry | None = None):
         """Read the holding registers and decode the vlues for a range of RegisterMapEntry objects."""
@@ -139,7 +139,7 @@ class SolArkModbusClient():
         entries = self._register_map.entries_register_read_in_range(start_register, end_register)
         self._decode_register_map_entries(decoder, entries)
 
-    def _decode_register_map_entries(self, decoder: SolArkBinaryPayloadDecoder, entries: Iterator[RegisterMapEntry]):
+    def _decode_register_map_entries(self, decoder: SolArkBinaryPayloadDecoder, entries: Iterator[RegisterMapEntry]) -> None:
         """Decode the Modbus response registers and update the register map entries with the decoded values."""
         next_address: int | None = None
 

@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, List, Optional, TypeVar
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import EntityDescription
 
+from .base_map import BaseMap
 from .config_data import ConfigData
 from .const import ATTR_MANUFACTURER, DOMAIN
 from .coordinator_data import CoordinatorData
@@ -22,6 +24,8 @@ if TYPE_CHECKING:
     from .coordinator import SolArkCoordinator
     from .solark_sensor_map import SolArkSensorMap
 
+TFilter = TypeVar("TFilter", bound=EntityDescription)
+
 @dataclass
 class SolArkData:
     hass: HomeAssistant
@@ -30,10 +34,13 @@ class SolArkData:
     modbus_config: ModbusConfig
     modbus_client: SolArkModbusClient
     device_info: DeviceInfo
-    register_map: SolArkRegisterMap
-    calculated_sensor_map: SolArkSensorMap
     coordinator_metrics: CoordinatorMetrics
     last_successful_read_data: CoordinatorData | None
+
+    register_map: SolArkRegisterMap
+    calculated_sensor_map: SolArkSensorMap
+
+    entry_maps: List[BaseMap]
 
     _coordinator: Optional["SolArkCoordinator"] = None
 
@@ -61,6 +68,9 @@ class SolArkData:
             name=self.config_entry.name,
             manufacturer=ATTR_MANUFACTURER,
         )
+
+        self.entry_maps = [self.register_map, self.calculated_sensor_map]
+
         self.coordinator_metrics = CoordinatorMetrics()
 
         self.last_successful_read_data = None
@@ -83,6 +93,23 @@ class SolArkData:
     def coordinator(self, value: "SolArkCoordinator") -> None:
         self._coordinator = value
 
+    # @property
+    # def descriptions(self) -> list[EntityDescription]:
+    #     descriptions: list[EntityDescription] = []
+
+    #     for entry_map in self.entry_maps:
+    #         descriptions += entry_map.descriptions
+
+    #     return descriptions
+
+    def descriptions_of_type(self, entry_type: type[TFilter]) -> list[TFilter]:
+        descriptions: list[TFilter] = []
+
+        for entry_map in self.entry_maps:
+            descriptions += entry_map.descriptions_of_type(entry_type)
+
+        return descriptions
+
     async def close(self) -> None:
         """Cleanly shut down all allocated resources."""
         # Stop the coordinator if it exists
@@ -94,20 +121,27 @@ class SolArkData:
     def current_data(self) -> dict[str, Any]:
         return {**self.register_map.as_dict(), **self.calculated_sensor_map.as_dict()}
 
+    # ----------------------------------
+    # Update data events
+    # ----------------------------------
     def on_startup(self):
         self.coordinator_metrics.on_startup()
         return
 
-    def on_start(self):
-        self.coordinator_metrics.on_start()
+    def on_data_reading(self):
+        self.coordinator_metrics.on_updating()
         return
 
-    def on_success(self):
+    def on_data_read(self):
         self.last_successful_read_data = CoordinatorData(data=self.current_data, timestamp=datetime.now())
         # Increment update counter
-        self.coordinator_metrics.on_success()
+        self.coordinator_metrics.on_updated()
         return
 
-    def on_failure(self):
-        self.coordinator_metrics.on_failure()
+    def on_data_read_failed(self):
+        self.coordinator_metrics.on_update_failed()
+        return
+
+    def on_shutdown(self):
+        self.coordinator_metrics.on_shutdown()
         return

@@ -3,29 +3,35 @@ from datetime import datetime, timedelta
 
 class CoordinatorMetrics:
     _update_count: int = 0
-    _last_start_timestamp: datetime
-    _last_complete_timestamp: datetime
-    _last_successful_timestamp: datetime
-    _last_unsuccessful_timestamp: datetime
+
+    _last_startup_timestamp: datetime
+    _last_shutdown_timestamp: datetime
+    _last_updating_timestamp: datetime
+    _last_updated_timestamp: datetime
+    _last_update_failed_timestamp: datetime
 
     def on_startup(self):
         self._update_count = 0
         return
 
-    def on_start(self):
-        self._last_start_timestamp = datetime.now()
+    def on_shutdown(self):
+        self._last_shutdown_timestamp = datetime.now()
         return
 
-    def on_success(self):
-        self._last_complete_timestamp = datetime.now()
+    def on_updating(self):
+        self._last_startup_timestamp = datetime.now()
+        return
+
+    def on_updated(self):
+        self._last_updating_timestamp = datetime.now()
         # Increment update counter
         self._update_count += 1
-        self._last_successful_timestamp = datetime.now()
+        self._last_updated_timestamp = datetime.now()
         return
 
-    def on_failure(self):
-        self._last_complete_timestamp = datetime.now()
-        self._last_unsuccessful_timestamp = datetime.now()
+    def on_update_failed(self):
+        self._last_updating_timestamp = datetime.now()
+        self._last_update_failed_timestamp = datetime.now()
         return
 
     @property
@@ -34,12 +40,12 @@ class CoordinatorMetrics:
 
     @property
     def last_successful_timestamp(self) -> datetime:
-        return self._last_successful_timestamp
+        return self._last_updated_timestamp
 
     @property
-    def last_unsuccessful_timestamp(self) -> datetime:
-        return self._last_unsuccessful_timestamp
+    def last_failure_timestamp(self) -> datetime:
+        return self._last_update_failed_timestamp
 
     @property
     def last_update_duration(self) -> timedelta:
-        return self._last_complete_timestamp - self._last_start_timestamp
+        return self._last_updating_timestamp - self._last_startup_timestamp

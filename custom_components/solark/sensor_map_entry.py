@@ -1,18 +1,18 @@
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict, Unpack, cast
-from unittest.mock import DEFAULT
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import EntityCategory
 
 from .base_map_entry import BaseMapEntry
+from .config_sensor import ConfigSensor
 from .map_entry_lookup import MapEntryLookup
 from .register_value_types import SensorValue
 from .sensor_entity_description import NativeUnit, SensorClass, SolArkSensorEntityDescription
 
 if TYPE_CHECKING:
     from .data import SolArkData
-    from .sensor import SolArkSensor
+    from .sensor import SolArkStaticValueSensor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,10 +24,9 @@ class SensorMapEntryOptional(TypedDict, total=False):
     description: str
     exclude_from_recorder: bool
     should_poll: bool
-    extra_state_attributes: dict[str, Any]
     dynamic_icon: Callable[["SensorValue"], str | None]
 
-    post_process_sensor: Callable[["SolArkSensor", "SolArkData"], None]
+    on_sensor_creating: Callable[["SolArkStaticValueSensor", "SolArkData"], None]
     device_class: SensorDeviceClass
     sensor_class: SensorClass
 
@@ -35,7 +34,7 @@ class SensorMapEntryOptional(TypedDict, total=False):
     state_class: Optional[SensorStateClass]
     native_unit: NativeUnit
 
-    post_process: Callable[[Any, "SolArkData"], None]
+    on_data_updated: Callable[[Any, "SolArkData"], None]
     scale: float
     offset: int
 
@@ -46,7 +45,6 @@ class SensorMapEntry(BaseMapEntry["SensorMapEntry", "SolArkSensorEntityDescripti
     state_class: SensorStateClass | None
 
     DEFAULTS = {
-        "entity_registry_enabled_default": False,
         "exclude_from_recorder": False,
 
         "sensor_class": SensorClass.NORMAL,
@@ -61,38 +59,21 @@ class SensorMapEntry(BaseMapEntry["SensorMapEntry", "SolArkSensorEntityDescripti
         # -----------------------------
         # Normalize into guaranteed dict
         # -----------------------------
-        # opts: dict[str, Any] = dict(kwargs)
         opts = self.opts
 
         # -----------------------------
         # entity description build
         # -----------------------------
-        self._entity_description = SolArkSensorEntityDescription(
+        self._entity_description = SolArkSensorEntityDescription.from_kwargs(
             key=key,
             name=name,
-
-            icon=opts.get("icon"),
-            entity_registry_enabled_default=opts["entity_registry_enabled_default"],
-            entity_category=opts.get("entity_category"),
-            description=opts.get("description"),
-            exclude_from_recorder=opts["exclude_from_recorder"],
-            should_poll=opts.get("should_poll"),
-            extra_state_attributes=opts.get("extra_state_attributes") or {},
-            dynamic_icon=opts.get("dynamic_icon"),
-
-            post_process_sensor=opts.get("post_process_sensor"),
-            device_class=opts.get("device_class"),
-            sensor_class=opts["sensor_class"],
-
-            suggested_display_precision=opts.get("suggested_display_precision"),
-            state_class=opts.get("state_class"),
-            native_unit=opts.get("native_unit"),
+            opts=opts
         )
 
         # -----------------------------
         # store fields
         # -----------------------------
-        self.post_process = opts.get("post_process")
+        self.data_updated = opts.get("on_data_updated")
         self.scale = opts["scale"]
         self.offset = opts["offset"]
 
@@ -134,10 +115,25 @@ class DiagnosticEntry(SensorMapEntry):
 # Config
 # ----------------------------
 class ConfigEntry(SensorMapEntry):
+    # @staticmethod
+    # def data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+    #     entry.sensor_value = runtime_data.name
+    #     return
+
+    @staticmethod
+    def sensor_creating(sensor: "SolArkStaticValueSensor", runtime_data: "SolArkData") -> None:
+        sensor._attr_native_value = runtime_data.name   # pylint: disable=protected-access
+        sensor.extra_state_attributes = ConfigSensor.get_data(runtime_data.config_entry)
+        return
+
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "entity_category": EntityCategory.DIAGNOSTIC,
-        "sensor_class": SensorClass.BASE,
+        "sensor_class": SensorClass.STATIC_VALUE,
+        # "on_data_updated": data_updated,
+        "on_sensor_creating": sensor_creating,
+        "should_poll": False,
+        "exclude_from_recorder": True,
     }
 
 
@@ -153,11 +149,11 @@ class GeneratorRelayEntry(MapEntryLookup, SensorMapEntry):
     }
 
     @staticmethod
-    def post_process_method(entry: "GeneratorRelayEntry", runtime_data: "SolArkData") -> None:
+    def data_updated(entry: "GeneratorRelayEntry", runtime_data: "SolArkData") -> None:
         raw: int = cast(int, runtime_data.register_map.GEN_RLY_RAW.register_value) & 0x0F  # mask low 4 bits
         entry.sensor_value = entry.get_label_from_raw(raw)
 
     DEFAULTS = {
         "state_class": None,
-        "post_process": post_process_method,
+        "on_data_updated": data_updated,
     }
