@@ -1,7 +1,6 @@
 from .data import SolArkData
 
 from .device_info import SolArkDeviceInfo
-from homeassistant.core import HomeAssistant
 
 class DatChangeHandlers():
     _runtime_data: SolArkData

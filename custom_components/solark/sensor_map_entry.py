@@ -149,11 +149,11 @@ class GeneratorRelayEntry(MapEntryLookup, SensorMapEntry):
     }
 
     @staticmethod
-    def data_updated(entry: "GeneratorRelayEntry", runtime_data: "SolArkData") -> None:
+    def _data_updated(entry: "GeneratorRelayEntry", runtime_data: "SolArkData") -> None:
         raw: int = cast(int, runtime_data.register_map.GEN_RLY_RAW.register_value) & 0x0F  # mask low 4 bits
         entry.sensor_value = entry.get_label_from_raw(raw)
 
     DEFAULTS = {
         "state_class": None,
-        "on_data_updated": data_updated,
+        "on_data_updated": _data_updated,
     }

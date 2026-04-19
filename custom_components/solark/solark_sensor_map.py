@@ -21,7 +21,6 @@ from .solark_register_map import SolArkRegisterMap
 
 if TYPE_CHECKING:
     from .data import SolArkData
-    from .sensor import SolArkSensorEntity
 
 # ----------------------------
 # Helpers
@@ -115,19 +114,19 @@ def totalgridbuy_e_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkDa
     return
 
 @staticmethod
-def update_count_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def update_cnt_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
     import warnings
     warnings.warn(
         "update_cnt is deprecated, use update_count",
         DeprecationWarning,
         stacklevel=2,
     )
-    entry.sensor_value = runtime_data.coordinator_metrics.update_count & 0xFFFF
+    entry.sensor_value = runtime_data.coordinator_metrics.update_count() & 0xFFFF
     return
 
 @staticmethod
-def update_cnt_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-    entry.sensor_value = runtime_data.coordinator_metrics.update_count
+def update_count_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+    entry.sensor_value = runtime_data.coordinator_metrics.update_count()
     return
 
 @staticmethod
@@ -137,7 +136,7 @@ def has_fault_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") 
     return
 
 class SolArkSensorMap(SensorMap):
-
+    '''Class that declares sensors that need custom code to process other data'''
     # ----------------------------------
     # Post processed sensor definitions
     # ----------------------------------
@@ -153,30 +152,30 @@ class SolArkSensorMap(SensorMap):
     # Caution: this is used by the hub to indicate a communication error with the device.
     # TODO - Another option is to create another entity, with the old one set to be not enabled by default.
     FAULTMSG = SensorMapEntry(
-        key="faultmsg", name="Inverter error Message", icon="mdi:message-alert-outline",
-        on_data_updated=faultmsg_data_updated
-        )
+        key="faultmsg", name="Inverter error Message", icon="mdi:message-alert-outline", on_data_updated=faultmsg_data_updated)
 
     PV_P = PowerEntry(
         key="pv_p", name="PV Input Power", icon="mdi:solar-power", on_data_updated=pv_p_data_updated)
     GEN_RLY = GeneratorRelayEntry(key="gen_rly", name="Generator Relay")
     TOTALGRIDBUY_E = EnergyTotalIncreasingEntry(key="totalgridbuy_e", name="Total Grid Buy Energy", on_data_updated=totalgridbuy_e_data_updated)
 
-    UPDATE_COUNTER = SensorMapEntry(
-        key="update_count", name="Update Count", icon="mdi:information-outline", state_class=SensorStateClass.TOTAL,
-        on_data_updated=update_count_data_updated
-        )
+    CONFIG_INFO = ConfigEntry(key="config_info", name="Configuration Information")
+
+
+
+# TODO - BELOW are all metrics. Move to metrics map and finish
+    HAS_FAULT = BinaryProblemEntry(key="has_fault", name="ZZ Has Inverter Fault", on_data_updated=has_fault_data_updated)
+
+    UPDATE_LAST_DURATION = DiagnosticEntry(key="update_last_duration", name="Update - Last Duration")
+
+    # UPDATE_COUNTER = SensorMapEntry(
+    #     key="update_count", name="Update Count", icon="mdi:information-outline", state_class=SensorStateClass.TOTAL,
+    #     on_data_updated=update_count_data_updated)
 
     '''For backwards compatibility.
     New underlying count property will not roll over under normal conditions.
     This will prevent the appearance of a restart, when in fact, the counter has just rolled over.'''
     UPDATE_CNT = SensorMapEntry(
         key="update_cnt", name="Update Count - 16 bit rollover", icon="mdi:information-outline", state_class=SensorStateClass.TOTAL,
-        entity_category = EntityCategory.DIAGNOSTIC, on_data_updated=update_cnt_data_updated
-        )
+        entity_category = EntityCategory.DIAGNOSTIC, on_data_updated=update_cnt_data_updated)
 
-    CONFIG_INFO = ConfigEntry(key="config_info", name="Configuration Information")
-
-    HAS_FAULT = BinaryProblemEntry(key="has_fault", name="ZZ Has Inverter Fault", on_data_updated=has_fault_data_updated)
-
-    UPDATE_LAST_DURATION = DiagnosticEntry(key="update_last_duration", name="Update - Last Duration")

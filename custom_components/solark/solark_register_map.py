@@ -42,9 +42,9 @@ class SolArkRegisterMap(RegisterMap):
     INFO_RATED_POWER = PowerEntry(address=16, key="info_rated_power", scale=0.1, name="Rated Power", icon="mdi:solar-power", data_type=DataType.UINT32, entity_category=EntityCategory.DIAGNOSTIC)
     INFO_MPPT_PHASE_COUNTS_RAW = RawInfoEntry(address=18, key="info_mppt_phase_raw", name="MPPT & Phase")
 
-    SYSTEM_TIME_YM_RAW = RawValueSystemTimeEntry(address=22, key="system_time_ym_raw", name="System Time Year Month", exclude_from_recorder=True)
-    SYSTEM_TIME_DH_RAW = RawValueSystemTimeEntry(address=23, key="system_time_DH_raw", name="System Time Day Hour", exclude_from_recorder=True)
-    SYSTEM_TIME_MS_RAW = RawValueSystemTimeEntry(address=24, key="system_time_ms_raw", name="System Time Minute Second", exclude_from_recorder=True)
+    SYSTEM_TIME_YM_RAW = RawValueSystemTimeEntry(address=22, key="system_time_ym_raw", name="System Time Year Month")
+    SYSTEM_TIME_DH_RAW = RawValueSystemTimeEntry(address=23, key="system_time_DH_raw", name="System Time Day Hour")
+    SYSTEM_TIME_MS_RAW = RawValueSystemTimeEntry(address=24, key="system_time_ms_raw", name="System Time Minute Second")
 
     DAILYINV_E = EnergyEntry(address=60, key="dailyinv_e", name="Daily Inverter Energy", data_type=DataType.INT16)
 #    DAILYREA_E = EnergyEntry(address=61, key="dailyrea_e", name="Daily Reactive Energy", data_type=DataType.INT16)

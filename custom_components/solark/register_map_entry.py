@@ -144,7 +144,7 @@ class RawValueSystemTimeEntry(RawValueEntry):
     excluded from history to avoid pointless database entries.'''
 
     DEFAULTS = {
-        "exclude_from_recorder": True,
+        # "exclude_from_recorder": True,
     }
 
 
@@ -333,11 +333,11 @@ class GridRelayEntry(MapEntryLookup, RegisterMapEntry):
     }
 
     @staticmethod
-    def data_updated(entry: "GridRelayEntry", runtime_data: "SolArkData") -> None:
+    def _data_updated(entry: "GridRelayEntry", runtime_data: "SolArkData") -> None:
         raw: int = int(entry)
         entry.sensor_value = entry.get_label_from_raw(raw)
 
     DEFAULTS = {
         "state_class": None,
-        "on_data_updated": data_updated,
+        "on_data_updated": _data_updated,
     }

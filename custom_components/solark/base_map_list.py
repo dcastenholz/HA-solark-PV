@@ -2,6 +2,7 @@ from dataclasses import replace
 
 from .base_map_entry import BaseMapEntry
 from .config_entry import SolArkConfigEntry
+from .solark_metrics_map import SolArkMetricsMap
 from .solark_register_map import SolArkRegisterMap
 from .solark_sensor_map import SolArkSensorMap
 
@@ -34,7 +35,7 @@ class BaseMapEntryList(list[BaseMapEntry]):
         SolArkRegisterMap.BATT_C,
 
         SolArkSensorMap.FAULTMSG,
-        SolArkSensorMap.UPDATE_COUNTER,
+        SolArkMetricsMap.UPDATE_COUNTER,
     ]
 
     # def set_enabled_by_default(entry_list: list[BaseMapEntry]):

@@ -98,11 +98,20 @@ class SolArkCoordinatorSensor(SolArkCoordinatorEntity, SolArkSensorEntity):
         SolArkCoordinatorEntity.__init__(self, runtime_data.coordinator)
 
     @property
+    def data(self):
+        return self.runtime_data.coordinator.data
+
+    @property
     def native_value(self):
         data = self.data
         if data is None:
             return None
         return data.get(self.entity_description.key)
+
+
+class SolArkMetricsSensor(SolArkCoordinatorSensor):
+    '''Sensor to handle coordinator metrics'''
+    pass
 
 
 class SolArkTOU_TimeSensor(SolArkCoordinatorSensor):
@@ -146,6 +155,7 @@ SENSOR_CLASS_MAP = {
     SensorClass.NORMAL: SolArkCoordinatorSensor,
     SensorClass.DATETIME: SolArkDateTimeSensor,
     SensorClass.TOU_TIME: SolArkTOU_TimeSensor,
+    SensorClass.METRICS: SolArkMetricsSensor,
 }
 
 def _get_sensor_class(sensor_class: SensorClass) -> type[SolArkSensorEntity]:

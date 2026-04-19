@@ -2,16 +2,15 @@ import logging
 from datetime import timedelta
 from typing import Any
 
-from .data_change_handlers import DatChangeHandlers
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .data_change_dispatcher import DataChangeDispatcher
 from .coordinator_data import CoordinatorData
+from .coordinator_metrics import CoordinatorMetrics
 from .data import SolArkData
+from .data_change_dispatcher import DataChangeDispatcher
+from .data_change_handlers import DatChangeHandlers
 from .modbus_client import SolArkModbusClient
 from .register_value_types import SensorValue
-from .solark_register_map import SolArkRegisterMap
-from .solark_sensor_map import SolArkSensorMap
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,67 +31,76 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
 
     _runtime_data: SolArkData
     _data_read_error: bool = False
+    _coordinator_metrics: CoordinatorMetrics
 
     def __init__(self, runtime_data: SolArkData):
         # Register the coordinator with the runtime_data
         self._runtime_data = runtime_data
         self._runtime_data.coordinator = self
 
-        self._runtime_data.on_startup()
-
-
+        # Set up data change listener to do special handling when registered data entries change.
         self._dispatcher = DataChangeDispatcher()
         self._data_change_handlers = DatChangeHandlers(self._runtime_data)
-        self._dispatcher.register(self._runtime_data.register_map.SN.key, self._data_change_handlers.SN_change_handler)
+        # Set the serial number in the device after it is read or changes.
+        self._dispatcher.register(self._runtime_data.register_map.SN, self._data_change_handlers.SN_change_handler)
 
-        name = self._runtime_data.name
+        self.coordinator_metrics = CoordinatorMetrics()
+        self.coordinator_metrics.on_startup()
 
         super().__init__(
             runtime_data.hass,
             _LOGGER,
-            name=name,
+            name=self._runtime_data.name,
             update_interval=timedelta(seconds=runtime_data.scan_interval),
         )
 
+        # We want to attempt read the inverter information registers until we have read them successfully a single time.
         self.has_inverter_data = False
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Read the data from the inverter and return it as a dictionary."""
-        register_map: SolArkRegisterMap = self._runtime_data.register_map
-        calculated_sensor_map: SolArkSensorMap = self._runtime_data.calculated_sensor_map
 
-        # TODO - Move to runtime_data??
-        register_map.set_error(False)  # Initialize the register map before reading
+        self.coordinator_metrics.on_data_updating()
+        return_data: dict[str, Any]
 
-        data_read_successful = await self._async_data_read()
+        # Perform the required modbus data reads
+        data_read_successful: bool = await self._async_data_read()
 
         if data_read_successful:
             # If we already have a read failure, post processing is unnecessary and may fail as well.
             try:
-                await self.hass.async_add_executor_job(register_map.on_data_updated)
-                await self.hass.async_add_executor_job(calculated_sensor_map.on_data_updated)
+                await self.hass.async_add_executor_job(self._runtime_data.register_map.on_data_updated)
+                await self.hass.async_add_executor_job(self._runtime_data.calculated_sensor_map.on_data_updated)
 
             except Exception as e:
                 data_read_successful = False
                 _LOGGER.exception("Unexpected error post processing inverter data: %s", e)
 
-            _LOGGER.debug("Last data read duration: %s", self._runtime_data.coordinator_metrics.last_data_read_duration)
+            _LOGGER.debug("Last data read duration: %s", self.coordinator_metrics.last_data_read_duration)
 
         # Return the current data if valid, otherwise return cached previously read data.
         if data_read_successful:
             self._runtime_data.on_data_updated()
+            self.coordinator_metrics.on_data_updated()
+
             self._dispatcher.dispatch(self._runtime_data)
-            return self._runtime_data.current_data
+
+            return_data = self._runtime_data.current_data
         else:
-            return self._get_fallback_data()
+            return_data = self._get_fallback_data()
+
+        return return_data | self._runtime_data.metrics_map.data
 
     async def _async_data_read(self) -> bool:
-        # ----------------------------------
-        # Data update started
-        # ----------------------------------
-        self._runtime_data.on_data_reading()
-
         modbus_client: SolArkModbusClient = self._runtime_data.modbus_client
+
+        # Initialize the register map prior to attempting read
+        self._runtime_data.register_map.init()
+
+        # ----------------------------------
+        # Modbus data read starting
+        # ----------------------------------
+        self.coordinator_metrics.on_data_reading()
 
         if not self.has_inverter_data:  # Inverter serial number is only fetched once
             try:
@@ -113,13 +121,14 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
             _LOGGER.exception("Unexpected error reading realtime data: %s", e)
 
         if success:
-            self._runtime_data.on_data_read()
+            # record the success of the data read
+            self.coordinator_metrics.on_data_read()
         else:
-            # Just record the failure.
-            self._runtime_data.on_data_read_failed()
+            # Just record the failure of the data read
+            self.coordinator_metrics.on_data_read_failed()
 
         # ----------------------------------
-        # Data update completed
+        # Modbus data read completed
         # ----------------------------------
         return success
 
@@ -138,6 +147,8 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
                     "Using last known values (%.1f seconds old) due to communication error",
                     data.age.seconds,
                 )
+                # Record the return of stale data
+                self.coordinator_metrics.on_return_stale_data()
                 return self._runtime_data.last_data_updated.data
 
             # Data is too stale, so log error
@@ -149,6 +160,8 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
             _LOGGER.error("No successful data read since integration was started")
 
         # TODO - implement separate sensor for this
+        # Record the return of stale data
+        self.coordinator_metrics.on_return_stale_data()
         return {"faultmsg": "Communication lost with inverter"}
 
     async def async_stop(self, *_):
@@ -157,3 +170,6 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
             await self.hass.async_add_executor_job(self._runtime_data.modbus_client.close)
         except Exception as exc:
             _LOGGER.error("Error stopping coordinator: %s", exc, exc_info=True)
+
+        self._dispatcher.clear()
+        self.coordinator_metrics.on_shutdown()

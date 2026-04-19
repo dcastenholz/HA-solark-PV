@@ -6,3 +6,4 @@ class SensorClass(Enum):
     NORMAL = auto()
     DATETIME = auto()
     TOU_TIME = auto()
+    METRICS = auto()

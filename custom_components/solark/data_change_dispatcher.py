@@ -1,6 +1,8 @@
 from collections import defaultdict
 from typing import Any, Callable
 import logging
+
+from .base_map_entry import BaseMapEntry
 from .data import SolArkData
 
 _LOGGER = logging.getLogger(__name__)
@@ -14,13 +16,18 @@ class DataChangeDispatcher:
     def __init__(self) -> None:
         self._listeners: dict[str, list[Listener]] = defaultdict(list)
 
-    def register(self, key: str, callback: Listener) -> None:
+    def register(self, entry: BaseMapEntry, callback: Listener) -> None:
+        key = entry.key
         if callback not in self._listeners[key]:
             self._listeners[key].append(callback)
 
     def unregister(self, key: str, callback: Listener) -> None:
         if callback in self._listeners.get(key, []):
             self._listeners[key].remove(callback)
+
+    def clear(self) -> None:
+        """Remove all listeners (used on shutdown)."""
+        self._listeners.clear()
 
     def _dispatch(self, old: dict[str, Any] | None, new: dict[str, Any]) -> None:
         """Compare dicts and call listeners for changed keys."""

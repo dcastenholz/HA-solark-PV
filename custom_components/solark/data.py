@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional, TypeVar
 
@@ -16,6 +16,7 @@ from .coordinator_data import CoordinatorData
 from .coordinator_metrics import CoordinatorMetrics
 from .modbus_client import SolArkModbusClient
 from .modbus_config import ModbusConfig
+from .solark_metrics_map import SolArkMetricsMap
 from .solark_register_map import SolArkRegisterMap
 
 if TYPE_CHECKING:
@@ -38,12 +39,13 @@ class SolArkData:
 
     register_map: SolArkRegisterMap
     calculated_sensor_map: SolArkSensorMap
+    metrics_map: SolArkMetricsMap
 
     entry_maps: List[BaseMap]
 
     # This MUST be initialized so the
-    previous_data_updated: CoordinatorData = field(default_factory=lambda: CoordinatorData({}, datetime.now()))
-    last_data_updated: CoordinatorData = field(default_factory=lambda: CoordinatorData({}, datetime.now()))
+    previous_data_updated: CoordinatorData
+    last_data_updated: CoordinatorData
 
     _coordinator: Optional["SolArkCoordinator"] = None
 
@@ -61,10 +63,12 @@ class SolArkData:
         self.config_entry = SolArkConfigEntry(hass, entry)
         self.config_entry.runtime_data = self
 
-        self.config_data = ConfigData.from_storage_data(self.config_entry)
-        self.modbus_config = ModbusConfig(self.config_data)
         self.register_map = SolArkRegisterMap(self)
         self.calculated_sensor_map = SolArkSensorMap(self)
+        self.metrics_map = SolArkMetricsMap(self)
+
+        self.config_data = ConfigData.from_storage_data(self.config_entry)
+        self.modbus_config = ModbusConfig(self.config_data)
         self.modbus_client = SolArkModbusClient(self.modbus_config, self.register_map)
         self.device_info = DeviceInfo(
             identifiers={(DOMAIN, self.config_entry.name)},
@@ -72,9 +76,13 @@ class SolArkData:
             manufacturer=ATTR_MANUFACTURER,
         )
 
-        self.entry_maps = [self.register_map, self.calculated_sensor_map]
+        self.entry_maps = [self.register_map, self.calculated_sensor_map, self.metrics_map]
 
         self.coordinator_metrics = CoordinatorMetrics()
+
+        # This MUST be initialized so the
+        self.previous_data_updated = CoordinatorData({}, datetime.now())
+        self.last_data_updated = CoordinatorData({}, datetime.now())
 
     @property
     def name(self) -> str:
@@ -120,33 +128,12 @@ class SolArkData:
 
     @property
     def current_data(self) -> dict[str, Any]:
-        return {**self.register_map.as_dict(), **self.calculated_sensor_map.as_dict()}
+        return {**self.register_map.data, **self.calculated_sensor_map.data}
 
     # ----------------------------------
     # Update data lifecycle events
     # ----------------------------------
-    def on_startup(self):
-        self.coordinator_metrics.on_startup()
-        return
-
-    def on_data_reading(self):
-        self.coordinator_metrics.on_data_reading()
-        return
-
-    def on_data_read(self):
-        self.coordinator_metrics.on_data_read()
-        return
-
-    def on_data_read_failed(self):
-        self.coordinator_metrics.on_data_read_failed()
-        return
-
     def on_data_updated(self):
         self.previous_data_updated = self.last_data_updated
         self.last_data_updated = CoordinatorData(data=self.current_data, timestamp=datetime.now())
-        self.coordinator_metrics.on_data_updated()
-        return
-
-    def on_shutdown(self):
-        self.coordinator_metrics.on_shutdown()
         return

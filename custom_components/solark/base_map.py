@@ -1,6 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Iterator, Type, TypeVar, cast
+from unittest.mock import PropertyMock
 
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.entity import EntityDescription
@@ -127,7 +128,8 @@ class BaseMap(Generic[TEntry], ABC):
     def __iter__(self) -> Iterator[TEntry]:
         return iter(self._entries)
 
-    def as_dict(self) -> dict[str, SensorValue]:
+    @property
+    def data(self) -> dict[str, SensorValue]:
         return {
             entry.entity_description.key: entry.sensor_value
             for entry in self._entries
