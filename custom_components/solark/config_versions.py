@@ -8,7 +8,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry
 
 from .config_connection_type import CONNECTION_TCP, ConnectionType
-from .const import DEFAULT_PORT, MAX_DEVICE_ID
+from .config_schema import CONF_MAX_STALE_DATA_AGE_SECONDS
+from .const import DEFAULT_MAX_STALE_DATA_AGE_SECONDS, DEFAULT_PORT, DEFAULT_SCAN_INTERVAL, MAX_DEVICE_ID
 
 if TYPE_CHECKING:
     from .config_data import ConfigData
@@ -28,6 +29,7 @@ class ConfigVersions:
         for entity in entity_registry.async_entries_for_config_entry(registry, entry.entry_id):
             unique_id = entity.unique_id
 
+            # TODO - validate this!!!
             # Example: rename entity_id
             if unique_id.endswith("_totalgrid_e"):
                 new_entity_id = entity.entity_id.replace(
@@ -85,13 +87,15 @@ class ConfigVersions:
         if parsed.params.isdigit() and int(parsed.params) < MAX_DEVICE_ID:
             config_data.device_id = int(parsed.params)
 
-        config_data.scan_interval = data[CONF_SCAN_INTERVAL]
+        config_data.scan_interval = data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+        config_data.max_stale_data_age_seconds = data.get(CONF_MAX_STALE_DATA_AGE_SECONDS, DEFAULT_MAX_STALE_DATA_AGE_SECONDS)
 
     @staticmethod
     def to_storage_data_v1(config_data: "ConfigData") -> dict[str, str]:
         data: dict[str, Any] = {
             CONF_NAME: config_data.name,
             CONF_SCAN_INTERVAL: config_data.scan_interval,
+            CONF_MAX_STALE_DATA_AGE_SECONDS: config_data.max_stale_data_age_seconds,
         }
 
         """Add the VERSION 1 canonical host string for the entry."""

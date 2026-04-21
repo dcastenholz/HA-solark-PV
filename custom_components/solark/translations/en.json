@@ -6,7 +6,8 @@
         "data": {
           "name": "Sensor prefix used in HA",
           "connection_type": "Connection type",
-          "scan_interval": "Polling period in seconds"
+          "scan_interval": "Polling period (seconds)",
+          "max_stale_data_age_seconds": "Max time to show recent/cached data on failure (seconds)"
         }
       },
       "reconfigure": {
@@ -14,7 +15,8 @@
         "data": {
           "name": "Sensor prefix used in HA",
           "connection_type": "Connection type",
-          "scan_interval": "Polling period in seconds"
+          "scan_interval": "Polling period (seconds)",
+          "max_stale_data_age_seconds": "Max time to show recent/cached data on failure (seconds)"
         }
       },
       "tcp": {

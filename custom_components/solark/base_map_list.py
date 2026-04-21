@@ -1,7 +1,8 @@
 from dataclasses import replace
 
+from homeassistant.config_entries import ConfigEntry
+
 from .base_map_entry import BaseMapEntry
-from .config_entry import SolArkConfigEntry
 from .solark_metrics_map import SolArkMetricsMap
 from .solark_register_map import SolArkRegisterMap
 from .solark_sensor_map import SolArkSensorMap
@@ -35,12 +36,8 @@ class BaseMapEntryList(list[BaseMapEntry]):
         SolArkRegisterMap.BATT_C,
 
         SolArkSensorMap.FAULTMSG,
-        SolArkMetricsMap.UPDATE_COUNTER,
+        SolArkMetricsMap.UPDATE_SUCCESSFUL_COUNT,
     ]
-
-    # def set_enabled_by_default(entry_list: list[BaseMapEntry]):
-    #     for entry in entry_list:
-    #         entry.entity_description.entity_registry_enabled_default = True
 
 
     @classmethod
@@ -55,6 +52,6 @@ class BaseMapEntryList(list[BaseMapEntry]):
                 )
 
     @classmethod
-    def set_config_enabled_by_default(cls, entry: SolArkConfigEntry) -> None:
+    def set_config_enabled_by_default(cls, entry: ConfigEntry) -> None:
         # TODO - Get the list from the config entry
         cls.set_enabled_by_default(BaseMapEntryList.ENABLED_BY_DEFAULT_CLASSIC)

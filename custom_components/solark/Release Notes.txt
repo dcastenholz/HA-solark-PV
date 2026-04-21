@@ -15,8 +15,7 @@ custom_components/solark/
 │   └── SolArkModbusClient        # handles Modbus communication
 │
 ├── config_entry.py
-│   └── SolArkConfigEntry(ConfigEntry)
-│       └─ runtime_data: SolArkData
+│   └─ runtime_data: SolArkData
 │
 ├── data.py
 │   └── SolArkData

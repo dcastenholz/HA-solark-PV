@@ -2,15 +2,17 @@ import ipaddress
 import re
 import socket
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import voluptuous as vol
 
 from .config_connection_type import ConnectionType
-from .config_data import ConfigData
 from .const import MAX_DEVICE_ID, MAX_PORT_NUMBER
 
+if TYPE_CHECKING:
+    from .config_data import ConfigData
 
-# TODO - https://developers.home-assistant.io/docs/core/integration-quality-scale/rules/runtime-data/
+
 @dataclass
 class ModbusConfig:
     # Common connection parameters
@@ -24,7 +26,7 @@ class ModbusConfig:
     # Serial
     serial_port: str | None
 
-    def __init__(self, config_data: ConfigData):
+    def __init__(self, config_data: "ConfigData"):
         self.name = config_data.name
         self.device_id = config_data.device_id
         self.connection_type = config_data.connection_type

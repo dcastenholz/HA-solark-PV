@@ -1,9 +1,8 @@
 ''' Class for defining and processing entries that are read from registers, or calculated from other entries or static data.'''
 from abc import ABC
 
-from .base_map_entry import BaseMapEntry
-
 from .base_map import BaseMap
+from .base_map_entry import BaseMapEntry
 
 
 class SensorMap(BaseMap[BaseMapEntry], ABC):

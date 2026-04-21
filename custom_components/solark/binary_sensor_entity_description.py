@@ -17,7 +17,9 @@ if TYPE_CHECKING:
 class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
     """SolArk-specific sensor description."""
     sensor_class: BinarySensorClass = BinarySensorClass.BINARY
+    # TODO - Is this needed at all???
     description: str | None = None
+    # TODO - Is this needed at all???
     exclude_from_recorder: bool = False
     # should_poll is ignored for coordinator sensors.
     should_poll: bool = True

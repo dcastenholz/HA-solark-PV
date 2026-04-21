@@ -8,8 +8,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-# This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
-from .config_entry import SolArkConfigEntry
 from .const import FORMAT_TOU_SENSORS_24HOUR
 from .data import SolArkData
 from .register_value_types import SensorValue
@@ -18,9 +16,6 @@ from .sensor_entity_description import SolArkSensorEntityDescription
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
-    # This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
-    entry = SolArkConfigEntry(hass, entry)
-
     runtime_data: SolArkData = entry.runtime_data
 
     entities = []
@@ -39,19 +34,19 @@ class SolArkSensorEntity(SensorEntity):
     All sensor classes used in a SensorMap must inherit from this."""
 
     def __init__(self, runtime_data: SolArkData, description: SolArkSensorEntityDescription):
-        if description.on_sensor_creating:
-            description.on_sensor_creating(self, runtime_data)
-
         self.runtime_data = runtime_data
         self.entity_description: SolArkSensorEntityDescription = description
 
         # Setting the entity_description on a SensorEntity handles most properties,
         # but some need to be set specifically or modified
-        self._attr_name = f"{runtime_data.name} {description.name}"
+        self._attr_name = f"{runtime_data.name} {description.name_prefix}{description.name}"
         self._attr_unique_id = f"{runtime_data.name}_{description.key}"
         self._attr_device_info = runtime_data.device_info
         self._attr_exclude_from_recorder = description.exclude_from_recorder
         self._attr_should_poll = description.should_poll
+
+        if description.on_sensor_creating:
+            description.on_sensor_creating(self, runtime_data)
 
     @property
     def icon(self) -> str | None:

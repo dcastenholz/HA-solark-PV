@@ -1,7 +1,6 @@
 import logging
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Iterator, Type, TypeVar, cast
-from unittest.mock import PropertyMock
 
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.entity import EntityDescription

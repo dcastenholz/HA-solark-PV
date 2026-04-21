@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -14,7 +14,7 @@ from .map_entry_lookup import MapEntryLookup
 from .register_value_types import RegisterValue, SensorValue
 from .sensor_dynamic_icon import SensorDynamicIcon
 from .sensor_entity_description import NativeUnit, SensorClass
-from .sensor_map_entry import SensorMapEntry, SensorMapEntryOptional
+from .sensor_map_entry import SensorMapEntry
 
 if TYPE_CHECKING:
     from .data import SolArkData
@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 # ----------------------------------
 # Data Type Enum
 # ----------------------------------
+# TODO - Unused strings??? convert to auto()
 class DataType(Enum):
     INT16 = "int16"
     UINT16 = "uint16"
@@ -31,6 +32,28 @@ class DataType(Enum):
     UINT32 = "uint32"
     INT64 = "int64"
     UINT64 = "uint64"
+
+
+class RegisterMapEntryOptional(TypedDict, total=False):
+    icon: str
+    entity_registry_enabled_default: bool
+    entity_category: EntityCategory
+    description: str
+    exclude_from_recorder: bool
+    should_poll: bool
+    dynamic_icon: Callable[["SensorValue"], str | None]
+
+    on_sensor_creating: Callable[["SolArkSensorEntity", "SolArkData"], None]
+    device_class: SensorDeviceClass
+    sensor_class: SensorClass
+
+    suggested_display_precision: int
+    state_class: Optional[SensorStateClass]
+    native_unit: NativeUnit
+
+    on_data_updated: Callable[[Any, "SolArkData"], None]
+    scale: float
+    offset: int
 
 
 # ----------------------------------
@@ -47,14 +70,27 @@ class RegisterMapEntry(SensorMapEntry):
     """
     address: int
     data_type: DataType
+    scale: float
+    offset: int
 
     _register_value: RegisterValue
 
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
+    DEFAULTS = {
+        "scale": 1.0,
+        "offset": 0,
+    }
+
+    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterMapEntryOptional]) -> None:
+        super().__init__(key, name, **kwargs)
+
         self.address = address
         self.data_type = data_type
 
-        super().__init__(key, name, **kwargs)
+        # -----------------------------
+        # Store fields using kwargs merged with DEFAULTS
+        # -----------------------------
+        self.scale = self.opts["scale"]
+        self.offset = self.opts["offset"]
 
     @property
     def register_value(self) -> RegisterValue:
@@ -98,19 +134,12 @@ class RawValueEntry(RegisterMapEntry):
     '''Values read from registers that are not normally displayed in UI screens.
     These are values that change over time and will produce history if enabled.'''
 
-    RAW_PREFIX = "Raw Value -"
-
-    @staticmethod
-    def sensor_creating(sensor: "SolArkSensorEntity", runtime_data: "SolArkData") -> None:
-        name = str(sensor.name)
-        if name and not name.startswith(RawValueEntry.RAW_PREFIX):
-            sensor.name = RawValueEntry.RAW_PREFIX + name
-
     DEFAULTS = {
         "icon": "mdi:code-braces",
         "entity_category": EntityCategory.DIAGNOSTIC,
         "state_class": SensorStateClass.MEASUREMENT,
-        "on_sensor_creating": sensor_creating,
+        # "on_sensor_creating": sensor_creating,
+        "name_prefix": "Raw Value: ",
     }
 
 
@@ -121,17 +150,12 @@ class RawInfoEntry(RegisterMapEntry):
     '''Values read from registers that are not normally displayed in UI screens.
     These are mostly static values that do not typically change over time.'''
 
-    RAW_PREFIX = "Raw Info -"
-
-    @staticmethod
-    def sensor_creating(sensor: "SolArkSensorEntity", runtime_data: "SolArkData") -> None:
-        name = str(sensor.name)
-        if name and not name.startswith(RawValueEntry.RAW_PREFIX):
-            sensor.name = RawValueEntry.RAW_PREFIX + name
-
     DEFAULTS = {
+        "icon": "mdi:code-braces",
+        "entity_category": EntityCategory.DIAGNOSTIC,
         "state_class": None,
-        "on_sensor_creating": sensor_creating,
+        # "on_sensor_creating": sensor_creating,
+        "name_prefix": "Raw Info: ",
     }
 
 
@@ -154,7 +178,7 @@ class RawValueSystemTimeEntry(RawValueEntry):
 class StringEntry(RegisterMapEntry):
     length: int
 
-    def __init__(self, address: int, key: str, name: str, length: int, data_type: DataType = DataType.INT16, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
+    def __init__(self, address: int, key: str, name: str, length: int, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterMapEntryOptional]) -> None:
         self.length = length
 
         super().__init__(address, key, name, data_type, **kwargs)
@@ -172,6 +196,24 @@ class StringEntry(RegisterMapEntry):
             raise ValueError(f"StringEntry with length < 1 for {self._entity_description.key}")
         return self.length
 
+
+# ----------------------------
+# Serial Number Entry
+# ----------------------------
+class SerialNumberEntry(StringEntry):
+    @staticmethod
+    def _data_updated(entry: SerialNumberEntry, runtime_data: "SolArkData") -> None:
+        '''Save the serial number to the device info serial number property'''
+
+        from .device_info import SolArkDeviceInfo
+        SolArkDeviceInfo.handle_serial_number_change(runtime_data, str(entry.sensor_value))
+        # change_handler: DatChangeHandlers = DatChangeHandlers(runtime_data)
+        # change_handler.SN_change_handler(entry.sensor_value)
+
+    DEFAULTS = {
+        "on_data_updated": _data_updated,
+        # "length": 5
+    }
 
 # ----------------------------
 # Grid Voltage

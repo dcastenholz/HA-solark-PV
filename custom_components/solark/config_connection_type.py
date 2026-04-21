@@ -1,6 +1,7 @@
 from enum import Enum
 
 
+# TODO - Unused strings??? convert to auto()
 class ConnectionType(str, Enum):
     TCP = "tcp"
     RTU = "rtu"

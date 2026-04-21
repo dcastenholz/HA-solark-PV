@@ -6,13 +6,14 @@ from homeassistant.const import EntityCategory
 
 from .base_map_entry import BaseMapEntry
 from .config_sensor import ConfigSensor
+from .coordinator_metrics import CoordinatorMetrics
 from .map_entry_lookup import MapEntryLookup
 from .register_value_types import SensorValue
 from .sensor_entity_description import NativeUnit, SensorClass, SolArkSensorEntityDescription
 
 if TYPE_CHECKING:
     from .data import SolArkData
-    from .sensor import SolArkStaticValueSensor
+    from .sensor import SolArkSensorEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class SensorMapEntryOptional(TypedDict, total=False):
     should_poll: bool
     dynamic_icon: Callable[["SensorValue"], str | None]
 
-    on_sensor_creating: Callable[["SolArkStaticValueSensor", "SolArkData"], None]
+    on_sensor_creating: Callable[["SolArkSensorEntity", "SolArkData"], None]
     device_class: SensorDeviceClass
     sensor_class: SensorClass
 
@@ -35,48 +36,51 @@ class SensorMapEntryOptional(TypedDict, total=False):
     native_unit: NativeUnit
 
     on_data_updated: Callable[[Any, "SolArkData"], None]
-    scale: float
-    offset: int
 
 
-class SensorMapEntry(BaseMapEntry["SensorMapEntry", "SolArkSensorEntityDescription"]):
-    scale: float
-    offset: int
+class SensorMapEntry(BaseMapEntry["SolArkSensorEntityDescription"]):
     state_class: SensorStateClass | None
 
     DEFAULTS = {
-        "exclude_from_recorder": False,
-
         "sensor_class": SensorClass.NORMAL,
-
-        "scale": 1.0,
-        "offset": 0,
     }
 
     def __init__(self, key: str, name: str, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
         super().__init__(key, name, **kwargs)
 
-        # -----------------------------
-        # Normalize into guaranteed dict
-        # -----------------------------
-        opts = self.opts
-
-        # -----------------------------
-        # entity description build
-        # -----------------------------
-        self._entity_description = SolArkSensorEntityDescription.from_kwargs(
-            key=key,
-            name=name,
-            opts=opts
+    def _create_entity_description(self) -> SolArkSensorEntityDescription:
+        return SolArkSensorEntityDescription.from_kwargs(
+            key=self.key,
+            name=self.name,
+            opts=self.opts,
         )
 
-        # -----------------------------
-        # store fields
-        # -----------------------------
-        self.data_updated = opts.get("on_data_updated")
-        self.scale = opts["scale"]
-        self.offset = opts["offset"]
+class MetricsMapEntry(SensorMapEntry):
+    DEFAULTS = {
+        "icon": "mdi:information-outline",
+        "sensor_class": SensorClass.METRICS,
+        "entity_category": EntityCategory.DIAGNOSTIC,
+        "name_prefix": "Metric: ",
+    }
 
+    def __init__(
+        self,
+        key: str,
+        name: str,
+        metric: Callable[[CoordinatorMetrics], Any],
+    ) -> None:
+        self.metric = metric
+
+        super().__init__(
+            key,
+            name,
+            on_data_updated=self._on_data_updated,
+        )
+
+    def _on_data_updated(self, entry: Any, runtime_data: "SolArkData") -> None:
+        # compute metric result and store it as sensor value
+        # entry == self (kept for API compatibility)
+        entry.sensor_value = self.metric(runtime_data.coordinator_metrics)
 
 # ----------------------------
 # Power
@@ -92,9 +96,8 @@ class PowerEntry(SensorMapEntry):
 # ----------------------------
 # Energy Total Increasing
 # ----------------------------
-class EnergyTotalIncreasingEntry(SensorMapEntry):
+class EnergyTotalIncreasingCalculatedEntry(SensorMapEntry):
     DEFAULTS = {
-        "scale": 0.1,
         "native_unit": NativeUnit.KWH,
         "device_class": SensorDeviceClass.ENERGY,
         "state_class": SensorStateClass.TOTAL_INCREASING,
@@ -121,7 +124,7 @@ class ConfigEntry(SensorMapEntry):
     #     return
 
     @staticmethod
-    def sensor_creating(sensor: "SolArkStaticValueSensor", runtime_data: "SolArkData") -> None:
+    def sensor_creating(sensor: "SolArkSensorEntity", runtime_data: "SolArkData") -> None:
         sensor._attr_native_value = runtime_data.name   # pylint: disable=protected-access
         sensor.extra_state_attributes = ConfigSensor.get_data(runtime_data.config_entry)
         return

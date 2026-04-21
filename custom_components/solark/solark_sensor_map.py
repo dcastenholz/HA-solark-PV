@@ -1,8 +1,8 @@
 import calendar
 import datetime
-from typing import TYPE_CHECKING, cast
+import random
+from typing import TYPE_CHECKING
 
-from homeassistant.components.sensor import EntityCategory, SensorStateClass
 from homeassistant.util import dt
 
 from .binary_sensor_map_entry import BinaryProblemEntry
@@ -12,7 +12,7 @@ from .sensor_map import SensorMap
 from .sensor_map_entry import (
     ConfigEntry,
     DiagnosticEntry,
-    EnergyTotalIncreasingEntry,
+    EnergyTotalIncreasingCalculatedEntry,
     GeneratorRelayEntry,
     PowerEntry,
     SensorMapEntry,
@@ -109,30 +109,14 @@ def totalgridbuy_e_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkDa
     low: int = int(runtime_data.register_map.TOTALGRIDBUY_E_LOW_RAW)
     value_int: int = (high << 16) | low
     # We need to handle scale here because of the discontiguous component registers
-    value_float: float = value_int * entry.scale
+    scale = 0.1
+    value_float: float = value_int * scale
     entry.sensor_value = value_float
     return
 
 @staticmethod
-def update_cnt_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-    import warnings
-    warnings.warn(
-        "update_cnt is deprecated, use update_count",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    entry.sensor_value = runtime_data.coordinator_metrics.update_count() & 0xFFFF
-    return
-
-@staticmethod
-def update_count_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-    entry.sensor_value = runtime_data.coordinator_metrics.update_count()
-    return
-
-@staticmethod
 def has_fault_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
-
-    entry.sensor_value = cast(int, runtime_data.register_map.SYSTEM_TIME_MS_RAW.register_value) % 3 == 0
+    entry.sensor_value = random.choice([True, False])
     return
 
 class SolArkSensorMap(SensorMap):
@@ -154,10 +138,9 @@ class SolArkSensorMap(SensorMap):
     FAULTMSG = SensorMapEntry(
         key="faultmsg", name="Inverter error Message", icon="mdi:message-alert-outline", on_data_updated=faultmsg_data_updated)
 
-    PV_P = PowerEntry(
-        key="pv_p", name="PV Input Power", icon="mdi:solar-power", on_data_updated=pv_p_data_updated)
+    PV_P = PowerEntry(key="pv_p", name="PV Input Power", icon="mdi:solar-power", on_data_updated=pv_p_data_updated)
     GEN_RLY = GeneratorRelayEntry(key="gen_rly", name="Generator Relay")
-    TOTALGRIDBUY_E = EnergyTotalIncreasingEntry(key="totalgridbuy_e", name="Total Grid Buy Energy", on_data_updated=totalgridbuy_e_data_updated)
+    TOTALGRIDBUY_E = EnergyTotalIncreasingCalculatedEntry(key="totalgridbuy_e", name="Total Grid Buy Energy", on_data_updated=totalgridbuy_e_data_updated)
 
     CONFIG_INFO = ConfigEntry(key="config_info", name="Configuration Information")
 
@@ -165,17 +148,3 @@ class SolArkSensorMap(SensorMap):
 
 # TODO - BELOW are all metrics. Move to metrics map and finish
     HAS_FAULT = BinaryProblemEntry(key="has_fault", name="ZZ Has Inverter Fault", on_data_updated=has_fault_data_updated)
-
-    UPDATE_LAST_DURATION = DiagnosticEntry(key="update_last_duration", name="Update - Last Duration")
-
-    # UPDATE_COUNTER = SensorMapEntry(
-    #     key="update_count", name="Update Count", icon="mdi:information-outline", state_class=SensorStateClass.TOTAL,
-    #     on_data_updated=update_count_data_updated)
-
-    '''For backwards compatibility.
-    New underlying count property will not roll over under normal conditions.
-    This will prevent the appearance of a restart, when in fact, the counter has just rolled over.'''
-    UPDATE_CNT = SensorMapEntry(
-        key="update_cnt", name="Update Count - 16 bit rollover", icon="mdi:information-outline", state_class=SensorStateClass.TOTAL,
-        entity_category = EntityCategory.DIAGNOSTIC, on_data_updated=update_cnt_data_updated)
-

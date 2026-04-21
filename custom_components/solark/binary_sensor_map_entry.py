@@ -32,35 +32,20 @@ class BinarySensorMapEntryOptional(TypedDict, total=False):
     on_data_updated: Callable[[Any, "SolArkData"], None]
 
 
-class BinarySensorMapEntry(BaseMapEntry["BinarySensorMapEntry", SolArkBinarySensorEntityDescription]):
+class BinarySensorMapEntry(BaseMapEntry[SolArkBinarySensorEntityDescription]):
     DEFAULTS = {
-        "exclude_from_recorder": False,
-
         "sensor_class": BinarySensorClass.BINARY,
     }
 
     def __init__(self, key: str, name: str, **kwargs: Unpack[BinarySensorMapEntryOptional]) -> None:
         super().__init__(key, name, **kwargs)
 
-        # -----------------------------
-        # Normalize into guaranteed dict
-        # -----------------------------
-        opts = self.opts
-
-        # -----------------------------
-        # entity description build
-        # -----------------------------
-        self._entity_description = SolArkBinarySensorEntityDescription.from_kwargs(
-            key=key,
-            name=name,
-            opts=opts
+    def _create_entity_description(self) -> SolArkBinarySensorEntityDescription:
+        return SolArkBinarySensorEntityDescription.from_kwargs(
+            key=self.key,
+            name=self.name,
+            opts=self.opts,
         )
-
-        # -----------------------------
-        # store fields
-        # -----------------------------
-        self.data_updated = opts.get("data_updated")
-
 
 # ----------------------------
 # Binary

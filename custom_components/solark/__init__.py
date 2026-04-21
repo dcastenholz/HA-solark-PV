@@ -9,7 +9,6 @@ from homeassistant.core import HomeAssistant
 from .base_map_list import BaseMapEntryList
 
 # This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
-from .config_entry import SolArkConfigEntry
 from .config_versions import ConfigVersions
 from .coordinator import SolArkCoordinator
 from .data import SolArkData
@@ -21,13 +20,13 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 ALLOW_VERSION_UPDATE: bool = False
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    # This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
-    entry = SolArkConfigEntry(hass, entry)
-
+    """Load configuration entry."""
     runtime_data = SolArkData(hass, entry)
 
     coordinator = SolArkCoordinator(runtime_data)
     runtime_data.coordinator = coordinator
+
+    await runtime_data.on_load_entry()
 
     entry.runtime_data = runtime_data
 
@@ -43,27 +42,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload SolArk Modbus entry."""
-    # This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
-    entry = SolArkConfigEntry(hass, entry)
+    """Unload configuration entry."""
 
-    runtime_data = entry.runtime_data
+    runtime_data: SolArkData = entry.runtime_data
+
+    # Save coordinator metrics
+    await runtime_data.store_metrics()
 
     # Unload all the sensor entities
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if not unload_ok:
+        # TODO - Is this correct???
         return False
 
     # Shutdown resources encapsulated in SolArkData
-    await runtime_data.close()
+    await runtime_data.on_unload_entry()
     entry.runtime_data = None
 
     _LOGGER.debug("SolArk hub '%s' unloaded cleanly", runtime_data.name)
     return True
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate config entry from older version to new version."""
+    """Migrate configuration entry from older version to new version."""
 
     if not ALLOW_VERSION_UPDATE:
         return True

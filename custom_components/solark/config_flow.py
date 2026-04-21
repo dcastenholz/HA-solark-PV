@@ -5,14 +5,22 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.config_entries import CONN_CLASS_LOCAL_POLL, ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_NAME, CONF_SCAN_INTERVAL
+from homeassistant.const import CONF_DEVICE_ID, CONF_NAME, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 
 from .config_connection_type import ConnectionType
 from .config_data import ConfigData
-from .config_schema import CONF_CONNECTION_TYPE, SolArkConfigSchema
+from .config_schema import (
+    CONF_CONNECTION_TYPE,
+    CONF_MAX_STALE_DATA_AGE_SECONDS,
+    CONF_RTU_PORT,
+    CONF_TCP_HOST,
+    CONF_TCP_PORT,
+    SolArkConfigSchema,
+)
 from .const import (
     DEFAULT_HOST,
+    DEFAULT_MAX_STALE_DATA_AGE_SECONDS,
     DEFAULT_NAME,
     DEFAULT_PORT_RTU,
     DEFAULT_SCAN_INTERVAL,
@@ -24,12 +32,6 @@ from .modbus_config import (
     is_valid_tcp_host,
     is_valid_tcp_port,
 )
-
-CONF_TCP_HOST = "tcp_host"
-CONF_TCP_PORT = "tcp_port"
-CONF_RTU_PORT = "rtu_port"
-CONF_DEVICE_ID = "device_id"
-
 
 # ------------------------------------------------------------
 # Config Flow
@@ -85,6 +87,7 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
             if not errors:
                 self._config_data.name = name
                 self._config_data.scan_interval = user_input[CONF_SCAN_INTERVAL]
+                self._config_data.max_stale_data_age_seconds = user_input[CONF_MAX_STALE_DATA_AGE_SECONDS]
                 self._config_data.connection_type = user_input[CONF_CONNECTION_TYPE]
 
                 if self._config_data.connection_type == ConnectionType.TCP:
@@ -200,6 +203,7 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
 
             self._config_data.name = entry.data.get(CONF_NAME, DEFAULT_NAME)
             self._config_data.scan_interval = entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+            self._config_data.max_stale_data_age_seconds = entry.data.get(CONF_MAX_STALE_DATA_AGE_SECONDS, DEFAULT_MAX_STALE_DATA_AGE_SECONDS)
             self._config_data.device_id = config_data.device_id
 
             if config_data.connection_type == ConnectionType.TCP:

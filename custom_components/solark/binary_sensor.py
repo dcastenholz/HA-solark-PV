@@ -7,15 +7,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .binary_sensor_class import BinarySensorClass
 from .binary_sensor_entity_description import SolArkBinarySensorEntityDescription
 
-# This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
-from .config_entry import SolArkConfigEntry
 from .data import SolArkData
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
-    # This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
-    entry = SolArkConfigEntry(hass, entry)
-
     runtime_data: SolArkData = entry.runtime_data
 
     entities = []

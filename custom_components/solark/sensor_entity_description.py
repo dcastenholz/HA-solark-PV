@@ -52,6 +52,7 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
     should_poll: bool = True
     dynamic_icon: Callable[["SensorValue"], str] | None = None
     on_sensor_creating: Callable[["SolArkSensorEntity", "SolArkData"], None] | None = None
+    name_prefix: str = ""
 
     @classmethod
     def from_kwargs(
@@ -69,6 +70,7 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
             "should_poll",
             "dynamic_icon",
             "on_sensor_creating",
+            "name_prefix",
 
             # SensorEntityDescription
             "device_class",

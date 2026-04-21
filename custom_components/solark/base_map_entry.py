@@ -1,5 +1,5 @@
 import logging
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, Generic, Self, TypedDict, TypeVar, Union
 
 from homeassistant.components.sensor import EntityDescription
@@ -13,10 +13,10 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-TEntry = TypeVar("TEntry", bound="BaseMapEntry")
+# TEntry = TypeVar("TEntry", bound="BaseMapEntry")
 TEntityDescription = TypeVar("TEntityDescription", bound=EntityDescription)
 
-class BaseMapEntryOptional(Generic[TEntry], TypedDict, total=False):
+class BaseMapEntryOptional(TypedDict, total=False):
     icon: str
     entity_registry_enabled_default: bool
     entity_category: EntityCategory
@@ -30,7 +30,7 @@ class BaseMapEntryOptional(Generic[TEntry], TypedDict, total=False):
     on_data_updated: Callable[[Any, "SolArkData"], None]
 
 
-class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
+class BaseMapEntry(Generic[TEntityDescription], ABC):
     """
     Abstract base class for all SolArk map entries.
 
@@ -41,12 +41,12 @@ class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
     - Numeric conversion helpers
     """
     DEFAULTS: dict[str, Any] = {
+        "exclude_from_recorder": False,
         "entity_registry_enabled_default": False,
     }
 
     _merged_defaults: dict[str, Any]
-
-    opts: dict[str, Any] = {}
+    opts: dict[str, Any]
 
     key: str
     name: str
@@ -59,8 +59,15 @@ class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
         self.key = key
         self.name = name
 
-        # Set defaults in kwargs
+        # Merge any DEFAULTS class properties with kwargs
         self.opts = {**self._merged_defaults, **kwargs}
+
+        # -----------------------------
+        # Store fields using kwargs merged with DEFAULTS
+        # -----------------------------
+        self.data_updated = self.opts.get("on_data_updated")
+
+        self._entity_description = self._create_entity_description()
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -76,6 +83,10 @@ class BaseMapEntry(Generic[TEntry, TEntityDescription], ABC):
                 merged.update(defaults)
 
         cls._merged_defaults = merged
+
+    @abstractmethod
+    def _create_entity_description(self) -> TEntityDescription:
+        """Subclasses must construct the entity description."""
 
     # -----------------------------
     # Entity access
