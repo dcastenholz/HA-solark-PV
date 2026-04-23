@@ -6,7 +6,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .binary_sensor_class import BinarySensorClass
 from .binary_sensor_entity_description import SolArkBinarySensorEntityDescription
-
 from .data import SolArkData
 
 
@@ -64,11 +63,6 @@ class SolArkBinarySensor(BinarySensorEntity):
         if value is None:
             return None
 
-        # allow flexible mapping patterns
-        mapper = getattr(self.entity_description, "value_map", None)
-        if mapper:
-            return bool(mapper(value))
-
         # fallback: assume raw boolean/int
         return bool(value)
 
@@ -82,6 +76,6 @@ def _get_sensor_class(sensor_class: BinarySensorClass) -> type[SolArkBinarySenso
         return BINARYSENSOR_CLASS_MAP[sensor_class]
     except KeyError as err:
         raise ValueError(
-            f"Unhandled SensorClass: {sensor_class}. "
+            f"Unhandled BinarySensorClass: {sensor_class}. "
             f"BINARYSENSOR_CLASS_MAP is incomplete."
         ) from err

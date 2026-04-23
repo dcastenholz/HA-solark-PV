@@ -18,3 +18,4 @@ class DevOptions_ConfigData_DebugValues():  # pylint: disable=invalid-name
 
         config_data.scan_interval = 10
         config_data.max_stale_data_age_seconds = 30
+        config_data.tcp_host = "10.0.0.20"

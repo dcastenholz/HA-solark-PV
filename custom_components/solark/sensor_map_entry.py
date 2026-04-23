@@ -55,6 +55,7 @@ class SensorMapEntry(BaseMapEntry["SolArkSensorEntityDescription"]):
             opts=self.opts,
         )
 
+
 class MetricsMapEntry(SensorMapEntry):
     DEFAULTS = {
         "icon": "mdi:information-outline",
@@ -78,8 +79,7 @@ class MetricsMapEntry(SensorMapEntry):
         )
 
     def _on_data_updated(self, entry: Any, runtime_data: "SolArkData") -> None:
-        # compute metric result and store it as sensor value
-        # entry == self (kept for API compatibility)
+        # get metric result and store it as sensor value
         entry.sensor_value = self.metric(runtime_data.coordinator_metrics)
 
 # ----------------------------
@@ -153,8 +153,10 @@ class GeneratorRelayEntry(MapEntryLookup, SensorMapEntry):
 
     @staticmethod
     def _data_updated(entry: "GeneratorRelayEntry", runtime_data: "SolArkData") -> None:
-        raw: int = cast(int, runtime_data.register_map.GEN_RLY_RAW.register_value) & 0x0F  # mask low 4 bits
-        entry.sensor_value = entry.get_label_from_raw(raw)
+        entry.sensor_value = cast(int, runtime_data.register_map.GEN_RLY_RAW.register_value) & 0x0F  # mask low 4 bits
+        entry.set_mapped_sensor_value(entry)
+        # unmapped_sensor_value: int = cast(int, runtime_data.register_map.GEN_RLY_RAW.register_value) & 0x0F  # mask low 4 bits
+        # entry.sensor_value = entry.get_label_from_raw(unmapped_sensor_value)
 
     DEFAULTS = {
         "state_class": None,

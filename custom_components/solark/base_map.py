@@ -48,10 +48,6 @@ class BaseMap(Generic[TEntry], ABC):
 
         cls._class_entries = cls._collect_entries(cls.__mro__, entry_type)
 
-    def set_enabled_by_default(self, ):
-        for entry in self._entries:
-            entry.entity_description.entity_registry_enabled_default = True
-
     def _validate_entry(self, entry: BaseMapEntry) -> None:
         for cls in reversed(type(entry).mro()):
             if cls is BaseMapEntry:
@@ -94,18 +90,6 @@ class BaseMap(Generic[TEntry], ABC):
                     entries.append(cast(TEntry, value))
 
         return entries
-
-    # @property
-    # def descriptions(self) -> list[EntityDescription]:
-    #     return [
-    #         entry.entity_description
-    #         for entry in self._entries
-    #         # Modern HA does not allow use EntityCategory.CONFIG for sensors.
-    #         if entry.entity_description.entity_category != EntityCategory.CONFIG
-    #     ]
-
-    # def entries_of(self, entry_type: type[TFilter]) -> list[TFilter]:
-    #     return [e for e in self._entries if isinstance(e, entry_type)]
 
     def descriptions_of_type(self, entry_type: type[TFilter]) -> list[TFilter]:
         return [

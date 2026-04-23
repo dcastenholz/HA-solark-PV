@@ -2,8 +2,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, Generic, Self, TypedDict, TypeVar, Union
 
-from homeassistant.components.sensor import EntityDescription
 from homeassistant.const import EntityCategory
+from homeassistant.helpers.entity import EntityDescription
 from typing_extensions import Unpack
 
 from .register_value_types import NumericValue, SensorValue
@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-# TEntry = TypeVar("TEntry", bound="BaseMapEntry")
 TEntityDescription = TypeVar("TEntityDescription", bound=EntityDescription)
 
 class BaseMapEntryOptional(TypedDict, total=False):
@@ -26,7 +25,6 @@ class BaseMapEntryOptional(TypedDict, total=False):
     dynamic_icon: Callable[["SensorValue"], str | None]
 
     on_sensor_creating: Callable[[Any, "SolArkData"], None]
-
     on_data_updated: Callable[[Any, "SolArkData"], None]
 
 
@@ -106,6 +104,17 @@ class BaseMapEntry(Generic[TEntityDescription], ABC):
     @sensor_value.setter
     def sensor_value(self, value: SensorValue) -> None:
         self._sensor_value = value
+
+    # @property
+    # def entity_registry_enabled_default(self) -> bool:
+    #     """Return the current default enabled state."""
+    #     return self._entity_description.entity_registry_enabled_default
+
+
+    # @entity_registry_enabled_default.setter
+    # def entity_registry_enabled_default(self, enabled: bool) -> None:
+    #     """Set default enabled state by replacing the entity description."""
+    #     self._entity_description = EntityDescriptionHelper.set_entity_registry_enabled_default(self._entity_description, enabled)
 
     # -----------------------------
     # Validation hook

@@ -61,12 +61,14 @@ class SolArkSensorEntity(SensorEntity):
         """Default: no data source."""
         return None
 
+
 class SolArkCoordinatorEntity(CoordinatorEntity):
     """Adds coordinator data access only."""
 
     @property
     def data(self):
         return self.coordinator.data
+
 
 class SolArkStaticValueSensor(SolArkSensorEntity):
     """Sensors that do not depend on coordinator."""
@@ -148,9 +150,9 @@ class SolArkDateTimeSensor(SolArkCoordinatorSensor):
 SENSOR_CLASS_MAP = {
     SensorClass.STATIC_VALUE: SolArkStaticValueSensor,
     SensorClass.NORMAL: SolArkCoordinatorSensor,
-    SensorClass.DATETIME: SolArkDateTimeSensor,
-    SensorClass.TOU_TIME: SolArkTOU_TimeSensor,
     SensorClass.METRICS: SolArkMetricsSensor,
+    SensorClass.TOU_TIME: SolArkTOU_TimeSensor,
+    SensorClass.DATETIME: SolArkDateTimeSensor,
 }
 
 def _get_sensor_class(sensor_class: SensorClass) -> type[SolArkSensorEntity]:

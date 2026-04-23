@@ -1,8 +1,8 @@
-from dataclasses import replace
-
 from homeassistant.config_entries import ConfigEntry
 
+from .base_map import BaseMap
 from .base_map_entry import BaseMapEntry
+from .entity_description import EntityDescriptionHelper
 from .solark_metrics_map import SolArkMetricsMap
 from .solark_register_map import SolArkRegisterMap
 from .solark_sensor_map import SolArkSensorMap
@@ -40,18 +40,15 @@ class BaseMapEntryList(list[BaseMapEntry]):
     ]
 
 
-    @classmethod
-    def set_enabled_by_default(cls, entry_list: list[BaseMapEntry]) -> None:
-        enabled_keys = {e.entity_description.key for e in BaseMapEntryList.ENABLED_BY_DEFAULT_CLASSIC}
-
-        for entry in entry_list:
-            if entry.entity_description.key in enabled_keys:
-                entry.entity_description = replace(
-                    entry.entity_description,
-                    entity_registry_enabled_default=True,
-                )
+    @staticmethod
+    def _set_enabled_by_default(base_map_entry_list: list[BaseMapEntry]) -> None:
+        EntityDescriptionHelper.set_map_entity_registry_enabled_default(base_map_entry_list, True)
 
     @classmethod
     def set_config_enabled_by_default(cls, entry: ConfigEntry) -> None:
         # TODO - Get the list from the config entry
-        cls.set_enabled_by_default(BaseMapEntryList.ENABLED_BY_DEFAULT_CLASSIC)
+        cls._set_enabled_by_default(BaseMapEntryList.ENABLED_BY_DEFAULT_CLASSIC)
+
+    @classmethod
+    def set_map_enabled_by_default(cls, base_map: BaseMap) -> None:
+        EntityDescriptionHelper.set_map_entity_registry_enabled_default(base_map, True)

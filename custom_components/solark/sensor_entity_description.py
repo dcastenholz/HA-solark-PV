@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Callable
@@ -90,6 +91,22 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
             if k in passthrough and v is not None},
         }
 
+        # -----------------------------
+        # Derive precision from scale
+        # -----------------------------
+        if "suggested_display_precision" not in base_kwargs:
+            scale = opts.get("scale")
+
+            if isinstance(scale, (int, float)) and scale not in (0, 1):
+                try:
+                    precision = max(0, int(round(-math.log10(scale))))
+                    base_kwargs["suggested_display_precision"] = precision
+                except (ValueError, OverflowError):
+                    pass  # ignore invalid scale
+
+        # -----------------------------
+        # Unit handling
+        # -----------------------------
         unit = opts.get("native_unit")
         if unit is not None:
             base_kwargs["native_unit_of_measurement"] = unit.value

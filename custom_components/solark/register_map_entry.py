@@ -207,12 +207,9 @@ class SerialNumberEntry(StringEntry):
 
         from .device_info import SolArkDeviceInfo
         SolArkDeviceInfo.handle_serial_number_change(runtime_data, str(entry.sensor_value))
-        # change_handler: DatChangeHandlers = DatChangeHandlers(runtime_data)
-        # change_handler.SN_change_handler(entry.sensor_value)
 
     DEFAULTS = {
         "on_data_updated": _data_updated,
-        # "length": 5
     }
 
 # ----------------------------
@@ -376,8 +373,9 @@ class GridRelayEntry(MapEntryLookup, RegisterMapEntry):
 
     @staticmethod
     def _data_updated(entry: "GridRelayEntry", runtime_data: "SolArkData") -> None:
-        raw: int = int(entry)
-        entry.sensor_value = entry.get_label_from_raw(raw)
+        entry.set_mapped_sensor_value(entry)
+        # raw: int = int(entry)
+        # entry.sensor_value = entry.get_label_from_raw(raw)
 
     DEFAULTS = {
         "state_class": None,

@@ -7,6 +7,7 @@ from homeassistant.const import EntityCategory
 from .base_map_entry import BaseMapEntry
 from .binary_sensor_class import BinarySensorClass
 from .binary_sensor_entity_description import SolArkBinarySensorEntityDescription
+from .coordinator_metrics import CoordinatorMetrics
 from .register_value_types import SensorValue
 
 if TYPE_CHECKING:
@@ -54,3 +55,29 @@ class BinaryProblemEntry(BinarySensorMapEntry):
     DEFAULTS = {
         "device_class": BinarySensorDeviceClass.PROBLEM,
     }
+
+class BinaryMetricsMapEntry(BinarySensorMapEntry):
+    DEFAULTS = {
+        "icon": "mdi:information-outline",
+        "entity_category": EntityCategory.DIAGNOSTIC,
+        "name_prefix": "Metric: ",
+    }
+
+    def __init__(
+        self,
+        key: str,
+        name: str,
+        metric: Callable[[CoordinatorMetrics], Any],
+    ) -> None:
+        self.metric = metric
+
+        super().__init__(
+            key,
+            name,
+            on_data_updated=self._on_data_updated,
+        )
+
+    def _on_data_updated(self, entry: Any, runtime_data: "SolArkData") -> None:
+        # get metric result and store it as sensor value
+        entry.sensor_value = self.metric(runtime_data.coordinator_metrics)
+

@@ -6,7 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .base_map_list import BaseMapEntryList
+from .base_map_entry_list import BaseMapEntryList
 
 # This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
 from .config_versions import ConfigVersions
@@ -35,6 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Set the configured entities to be enabled by default
     BaseMapEntryList.set_config_enabled_by_default(entry)
+    BaseMapEntryList.set_map_enabled_by_default(runtime_data.metrics_map)
 
     # Forward to the normal sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
