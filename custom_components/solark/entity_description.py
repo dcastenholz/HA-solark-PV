@@ -1,12 +1,12 @@
 from dataclasses import replace
 from typing import Iterable, TypeVar
 
-from .base_map_entry import BaseMapEntry
 from homeassistant.helpers.entity import EntityDescription
 
+from .base_map_entry import BaseEntry
 
 TEntityDescription = TypeVar("TEntityDescription", bound=EntityDescription)
-TEntry = TypeVar("TEntry", bound=BaseMapEntry)
+TEntry = TypeVar("TEntry", bound=BaseEntry)
 
 class EntityDescriptionHelper():
     @staticmethod

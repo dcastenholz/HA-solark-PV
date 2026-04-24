@@ -10,11 +10,11 @@ from homeassistant.const import (
 )
 from typing_extensions import Unpack
 
-from .map_entry_lookup import MapEntryLookup
+from .map_entry_lookup import EntryLookup
 from .register_value_types import RegisterValue, SensorValue
 from .sensor_dynamic_icon import SensorDynamicIcon
 from .sensor_entity_description import NativeUnit, SensorClass
-from .sensor_map_entry import SensorMapEntry
+from .sensor_map_entry import SensorEntry
 
 if TYPE_CHECKING:
     from .data import SolArkData
@@ -34,7 +34,7 @@ class DataType(Enum):
     UINT64 = "uint64"
 
 
-class RegisterMapEntryOptional(TypedDict, total=False):
+class RegisterEntryOptional(TypedDict, total=False):
     icon: str
     entity_registry_enabled_default: bool
     entity_category: EntityCategory
@@ -59,7 +59,7 @@ class RegisterMapEntryOptional(TypedDict, total=False):
 # ----------------------------------
 # Register Map Entry
 # ----------------------------------
-class RegisterMapEntry(SensorMapEntry):
+class RegisterEntry(SensorEntry):
     """
     Modbus register-backed entry.
 
@@ -80,7 +80,7 @@ class RegisterMapEntry(SensorMapEntry):
         "offset": 0,
     }
 
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterMapEntryOptional]) -> None:
+    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]) -> None:
         super().__init__(key, name, **kwargs)
 
         self.address = address
@@ -112,9 +112,9 @@ class RegisterMapEntry(SensorMapEntry):
         self._sensor_value = value
 
     def _validate(self):
-        # RegisterMapEntry must have non-negative address
+        # RegisterEntry must have non-negative address
         if self.address < 0:
-            raise ValueError(f"RegisterMapEntry {self._entity_description.key}: address must be >= 0")
+            raise ValueError(f"RegisterEntry {self._entity_description.key}: address must be >= 0")
 
     @property
     def register_length(self) -> int:
@@ -127,58 +127,14 @@ class RegisterMapEntry(SensorMapEntry):
             return 4
         raise ValueError(f"Unknown DataType {self.data_type} for {self._entity_description.key}")
 
-# ----------------------------
-# Raw Value
-# ----------------------------
-class RawValueEntry(RegisterMapEntry):
-    '''Values read from registers that are not normally displayed in UI screens.
-    These are values that change over time and will produce history if enabled.'''
-
-    DEFAULTS = {
-        "icon": "mdi:code-braces",
-        "entity_category": EntityCategory.DIAGNOSTIC,
-        "state_class": SensorStateClass.MEASUREMENT,
-        # "on_sensor_creating": sensor_creating,
-        "name_prefix": "Raw Value: ",
-    }
-
-
-# ----------------------------
-# Raw Value
-# ----------------------------
-class RawInfoEntry(RegisterMapEntry):
-    '''Values read from registers that are not normally displayed in UI screens.
-    These are mostly static values that do not typically change over time.'''
-
-    DEFAULTS = {
-        "icon": "mdi:code-braces",
-        "entity_category": EntityCategory.DIAGNOSTIC,
-        "state_class": None,
-        # "on_sensor_creating": sensor_creating,
-        "name_prefix": "Raw Info: ",
-    }
-
-
-# ----------------------------
-# Raw Value System Time
-# ----------------------------
-class RawValueSystemTimeEntry(RawValueEntry):
-    '''Values read from registers that are not normally displayed in UI screens.
-    These are values that are based on the inverter system time but are specifically
-    excluded from history to avoid pointless database entries.'''
-
-    DEFAULTS = {
-        # "exclude_from_recorder": True,
-    }
-
 
 # ----------------------------
 # String
 # ----------------------------
-class StringEntry(RegisterMapEntry):
+class StringEntry(RegisterEntry):
     length: int
 
-    def __init__(self, address: int, key: str, name: str, length: int, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterMapEntryOptional]) -> None:
+    def __init__(self, address: int, key: str, name: str, length: int, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]) -> None:
         self.length = length
 
         super().__init__(address, key, name, data_type, **kwargs)
@@ -212,10 +168,55 @@ class SerialNumberEntry(StringEntry):
         "on_data_updated": _data_updated,
     }
 
+
+# ----------------------------
+# Raw Value
+# ----------------------------
+class RawValueEntry(RegisterEntry):
+    '''Values read from registers that are NOT normally displayed in UI screens.
+    These are values that change over time and will produce history if enabled.'''
+
+    DEFAULTS = {
+        "icon": "mdi:code-braces",
+        "entity_category": EntityCategory.DIAGNOSTIC,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "name_prefix": "Raw Value: ",
+    }
+
+
+# ----------------------------
+# Raw Value
+# ----------------------------
+class RawInfoEntry(RegisterEntry):
+    '''Values read from registers that are not normally displayed in UI screens.
+    These are mostly static values that do not typically change over time.'''
+
+    DEFAULTS = {
+        "icon": "mdi:code-braces",
+        "entity_category": EntityCategory.DIAGNOSTIC,
+        "state_class": None,
+        # "on_sensor_creating": sensor_creating,
+        "name_prefix": "Raw Info: ",
+    }
+
+
+# ----------------------------
+# Raw Value System Time
+# ----------------------------
+class RawValueSystemTimeEntry(RawValueEntry):
+    '''Values read from registers that are not normally displayed in UI screens.
+    These are values that are based on the inverter system time but are specifically
+    excluded from history to avoid pointless database entries.'''
+
+    DEFAULTS = {
+        # "exclude_from_recorder": True,
+    }
+
+
 # ----------------------------
 # Grid Voltage
 # ----------------------------
-class GridVoltageEntry(RegisterMapEntry):
+class GridVoltageEntry(RegisterEntry):
     DEFAULTS = {
         "icon": "mdi:flash",
         "scale": 0.1,
@@ -227,7 +228,7 @@ class GridVoltageEntry(RegisterMapEntry):
 # ----------------------------
 # Battery Voltage
 # ----------------------------
-class BatteryVoltageEntry(RegisterMapEntry):
+class BatteryVoltageEntry(RegisterEntry):
     DEFAULTS = {
         "icon": "mdi:battery-plus-outline",
         "scale": 0.01,
@@ -240,7 +241,7 @@ class BatteryVoltageEntry(RegisterMapEntry):
 # ----------------------------
 # PV Voltage
 # ----------------------------
-class PVVoltageEntry(RegisterMapEntry):
+class PVVoltageEntry(RegisterEntry):
     DEFAULTS = {
         "icon": "mdi:solar-power",
         "scale": 0.1,
@@ -252,7 +253,7 @@ class PVVoltageEntry(RegisterMapEntry):
 # ----------------------------
 # Frequency
 # ----------------------------
-class FrequencyEntry(RegisterMapEntry):
+class FrequencyEntry(RegisterEntry):
     DEFAULTS = {
         "icon": "mdi:sine-wave",
         "scale": 0.01,
@@ -265,7 +266,7 @@ class FrequencyEntry(RegisterMapEntry):
 # ----------------------------
 # Current
 # ----------------------------
-class CurrentEntry(RegisterMapEntry):
+class CurrentEntry(RegisterEntry):
     DEFAULTS = {
         "scale": 0.01,
         "native_unit": NativeUnit.A,
@@ -288,7 +289,7 @@ class BatteryCurrentEntry(CurrentEntry):
 # ----------------------------
 # Power
 # ----------------------------
-class PowerEntry(RegisterMapEntry):
+class PowerEntry(RegisterEntry):
     DEFAULTS = {
         "device_class": SensorDeviceClass.POWER,
         "state_class": SensorStateClass.MEASUREMENT,
@@ -299,7 +300,7 @@ class PowerEntry(RegisterMapEntry):
 # ----------------------------
 # Energy
 # ----------------------------
-class EnergyEntry(RegisterMapEntry):
+class EnergyEntry(RegisterEntry):
     DEFAULTS = {
         "scale": 0.1,
         "native_unit": NativeUnit.KWH,
@@ -320,7 +321,7 @@ class EnergyTotalIncreasingEntry(EnergyEntry):
 # ----------------------------
 # Temperature
 # ----------------------------
-class TemperatureEntry(RegisterMapEntry):
+class TemperatureEntry(RegisterEntry):
     DEFAULTS = {
         "scale": 0.1,
         "offset": 1000,
@@ -333,7 +334,7 @@ class TemperatureEntry(RegisterMapEntry):
 # ----------------------------
 # State of Charge
 # ----------------------------
-class SOCEntry(RegisterMapEntry):
+class SOCEntry(RegisterEntry):
     DEFAULTS = {
         "native_unit": NativeUnit.PERCENT,
         "device_class": SensorDeviceClass.BATTERY,
@@ -344,7 +345,7 @@ class SOCEntry(RegisterMapEntry):
 # ----------------------------
 # State of Charge
 # ----------------------------
-class TimeOfUseEnabledEntry(RegisterMapEntry):
+class TimeOfUseEnabledEntry(RegisterEntry):
     DEFAULTS = {
         "icon": "mdi:check-circle",
         "state_class": SensorStateClass.MEASUREMENT,
@@ -355,7 +356,7 @@ class TimeOfUseEnabledEntry(RegisterMapEntry):
 # ----------------------------
 # Time
 # ----------------------------
-class TimeOfUseTimeEntry(RegisterMapEntry):
+class TimeOfUseTimeEntry(RegisterEntry):
     DEFAULTS = {
         "icon": "mdi:clock-outline",
         "sensor_class": SensorClass.TOU_TIME,
@@ -365,7 +366,7 @@ class TimeOfUseTimeEntry(RegisterMapEntry):
 # ----------------------------
 # Grid Relay
 # ----------------------------
-class GridRelayEntry(MapEntryLookup, RegisterMapEntry):
+class GridRelayEntry(EntryLookup, RegisterEntry):
     LOOKUP_MAP = {
         0: ("Open", "mdi:electric-switch"),
         1: ("Closed", "mdi:electric-switch-closed"),

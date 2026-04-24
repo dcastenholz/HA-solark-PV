@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict, Unpack, ca
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import EntityCategory
 
-from .base_map_entry import BaseMapEntry
+from .base_map_entry import BaseEntry
 from .config_sensor import ConfigSensor
 from .coordinator_metrics import CoordinatorMetrics
-from .map_entry_lookup import MapEntryLookup
+from .map_entry_lookup import EntryLookup
 from .register_value_types import SensorValue
 from .sensor_entity_description import NativeUnit, SensorClass, SolArkSensorEntityDescription
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-class SensorMapEntryOptional(TypedDict, total=False):
+class SensorEntryOptional(TypedDict, total=False):
     icon: str
     entity_registry_enabled_default: bool
     entity_category: EntityCategory
@@ -38,14 +38,14 @@ class SensorMapEntryOptional(TypedDict, total=False):
     on_data_updated: Callable[[Any, "SolArkData"], None]
 
 
-class SensorMapEntry(BaseMapEntry["SolArkSensorEntityDescription"]):
+class SensorEntry(BaseEntry["SolArkSensorEntityDescription"]):
     state_class: SensorStateClass | None
 
     DEFAULTS = {
         "sensor_class": SensorClass.NORMAL,
     }
 
-    def __init__(self, key: str, name: str, **kwargs: Unpack[SensorMapEntryOptional]) -> None:
+    def __init__(self, key: str, name: str, **kwargs: Unpack[SensorEntryOptional]) -> None:
         super().__init__(key, name, **kwargs)
 
     def _create_entity_description(self) -> SolArkSensorEntityDescription:
@@ -56,7 +56,7 @@ class SensorMapEntry(BaseMapEntry["SolArkSensorEntityDescription"]):
         )
 
 
-class MetricsMapEntry(SensorMapEntry):
+class MetricsEntry(SensorEntry):
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "sensor_class": SensorClass.METRICS,
@@ -85,7 +85,7 @@ class MetricsMapEntry(SensorMapEntry):
 # ----------------------------
 # Power
 # ----------------------------
-class PowerEntry(SensorMapEntry):
+class PowerEntry(SensorEntry):
     DEFAULTS = {
         "native_unit": NativeUnit.WATT,
         "device_class": SensorDeviceClass.POWER,
@@ -96,7 +96,7 @@ class PowerEntry(SensorMapEntry):
 # ----------------------------
 # Energy Total Increasing
 # ----------------------------
-class EnergyTotalIncreasingCalculatedEntry(SensorMapEntry):
+class EnergyTotalIncreasingCalculatedEntry(SensorEntry):
     DEFAULTS = {
         "native_unit": NativeUnit.KWH,
         "device_class": SensorDeviceClass.ENERGY,
@@ -107,7 +107,7 @@ class EnergyTotalIncreasingCalculatedEntry(SensorMapEntry):
 # ----------------------------
 # Diagnostic
 # ----------------------------
-class DiagnosticEntry(SensorMapEntry):
+class DiagnosticEntry(SensorEntry):
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "entity_category": EntityCategory.DIAGNOSTIC,
@@ -117,9 +117,9 @@ class DiagnosticEntry(SensorMapEntry):
 # ----------------------------
 # Config
 # ----------------------------
-class ConfigEntry(SensorMapEntry):
+class ConfigEntry(SensorEntry):
     # @staticmethod
-    # def data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+    # def data_updated(entry: "SensorEntry", runtime_data: "SolArkData") -> None:
     #     entry.sensor_value = runtime_data.name
     #     return
 
@@ -143,7 +143,7 @@ class ConfigEntry(SensorMapEntry):
 # ----------------------------
 # Generator Relay
 # ----------------------------
-class GeneratorRelayEntry(MapEntryLookup, SensorMapEntry):
+class GeneratorRelayEntry(EntryLookup, SensorEntry):
     LOOKUP_MAP = {
         0: ("Open", "mdi:electric-switch"),
         1: ("Closed", "mdi:electric-switch-closed"),

@@ -40,7 +40,7 @@ class SolArkBinarySensor(BinarySensorEntity):
 
         # Setting the entity_description on a BinarySensorEntity handles most properties,
         # but some need to be set specifically or modified
-        self._attr_name = f"{runtime_data.name} {description.name}"
+        self._attr_name = f"{runtime_data.name} {description.name_prefix}{description.name}"
         self._attr_unique_id = f"{runtime_data.name}_{description.key}"
         self._attr_device_info = runtime_data.device_info
         self._attr_exclude_from_recorder = description.exclude_from_recorder

@@ -21,7 +21,7 @@ from .register_map_entry import (
     RawInfoEntry,
     RawValueEntry,
     RawValueSystemTimeEntry,
-    RegisterMapEntry,
+    RegisterEntry,
     SerialNumberEntry,
     SOCEntry,
     TemperatureEntry,
@@ -66,7 +66,7 @@ class SolArkRegisterMap(RegisterMap):
     # TODO - The keys for some registers are very misleading. Review and rename, handling history.
     TOTALINV_E = EnergyEntry(address=96, key="totalinv_e", name="Total PV Energy", data_type=DataType.INT32)
     FAULT_INFO_RAW = RawInfoEntry(address=103, key="fault_info_raw", name="Inverter Fault Information", data_type=DataType.UINT64, icon="mdi:message-alert-outline")
-    CORR_BATT_CAP = RegisterMapEntry(address=107, key="corr_batt_cap", name="Corrected Battery Capacity", data_type=DataType.UINT16, icon="mdi:battery", native_unit=NativeUnit.AH, state_class=None)
+    CORR_BATT_CAP = RegisterEntry(address=107, key="corr_batt_cap", name="Corrected Battery Capacity", data_type=DataType.UINT16, icon="mdi:battery", native_unit=NativeUnit.AH, state_class=None)
     DAILYPV_E = EnergyTotalIncreasingEntry(address=108, key="dailypv_e", name="Daily PV Energy", data_type=DataType.UINT16)
 
     PV1_V = PVVoltageEntry(address=109, key="pv1_v", name="PV1 Voltage")
@@ -133,7 +133,7 @@ class SolArkRegisterMap(RegisterMap):
     # ----------------------------
     # Time of use
     # ----------------------------
-    TIMEOFUSE_ENABLED = RegisterMapEntry(address=248, key="timeofuse_enabled", name="Time of Use Enabled", data_type=DataType.UINT16, dynamic_icon=SensorDynamicIcon.CHECK_BOX)
+    TIMEOFUSE_ENABLED = RegisterEntry(address=248, key="timeofuse_enabled", name="Time of Use Enabled", data_type=DataType.UINT16, dynamic_icon=SensorDynamicIcon.CHECK_BOX)
 
     TIMEOFUSE_TIME_1 = TimeOfUseTimeEntry(address=250, key="timeofuse_time_1", name="Time of Use Time 1")
     TIMEOFUSE_TIME_2 = TimeOfUseTimeEntry(address=251, key="timeofuse_time_2", name="Time of Use Time 2")

@@ -15,7 +15,7 @@ from .sensor_map_entry import (
     EnergyTotalIncreasingCalculatedEntry,
     GeneratorRelayEntry,
     PowerEntry,
-    SensorMapEntry,
+    SensorEntry,
 )
 from .solark_register_map import SolArkRegisterMap
 
@@ -63,7 +63,7 @@ def plural(value: int, word: str) -> str:
 # Post processed sensor method definitions
 # ----------------------------------
 @staticmethod
-def firmware_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def firmware_data_updated(entry: "SensorEntry", runtime_data: "SolArkData") -> None:
     firmware: str = f"M {get_firmware(int(runtime_data.register_map.INFO_FIRMWARE_M))} / "
     firmware += f"S {get_firmware(int(runtime_data.register_map.INFO_FIRMWARE_S))} / "
     firmware += f"C {get_firmware(int(runtime_data.register_map.INFO_FIRMWARE_C))}"
@@ -71,19 +71,19 @@ def firmware_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -
     return
 
 @staticmethod
-def info_mppt_count_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def info_mppt_count_data_updated(entry: "SensorEntry", runtime_data: "SolArkData") -> None:
     info: tuple[int, int] = get_mppt_phase_info(int(runtime_data.register_map.INFO_MPPT_PHASE_COUNTS_RAW))
     entry.sensor_value = f"{plural(info[0], 'MPPT')}"
     return
 
 @staticmethod
-def info_phase_count_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def info_phase_count_data_updated(entry: "SensorEntry", runtime_data: "SolArkData") -> None:
     info: tuple[int, int] = get_mppt_phase_info(int(runtime_data.register_map.INFO_MPPT_PHASE_COUNTS_RAW))
     entry.sensor_value = f"{plural(info[1], 'phase')}"
     return
 
 @staticmethod
-def system_date_time_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def system_date_time_data_updated(entry: "SensorEntry", runtime_data: "SolArkData") -> None:
     register_map: SolArkRegisterMap = runtime_data.register_map
     year_month: tuple[int, int] = register_map.SYSTEM_TIME_YM_RAW.split_bytes_uint16()
     day_hour: tuple[int, int] = register_map.SYSTEM_TIME_DH_RAW.split_bytes_uint16()
@@ -93,18 +93,18 @@ def system_date_time_data_updated(entry: "SensorMapEntry", runtime_data: "SolArk
     return
 
 @staticmethod
-def faultmsg_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def faultmsg_data_updated(entry: "SensorEntry", runtime_data: "SolArkData") -> None:
     fault_message_list = translate_fault_code_to_messages(int(runtime_data.register_map.FAULT_INFO_RAW))
     entry.sensor_value = ", ".join(fault_message_list)
     return
 
 @staticmethod
-def pv_p_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def pv_p_data_updated(entry: "SensorEntry", runtime_data: "SolArkData") -> None:
     entry.sensor_value = runtime_data.register_map.PV1_P + runtime_data.register_map.PV2_P + runtime_data.register_map.PV3_P
     return
 
 @staticmethod
-def totalgridbuy_e_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def totalgridbuy_e_data_updated(entry: "SensorEntry", runtime_data: "SolArkData") -> None:
     high: int = int(runtime_data.register_map.TOTALGRIDBUY_E_HIGH_RAW)
     low: int = int(runtime_data.register_map.TOTALGRIDBUY_E_LOW_RAW)
     value_int: int = (high << 16) | low
@@ -115,7 +115,7 @@ def totalgridbuy_e_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkDa
     return
 
 @staticmethod
-def has_fault_data_updated(entry: "SensorMapEntry", runtime_data: "SolArkData") -> None:
+def has_fault_data_updated(entry: "SensorEntry", runtime_data: "SolArkData") -> None:
     entry.sensor_value = random.choice([True, False])
     return
 
@@ -127,7 +127,7 @@ class SolArkSensorMap(SensorMap):
     FIRMWARE = DiagnosticEntry(key="firmware", name="Firmware Versions", on_data_updated=firmware_data_updated)
     MPPT_INFO = DiagnosticEntry(key="info_mppt_count", name="MPPT Count", on_data_updated=info_mppt_count_data_updated)
     PHASE_INFO = DiagnosticEntry(key="info_phase_count", name="Phase Count", on_data_updated=info_phase_count_data_updated)
-    SYSTEM_DATE_TIME = SensorMapEntry(
+    SYSTEM_DATE_TIME = SensorEntry(
         key="system_date_time", name="System Date Time", icon="mdi:clock", sensor_class=SensorClass.DATETIME, exclude_from_recorder=True,
         on_data_updated=system_date_time_data_updated
         )
@@ -135,7 +135,7 @@ class SolArkSensorMap(SensorMap):
     # TODO - Add 2 separate sensors or get concensus on changing entiity name(s) to match the SolArk documentation.
     # Caution: this is used by the hub to indicate a communication error with the device.
     # TODO - Another option is to create another entity, with the old one set to be not enabled by default.
-    FAULTMSG = SensorMapEntry(
+    FAULTMSG = SensorEntry(
         key="faultmsg", name="Inverter error Message", icon="mdi:message-alert-outline", on_data_updated=faultmsg_data_updated)
 
     PV_P = PowerEntry(key="pv_p", name="PV Input Power", icon="mdi:solar-power", on_data_updated=pv_p_data_updated)

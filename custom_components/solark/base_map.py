@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING, Any, ClassVar, Generic, Iterator, Type, TypeVa
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.entity import EntityDescription
 
-from .base_map_entry import BaseMapEntry
+from .base_map_entry import BaseEntry
 from .register_value_types import SensorValue
 
 _LOGGER = logging.getLogger(__name__)
 
-TEntry = TypeVar("TEntry", bound=BaseMapEntry)
+TEntry = TypeVar("TEntry", bound=BaseEntry)
 TFilter = TypeVar("TFilter", bound=EntityDescription)
 
 if TYPE_CHECKING:
@@ -48,9 +48,9 @@ class BaseMap(Generic[TEntry], ABC):
 
         cls._class_entries = cls._collect_entries(cls.__mro__, entry_type)
 
-    def _validate_entry(self, entry: BaseMapEntry) -> None:
+    def _validate_entry(self, entry: BaseEntry) -> None:
         for cls in reversed(type(entry).mro()):
-            if cls is BaseMapEntry:
+            if cls is BaseEntry:
                 continue
 
             if "_validate" not in cls.__dict__:

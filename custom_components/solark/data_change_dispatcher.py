@@ -2,7 +2,7 @@ import logging
 from collections import defaultdict
 from typing import Callable
 
-from .base_map_entry import BaseMapEntry
+from .base_map_entry import BaseEntry
 from .data import SolArkData
 from .register_value_types import SensorValue
 
@@ -18,7 +18,7 @@ class DataChangeDispatcher:
     def __init__(self) -> None:
         self._listeners: dict[str, list[Listener]] = defaultdict(list)
 
-    def register(self, entry: BaseMapEntry, callback: Listener) -> None:
+    def register(self, entry: BaseEntry, callback: Listener) -> None:
         key = entry.key
         if callback not in self._listeners[key]:
             self._listeners[key].append(callback)

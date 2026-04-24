@@ -1,16 +1,16 @@
 from abc import ABC
 from typing import ClassVar, Dict, Generic, Tuple, TypeVar, cast
 
-from .base_map_entry import BaseMapEntry
+from .base_map_entry import BaseEntry
 from .register_value_types import SensorValue
 
-T = TypeVar("T", bound="MapEntryLookup")
+T = TypeVar("T", bound="EntryLookup")
 TSensorValue = TypeVar("TSensorValue", bound=SensorValue)
 
-# class MapEntryLookup(Generic[TSensorValue], ABC):
+# class EntryLookup(Generic[TSensorValue], ABC):
     # # Override in subclasses
     # LOOKUP_MAP: Dict[TSensorValue, Tuple[str, str]]
-class MapEntryLookup(ABC):
+class EntryLookup(ABC):
     # Override in subclasses
     # TODO - The key should be a generic type
     LOOKUP_MAP: Dict[int, Tuple[str, str]]
@@ -22,7 +22,7 @@ class MapEntryLookup(ABC):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
-        if cls is MapEntryLookup:
+        if cls is EntryLookup:
             return  # don't validate base class itself
 
         # enforce override
@@ -40,11 +40,11 @@ class MapEntryLookup(ABC):
     #             return icon
     #     return None
 
-    def set_mapped_sensor_value(self, entry: BaseMapEntry) -> None:
+    def set_mapped_sensor_value(self, entry: BaseEntry) -> None:
         # TODO - The key should be a generic type
-        if not isinstance(self , BaseMapEntry):
-            raise ValueError("MapEntryLookup can only be applied to BaseMapEntry subclasses")
-        entry = cast(BaseMapEntry, self)
+        if not isinstance(self , BaseEntry):
+            raise ValueError("EntryLookup can only be applied to BaseEntry subclasses")
+        entry = cast(BaseEntry, self)
         if not isinstance(entry.sensor_value , int):
             raise NotImplementedError("Only int is allowed for key value in LOOKUP_MAP")
         entry.sensor_value = self.LOOKUP_MAP[entry.sensor_value][0]

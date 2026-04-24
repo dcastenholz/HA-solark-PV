@@ -25,6 +25,7 @@ class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
     should_poll: bool = True
     dynamic_icon: Callable[["SensorValue"], str] | None = None
     on_sensor_creating: Callable[["SolArkBinarySensor", "SolArkData"], None] | None = None
+    name_prefix: str = ""
 
     @classmethod
     def from_kwargs(

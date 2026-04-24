@@ -2,9 +2,9 @@
 from abc import ABC
 
 from .base_map import BaseMap
-from .base_map_entry import BaseMapEntry
+from .base_map_entry import BaseEntry
 
 
-class SensorMap(BaseMap[BaseMapEntry], ABC):
-    '''Sensor map may contain entries of any type that is a subclass of BaseMapEntry'''
-    _entry_type = BaseMapEntry
+class SensorMap(BaseMap[BaseEntry], ABC):
+    '''Sensor map may contain entries of any type that is a subclass of BaseEntry'''
+    _entry_type = BaseEntry

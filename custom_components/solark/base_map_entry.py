@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 TEntityDescription = TypeVar("TEntityDescription", bound=EntityDescription)
 
-class BaseMapEntryOptional(TypedDict, total=False):
+class BaseEntryOptional(TypedDict, total=False):
     icon: str
     entity_registry_enabled_default: bool
     entity_category: EntityCategory
@@ -28,7 +28,7 @@ class BaseMapEntryOptional(TypedDict, total=False):
     on_data_updated: Callable[[Any, "SolArkData"], None]
 
 
-class BaseMapEntry(Generic[TEntityDescription], ABC):
+class BaseEntry(Generic[TEntityDescription], ABC):
     """
     Abstract base class for all SolArk map entries.
 
@@ -53,7 +53,7 @@ class BaseMapEntry(Generic[TEntityDescription], ABC):
 
     data_updated: Callable[[Self, "SolArkData"], None] | None
 
-    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseMapEntryOptional]) -> None:
+    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseEntryOptional]) -> None:
         self.key = key
         self.name = name
 
@@ -151,10 +151,10 @@ class BaseMapEntry(Generic[TEntityDescription], ABC):
             f"{self.sensor_value}"
         )
 
-    def __add__(self, other: Union[BaseMapEntry, NumericValue]) -> NumericValue:
+    def __add__(self, other: Union[BaseEntry, NumericValue]) -> NumericValue:
         left = self._get_numeric()
 
-        if isinstance(other, BaseMapEntry):
+        if isinstance(other, BaseEntry):
             return left + other._get_numeric()
 
         if isinstance(other, (int, float)):
