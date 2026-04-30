@@ -1,19 +1,17 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Generic, Self, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Generic, Self, Tuple, TypedDict, Union
 
 from homeassistant.const import EntityCategory
-from homeassistant.helpers.entity import EntityDescription
 from typing_extensions import Unpack
 
-from .register_value_types import NumericValue, SensorValue
+from .register_value_types import NumericValue, SensorValue, TBaseValue, TEntityDescription, TLookupMapKey, TSensorValue
 
 if TYPE_CHECKING:
     from .data import SolArkData
 
 _LOGGER = logging.getLogger(__name__)
 
-TEntityDescription = TypeVar("TEntityDescription", bound=EntityDescription)
 
 class BaseEntryOptional(TypedDict, total=False):
     icon: str
@@ -28,16 +26,26 @@ class BaseEntryOptional(TypedDict, total=False):
     on_data_updated: Callable[[Any, "SolArkData"], None]
 
 
-class BaseEntry(Generic[TEntityDescription], ABC):
+class BaseEntry(Generic[TEntityDescription, TBaseValue, TSensorValue, TLookupMapKey], ABC):
     """
-    Abstract base class for all SolArk map entries.
+    BaseEntry[TEntityDescription, TBaseValue, TSensorValue]
 
-    Provides:
-    - Entity metadata wrapper
-    - Scaling and offset support
-    - Post-processing hook
-    - Numeric conversion helpers
+        Type Parameters:
+            TEntityDescription: the entity description type.
+            TBaseValue: the type of the base value.
+            TSensorValue: the type of the sensor display value.
+            TLookupMapKey: the type of the dynamic lookup key value.
+
+    Abstract base class for all sensors and binarysensors.
+
+        Provides:
+            entity description
+            key
+            name
+            base value
+            sensor value
     """
+
     DEFAULTS: dict[str, Any] = {
         "exclude_from_recorder": False,
         "entity_registry_enabled_default": False,
@@ -48,10 +56,19 @@ class BaseEntry(Generic[TEntityDescription], ABC):
 
     key: str
     name: str
-    _sensor_value: SensorValue = None
     _entity_description: TEntityDescription
 
+    # _base_value holds the initial value from the source of truth
+    _base_value: TBaseValue | None = None
+    # _sensor_value holds the final value that will be displayed by the sensor
+    _sensor_value: TSensorValue | None = None
+
     data_updated: Callable[[Self, "SolArkData"], None] | None
+
+    # If LOOKUP_MAP is a non-empty dict, then it triggers dynamic lookup of icon and native_value for the sensor
+    LOOKUP_MAP: dict[TSensorValue, Tuple[Any, str]] | None
+    # dynamic_icon: Callable[[TLookupMapKey], str | None] | None = None
+    # dynamic_sensor_value: Callable[[TLookupMapKey], TSensorValue | None] | None = None
 
     def __init__(self, key: str, name: str, **kwargs: Unpack[BaseEntryOptional]) -> None:
         self.key = key
@@ -59,6 +76,18 @@ class BaseEntry(Generic[TEntityDescription], ABC):
 
         # Merge any DEFAULTS class properties with kwargs
         self.opts = {**self._merged_defaults, **kwargs}
+
+        dynamic_opts: dict[str, Any] = {}
+
+        dynamic_icon = self.opts.get("dynamic_icon")
+        if dynamic_icon is None and self.is_dynamic_lookup():
+            dynamic_opts["dynamic_icon"] = self.lookup_dynamic_icon
+
+        dynamic_sensor_value = self.opts.get("dynamic_sensor_value")
+        if dynamic_sensor_value is None and self.is_dynamic_lookup():
+            dynamic_opts["dynamic_sensor_value"] = self.lookup_dynamic_sensor_value
+
+        self.opts = {**self._merged_defaults, **dynamic_opts, **kwargs}
 
         # -----------------------------
         # Store fields using kwargs merged with DEFAULTS
@@ -86,6 +115,42 @@ class BaseEntry(Generic[TEntityDescription], ABC):
     def _create_entity_description(self) -> TEntityDescription:
         """Subclasses must construct the entity description."""
 
+    @abstractmethod
+    def dynamic_lookup_key(self, runtime_data: "SolArkData") -> TSensorValue | None:
+        '''Needs to return the sensor_value'''
+
+    @classmethod
+    def is_dynamic_lookup(cls) -> bool:
+        return getattr(cls, "LOOKUP_MAP", None) is not None
+
+    @classmethod
+    def lookup_dynamic_sensor_value(cls, lookup_map_key: TSensorValue) -> TSensorValue | None:
+        '''This gets called in the sensor platform after the coordinator data is updated'''
+        if cls.LOOKUP_MAP is None:
+            return None
+
+        if lookup_map_key is None:
+            return None
+
+        if lookup_map_key not in cls.LOOKUP_MAP:
+            raise TypeError(f"Value {lookup_map_key!r} not valid for LOOKUP_MAP keys: {list(cls.LOOKUP_MAP.keys())}")
+
+        return cls.LOOKUP_MAP[lookup_map_key][0] or None
+
+    @classmethod
+    def lookup_dynamic_icon(cls, lookup_map_key: TSensorValue) -> str | None:
+        '''This gets called in the sensor platform after the coordinator data is updated'''
+        if cls.LOOKUP_MAP is None:
+            return None
+
+        if lookup_map_key is None:
+            return None
+
+        if lookup_map_key not in cls.LOOKUP_MAP:
+            raise TypeError(f"Value {lookup_map_key!r} not valid for LOOKUP_MAP keys: {list(cls.LOOKUP_MAP.keys())}")
+
+        return cls.LOOKUP_MAP[lookup_map_key][1] or None
+
     # -----------------------------
     # Entity access
     # -----------------------------
@@ -98,23 +163,19 @@ class BaseEntry(Generic[TEntityDescription], ABC):
         self._entity_description = value
 
     @property
-    def sensor_value(self) -> SensorValue:
+    def base_value(self) -> TBaseValue | None:
+        return self._base_value
+
+    @property
+    def sensor_value(self) -> TSensorValue | None:
         return self._sensor_value
 
-    @sensor_value.setter
-    def sensor_value(self, value: SensorValue) -> None:
-        self._sensor_value = value
+    def set_base_value(self, value: TBaseValue) -> None:
+        self._base_value = value
 
-    # @property
-    # def entity_registry_enabled_default(self) -> bool:
-    #     """Return the current default enabled state."""
-    #     return self._entity_description.entity_registry_enabled_default
-
-
-    # @entity_registry_enabled_default.setter
-    # def entity_registry_enabled_default(self, enabled: bool) -> None:
-    #     """Set default enabled state by replacing the entity description."""
-    #     self._entity_description = EntityDescriptionHelper.set_entity_registry_enabled_default(self._entity_description, enabled)
+    @abstractmethod
+    def set_sensor_value(self: Self, runtime_data: "SolArkData") -> None:
+        '''This method must end up setting the sensor_value'''
 
     # -----------------------------
     # Validation hook
@@ -129,16 +190,41 @@ class BaseEntry(Generic[TEntityDescription], ABC):
     # -----------------------------
     # Post processing
     # -----------------------------
-    def on_data_updated(self: Self, runtime_data: "SolArkData") -> None:
-        """ Execute post-processing method. """
-        if self.data_updated:
-            try:
-                self.data_updated(self, runtime_data)
-            except Exception:  # pylint: disable=broad-exception-caught
-                _LOGGER.exception(
-                    "Error while running data updated event of entry %s",
-                    self._entity_description.key,
-                )
+    # def post_process(self: Self, runtime_data: "SolArkData") -> None:
+    #     """Execute post-processing across class hierarchy (base -> subclass)."""
+
+    #     for cls in reversed(type(self).mro()):
+    #         # Skip object base class
+    #         if cls is object:
+    #             continue
+
+    #         # Only call if the class defines its own implementation
+    #         method = cls.__dict__.get("_post_process")
+    #         if method is None:
+    #             continue
+
+    #         # Avoid calling this same method recursively
+    #         if method is BaseEntry.post_process:
+    #             continue
+
+    #         try:
+    #             method(self, runtime_data)
+    #         except Exception:  # pylint: disable=broad-exception-caught
+    #             _LOGGER.exception(
+    #                 "Error while running data updated event of entry %s (class %s)",
+    #                 self._entity_description.key,
+    #                 cls.__name__,
+    #             )
+
+    #     # Execute any post-processing static method that may be set by subclasses.
+    #     if self.data_updated:
+    #         try:
+    #             self.data_updated(self, runtime_data)
+    #         except Exception:  # pylint: disable=broad-exception-caught
+    #             _LOGGER.exception(
+    #                 "Error while running data updated event of entry %s",
+    #                 self._entity_description.key,
+    #             )
 
     # -----------------------------
     # Numeric helpers

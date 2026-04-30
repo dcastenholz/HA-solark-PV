@@ -4,6 +4,7 @@ from typing import Any
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from .base_map_processor import BaseMapProcessor
 from .coordinator_data import CoordinatorData
 from .coordinator_metrics import CoordinatorMetrics
 from .data import SolArkData
@@ -61,23 +62,15 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
         self.coordinator_metrics.on_data_updating()
         return_data: dict[str, Any]
 
+        map_processor = BaseMapProcessor(self._runtime_data)
+
         # Perform the required modbus data reads
-        pipeline_ok: bool = await self._async_data_read()
+        pipeline_ok: bool = await self._async_read_registers()
 
         if pipeline_ok:
-            # If we already have a read failure, post processing is unnecessary and may fail as well.
-            try:
-                await self.hass.async_add_executor_job(self._runtime_data.register_map.on_data_updated)
-                await self.hass.async_add_executor_job(self._runtime_data.calculated_sensor_map.on_data_updated)
+            pipeline_ok = await self.hass.async_add_executor_job(map_processor.post_process)
 
-            except Exception as e:
-                pipeline_ok = False
-                _LOGGER.exception("Unexpected error post processing data: %s", e)
-
-        # Record the result of data update attempt
         self.coordinator_metrics.on_data_update_result(pipeline_ok)
-
-        await self.hass.async_add_executor_job(self._runtime_data.metrics_map.on_data_updated)
 
         # Return the current data if valid, otherwise return cached previously read data.
         if pipeline_ok:
@@ -90,9 +83,13 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
         else:
             return_data = self._try_get_cached_data()
 
+        # Set the sensor_values for all the metrics sensors
+        await self.hass.async_add_executor_job(map_processor.post_process_metrics_maps)
+
+        # Return a dictionary including the inverter data and the metrics data
         return return_data | self._runtime_data.metrics_map.data
 
-    async def _async_data_read(self) -> bool:
+    async def _async_read_registers(self) -> bool:
         modbus_client: SolArkModbusClient = self._runtime_data.modbus_client
 
         # Initialize the register map prior to attempting read
@@ -111,6 +108,7 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
                 self.has_inverter_data = True
 
             except Exception as e:
+                pipeline_ok = False
                 _LOGGER.exception("Unexpected error reading inverter data: %s", e)
 
         if pipeline_ok:
@@ -119,6 +117,7 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
                 pipeline_ok = await self.hass.async_add_executor_job(modbus_client.read_modbus_realtime_data)
 
             except Exception as e:
+                pipeline_ok = False
                 _LOGGER.exception("Unexpected error reading realtime data: %s", e)
 
         self.coordinator_metrics.on_data_read_result(pipeline_ok)

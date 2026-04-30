@@ -43,6 +43,7 @@ class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
             "should_poll",
             "dynamic_icon",
             "on_sensor_creating",
+            "name_prefix",
 
             # BinarySensorEntityDescription
             "device_class",

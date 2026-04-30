@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
@@ -29,7 +30,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     return True
 
 
-class SolArkSensorEntity(SensorEntity):
+class SolArkSensorEntity(SensorEntity, ABC):
     """Base sensor entity: metadata + shared setup only.
     All sensor classes used in a SensorMap must inherit from this."""
 
@@ -50,37 +51,43 @@ class SolArkSensorEntity(SensorEntity):
 
     @property
     def icon(self) -> str | None:
-        if (strategy := self.entity_description.dynamic_icon) is not None:
-            if (icon := strategy(self.native_value)) is not None:
+        dynamic_icon = self.entity_description.dynamic_icon
+        if (dynamic_icon) is not None:
+            icon = dynamic_icon(self.data_value)
+            if icon is not None:
                 return icon
 
         return self.entity_description.icon
 
     @property
     def native_value(self) -> Any | None:
-        """Default: no data source."""
-        return None
+        dynamic_sensor_value = self.entity_description.dynamic_sensor_value
+        if (dynamic_sensor_value) is not None:
+            value = dynamic_sensor_value(self.data_value)
+            if value is not None:
+                return value
+
+        return self.data_value
+
+    @property
+    @abstractmethod
+    def data_value(self):
+        pass
 
 
-class SolArkCoordinatorEntity(CoordinatorEntity):
+class SolArkCoordinatorEntity(CoordinatorEntity, ABC):
     """Adds coordinator data access only."""
 
     @property
     def data(self):
         return self.coordinator.data
 
-
-class SolArkStaticValueSensor(SolArkSensorEntity):
-    """Sensors that do not depend on coordinator."""
-
-    # Instances of this class must set a static native_value
-    _attr_native_value: SensorValue = None
-
     @property
-    def native_value(self) -> SensorValue:
-        if self._attr_native_value is None:
-            raise RuntimeError(f"The sensor '{self._attr_name}' is a {type(self).__name__}, so '_attr_native_value' must be set.")
-        return self._attr_native_value
+    def data_value(self):
+        data = self.data
+        if data is None:
+            return None
+        return data.get(self.entity_description.key)
 
 
 class SolArkCoordinatorSensor(SolArkCoordinatorEntity, SolArkSensorEntity):
@@ -94,21 +101,25 @@ class SolArkCoordinatorSensor(SolArkCoordinatorEntity, SolArkSensorEntity):
         SolArkSensorEntity.__init__(self, runtime_data, description)
         SolArkCoordinatorEntity.__init__(self, runtime_data.coordinator)
 
+
+class SolArkStaticValueSensor(SolArkSensorEntity):
+    """Sensors that do not depend on coordinator."""
+
+    # Instances of this class must set a static native_value
+    _attr_native_value: SensorValue = None
     @property
-    def data(self):
-        return self.runtime_data.coordinator.data
+    def data_value(self):
+        return None
 
     @property
-    def native_value(self):
-        data = self.data
-        if data is None:
-            return None
-        return data.get(self.entity_description.key)
+    def native_value(self) -> SensorValue:
+        if self._attr_native_value is None:
+            raise RuntimeError(f"The sensor '{self._attr_name}' is a {type(self).__name__}, so '_attr_native_value' must be set.")
+        return self._attr_native_value
 
 
 class SolArkMetricsSensor(SolArkCoordinatorSensor):
     '''Sensor to handle coordinator metrics'''
-    pass
 
 
 class SolArkTOU_TimeSensor(SolArkCoordinatorSensor):
@@ -149,7 +160,7 @@ class SolArkDateTimeSensor(SolArkCoordinatorSensor):
 
 SENSOR_CLASS_MAP = {
     SensorClass.STATIC_VALUE: SolArkStaticValueSensor,
-    SensorClass.NORMAL: SolArkCoordinatorSensor,
+    SensorClass.COORDINATOR: SolArkCoordinatorSensor,
     SensorClass.METRICS: SolArkMetricsSensor,
     SensorClass.TOU_TIME: SolArkTOU_TimeSensor,
     SensorClass.DATETIME: SolArkDateTimeSensor,

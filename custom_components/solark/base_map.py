@@ -68,16 +68,6 @@ class BaseMap(Generic[TEntry], ABC):
         for entry in self._entries:
             self._validate_entry(entry)
 
-    # ----------------------------------
-    # Post process methods
-    # ----------------------------------
-    def on_data_updated(self):
-        """Post-process the register map entries after reading the raw values from the inverter."""
-        # TODO - Handle case where the dependency registers were not read. Value is None
-        for entry in self:
-            if entry.data_updated is not None:
-                entry.on_data_updated(self.runtime_data)
-
     @staticmethod
     def _collect_entries(mro: tuple[type, ...], entry_cls: Type[Any]) -> list[TEntry]:
         entries: list[TEntry] = []
@@ -100,7 +90,9 @@ class BaseMap(Generic[TEntry], ABC):
             and entry.entity_description.entity_category != EntityCategory.CONFIG
         ]
 
-    # ---- override points ----
+    # ----------------------------------
+    # Override points
+    # ----------------------------------
     def _sort(self):
         pass
 

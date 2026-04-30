@@ -1,5 +1,6 @@
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict, Unpack, cast
+from abc import ABC
+from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, Self, TypedDict, Unpack, cast
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import EntityCategory
@@ -7,8 +8,7 @@ from homeassistant.const import EntityCategory
 from .base_map_entry import BaseEntry
 from .config_sensor import ConfigSensor
 from .coordinator_metrics import CoordinatorMetrics
-from .map_entry_lookup import EntryLookup
-from .register_value_types import SensorValue
+from .register_value_types import SensorValue, TBaseValue, TLookupMapKey, TSensorValue
 from .sensor_entity_description import NativeUnit, SensorClass, SolArkSensorEntityDescription
 
 if TYPE_CHECKING:
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-class SensorEntryOptional(TypedDict, total=False):
+class BaseSensorEntryOptional(TypedDict, total=False):
     icon: str
     entity_registry_enabled_default: bool
     entity_category: EntityCategory
@@ -31,6 +31,7 @@ class SensorEntryOptional(TypedDict, total=False):
     device_class: SensorDeviceClass
     sensor_class: SensorClass
 
+    # TODO - Eliminate suggested_display_precision. Should always be calculated from scale
     suggested_display_precision: int
     state_class: Optional[SensorStateClass]
     native_unit: NativeUnit
@@ -38,14 +39,29 @@ class SensorEntryOptional(TypedDict, total=False):
     on_data_updated: Callable[[Any, "SolArkData"], None]
 
 
-class SensorEntry(BaseEntry["SolArkSensorEntityDescription"]):
+class BaseSensorEntry(Generic[TBaseValue, TSensorValue, TLookupMapKey],
+                  BaseEntry["SolArkSensorEntityDescription", TBaseValue, TSensorValue, TLookupMapKey], ABC):
+    """
+    BaseSensorEntry[TBaseValue, TSensorValue]
+
+    Type Parameters:
+        TBaseValue: the type of the base value.
+        TSensorValue: the type of the sensor display value.
+        TLookupMapKey: the type of the dynamic lookup key value.
+
+    Abstract base class for all sensor entries.
+
+        Adds:
+            state class
+    """
+
     state_class: SensorStateClass | None
 
     DEFAULTS = {
-        "sensor_class": SensorClass.NORMAL,
+        "sensor_class": SensorClass.COORDINATOR,
     }
 
-    def __init__(self, key: str, name: str, **kwargs: Unpack[SensorEntryOptional]) -> None:
+    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseSensorEntryOptional]) -> None:
         super().__init__(key, name, **kwargs)
 
     def _create_entity_description(self) -> SolArkSensorEntityDescription:
@@ -55,8 +71,22 @@ class SensorEntry(BaseEntry["SolArkSensorEntityDescription"]):
             opts=self.opts,
         )
 
+    def dynamic_lookup_key(self, runtime_data: "SolArkData") -> TSensorValue | None:
+        return self.sensor_value
 
-class MetricsEntry(SensorEntry):
+# TODO - Review all uses of this class for possible BaseSensorEntry inheritance instead
+class SensorEntry_NoSet(Generic[TBaseValue, TSensorValue], BaseSensorEntry[TBaseValue, TSensorValue, TBaseValue]):
+
+    # def set_sensor_value(self: Self, runtime_data: "SolArkData") -> None:
+
+    def set_sensor_value(self, runtime_data: "SolArkData") -> None:
+        self.data_updated
+
+    def dynamic_lookup_key(self, runtime_data: "SolArkData") -> TBaseValue | None:
+        return self.base_value
+
+
+class MetricsEntry(BaseSensorEntry):
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "sensor_class": SensorClass.METRICS,
@@ -75,17 +105,16 @@ class MetricsEntry(SensorEntry):
         super().__init__(
             key,
             name,
-            on_data_updated=self._on_data_updated,
         )
 
-    def _on_data_updated(self, entry: Any, runtime_data: "SolArkData") -> None:
+    def set_sensor_value(self: Self, runtime_data: "SolArkData") -> None:
         # get metric result and store it as sensor value
-        entry.sensor_value = self.metric(runtime_data.coordinator_metrics)
+        self._sensor_value = self.metric(runtime_data.coordinator_metrics)
 
 # ----------------------------
 # Power
 # ----------------------------
-class PowerEntry(SensorEntry):
+class PowerEntry(SensorEntry_NoSet[float, float]):
     DEFAULTS = {
         "native_unit": NativeUnit.WATT,
         "device_class": SensorDeviceClass.POWER,
@@ -96,7 +125,7 @@ class PowerEntry(SensorEntry):
 # ----------------------------
 # Energy Total Increasing
 # ----------------------------
-class EnergyTotalIncreasingCalculatedEntry(SensorEntry):
+class EnergyTotalIncreasingCalculatedEntry(SensorEntry_NoSet[float, float]):
     DEFAULTS = {
         "native_unit": NativeUnit.KWH,
         "device_class": SensorDeviceClass.ENERGY,
@@ -107,7 +136,7 @@ class EnergyTotalIncreasingCalculatedEntry(SensorEntry):
 # ----------------------------
 # Diagnostic
 # ----------------------------
-class DiagnosticEntry(SensorEntry):
+class DiagnosticEntry(SensorEntry_NoSet[str, str]):
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "entity_category": EntityCategory.DIAGNOSTIC,
@@ -117,12 +146,7 @@ class DiagnosticEntry(SensorEntry):
 # ----------------------------
 # Config
 # ----------------------------
-class ConfigEntry(SensorEntry):
-    # @staticmethod
-    # def data_updated(entry: "SensorEntry", runtime_data: "SolArkData") -> None:
-    #     entry.sensor_value = runtime_data.name
-    #     return
-
+class ConfigEntry(SensorEntry_NoSet[str, str]):
     @staticmethod
     def sensor_creating(sensor: "SolArkSensorEntity", runtime_data: "SolArkData") -> None:
         sensor._attr_native_value = runtime_data.name   # pylint: disable=protected-access
@@ -133,7 +157,6 @@ class ConfigEntry(SensorEntry):
         "icon": "mdi:information-outline",
         "entity_category": EntityCategory.DIAGNOSTIC,
         "sensor_class": SensorClass.STATIC_VALUE,
-        # "on_data_updated": data_updated,
         "on_sensor_creating": sensor_creating,
         "should_poll": False,
         "exclude_from_recorder": True,
@@ -143,7 +166,10 @@ class ConfigEntry(SensorEntry):
 # ----------------------------
 # Generator Relay
 # ----------------------------
-class GeneratorRelayEntry(EntryLookup, SensorEntry):
+class GeneratorRelayEntry(BaseSensorEntry[int, int, int]):
+    # This is the most fundamental value that is read from the registers
+    _register_value_low_4_bits: int
+
     LOOKUP_MAP = {
         0: ("Open", "mdi:electric-switch"),
         1: ("Closed", "mdi:electric-switch-closed"),
@@ -151,14 +177,13 @@ class GeneratorRelayEntry(EntryLookup, SensorEntry):
         3: ("Closed when Generator is on", "mdi:generator-portable"),
     }
 
-    @staticmethod
-    def _data_updated(entry: "GeneratorRelayEntry", runtime_data: "SolArkData") -> None:
-        entry.sensor_value = cast(int, runtime_data.register_map.GEN_RLY_RAW.register_value) & 0x0F  # mask low 4 bits
-        entry.set_mapped_sensor_value(entry)
-        # unmapped_sensor_value: int = cast(int, runtime_data.register_map.GEN_RLY_RAW.register_value) & 0x0F  # mask low 4 bits
-        # entry.sensor_value = entry.get_label_from_raw(unmapped_sensor_value)
+    # This is fragile. add a post processed value to BaseEntry and have all sensors display final_sensor_value.
+    def dynamic_lookup_key(self, runtime_data: "SolArkData"):
+        return self._register_value_low_4_bits
+
+    def set_sensor_value(self, runtime_data: "SolArkData") -> None:
+        self._sensor_value = cast(int, runtime_data.register_map.GEN_RLY_RAW.register_value) & 0x0F  # mask low 4 bits
 
     DEFAULTS = {
         "state_class": None,
-        "on_data_updated": _data_updated,
     }

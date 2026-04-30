@@ -21,14 +21,14 @@ from .register_map_entry import (
     RawInfoEntry,
     RawValueEntry,
     RawValueSystemTimeEntry,
-    RegisterEntry,
+    RegisterIntEntry,
     SerialNumberEntry,
     SOCEntry,
     TemperatureEntry,
-    TimeOfUseEnabledEntry,
-    TimeOfUseTimeEntry,
+    TimeOfUse_ChargeEnabledEntry,
+    TimeOfUse_EnabledEntry,
+    TimeOfUse_TimeEntry,
 )
-from .sensor_dynamic_icon import SensorDynamicIcon
 
 T = TypeVar("T", bound="RegisterMap")  # T is the real subclass
 
@@ -66,7 +66,7 @@ class SolArkRegisterMap(RegisterMap):
     # TODO - The keys for some registers are very misleading. Review and rename, handling history.
     TOTALINV_E = EnergyEntry(address=96, key="totalinv_e", name="Total PV Energy", data_type=DataType.INT32)
     FAULT_INFO_RAW = RawInfoEntry(address=103, key="fault_info_raw", name="Inverter Fault Information", data_type=DataType.UINT64, icon="mdi:message-alert-outline")
-    CORR_BATT_CAP = RegisterEntry(address=107, key="corr_batt_cap", name="Corrected Battery Capacity", data_type=DataType.UINT16, icon="mdi:battery", native_unit=NativeUnit.AH, state_class=None)
+    CORR_BATT_CAP = RegisterIntEntry(address=107, key="corr_batt_cap", name="Corrected Battery Capacity", data_type=DataType.UINT16, icon="mdi:battery", native_unit=NativeUnit.AH, state_class=None)
     DAILYPV_E = EnergyTotalIncreasingEntry(address=108, key="dailypv_e", name="Daily PV Energy", data_type=DataType.UINT16)
 
     PV1_V = PVVoltageEntry(address=109, key="pv1_v", name="PV1 Voltage")
@@ -133,14 +133,14 @@ class SolArkRegisterMap(RegisterMap):
     # ----------------------------
     # Time of use
     # ----------------------------
-    TIMEOFUSE_ENABLED = RegisterEntry(address=248, key="timeofuse_enabled", name="Time of Use Enabled", data_type=DataType.UINT16, dynamic_icon=SensorDynamicIcon.CHECK_BOX)
+    TIMEOFUSE_ENABLED = TimeOfUse_EnabledEntry(address=248, key="timeofuse_enabled", name="Time of Use Enabled", data_type=DataType.UINT16)
 
-    TIMEOFUSE_TIME_1 = TimeOfUseTimeEntry(address=250, key="timeofuse_time_1", name="Time of Use Time 1")
-    TIMEOFUSE_TIME_2 = TimeOfUseTimeEntry(address=251, key="timeofuse_time_2", name="Time of Use Time 2")
-    TIMEOFUSE_TIME_3 = TimeOfUseTimeEntry(address=252, key="timeofuse_time_3", name="Time of Use Time 3")
-    TIMEOFUSE_TIME_4 = TimeOfUseTimeEntry(address=253, key="timeofuse_time_4", name="Time of Use Time 4")
-    TIMEOFUSE_TIME_5 = TimeOfUseTimeEntry(address=254, key="timeofuse_time_5", name="Time of Use Time 5")
-    TIMEOFUSE_TIME_6 = TimeOfUseTimeEntry(address=255, key="timeofuse_time_6", name="Time of Use Time 6")
+    TIMEOFUSE_TIME_1 = TimeOfUse_TimeEntry(address=250, key="timeofuse_time_1", name="Time of Use Time 1")
+    TIMEOFUSE_TIME_2 = TimeOfUse_TimeEntry(address=251, key="timeofuse_time_2", name="Time of Use Time 2")
+    TIMEOFUSE_TIME_3 = TimeOfUse_TimeEntry(address=252, key="timeofuse_time_3", name="Time of Use Time 3")
+    TIMEOFUSE_TIME_4 = TimeOfUse_TimeEntry(address=253, key="timeofuse_time_4", name="Time of Use Time 4")
+    TIMEOFUSE_TIME_5 = TimeOfUse_TimeEntry(address=254, key="timeofuse_time_5", name="Time of Use Time 5")
+    TIMEOFUSE_TIME_6 = TimeOfUse_TimeEntry(address=255, key="timeofuse_time_6", name="Time of Use Time 6")
 
     TIMEOFUSE_POWER_1 = PowerEntry(address=256, key="timeofuse_power_1", name="Time of Use Power 1", data_type=DataType.UINT16)
     TIMEOFUSE_POWER_2 = PowerEntry(address=257, key="timeofuse_power_2", name="Time of Use Power 2", data_type=DataType.UINT16)
@@ -163,12 +163,12 @@ class SolArkRegisterMap(RegisterMap):
     TIMEOFUSE_SOC_5 = SOCEntry(address=272, key="timeofuse_soc_5", name="Time of Use SOC 5")
     TIMEOFUSE_SOC_6 = SOCEntry(address=273, key="timeofuse_soc_6", name="Time of Use SOC 6")
 
-    TIMEOFUSE_ENABLED_1 = TimeOfUseEnabledEntry(address=274, key="timeofuse_enabled_1", name="Time of Use Enabled 1")
-    TIMEOFUSE_ENABLED_2 = TimeOfUseEnabledEntry(address=275, key="timeofuse_enabled_2", name="Time of Use Enabled 2")
-    TIMEOFUSE_ENABLED_3 = TimeOfUseEnabledEntry(address=276, key="timeofuse_enabled_3", name="Time of Use Enabled 3")
-    TIMEOFUSE_ENABLED_4 = TimeOfUseEnabledEntry(address=277, key="timeofuse_enabled_4", name="Time of Use Enabled 4")
-    TIMEOFUSE_ENABLED_5 = TimeOfUseEnabledEntry(address=278, key="timeofuse_enabled_5", name="Time of Use Enabled 5")
-    TIMEOFUSE_ENABLED_6 = TimeOfUseEnabledEntry(address=279, key="timeofuse_enabled_6", name="Time of Use Enabled 6")
+    TIMEOFUSE_ENABLED_1 = TimeOfUse_ChargeEnabledEntry(address=274, key="timeofuse_enabled_1", name="Time of Use Enabled 1")
+    TIMEOFUSE_ENABLED_2 = TimeOfUse_ChargeEnabledEntry(address=275, key="timeofuse_enabled_2", name="Time of Use Enabled 2")
+    TIMEOFUSE_ENABLED_3 = TimeOfUse_ChargeEnabledEntry(address=276, key="timeofuse_enabled_3", name="Time of Use Enabled 3")
+    TIMEOFUSE_ENABLED_4 = TimeOfUse_ChargeEnabledEntry(address=277, key="timeofuse_enabled_4", name="Time of Use Enabled 4")
+    TIMEOFUSE_ENABLED_5 = TimeOfUse_ChargeEnabledEntry(address=278, key="timeofuse_enabled_5", name="Time of Use Enabled 5")
+    TIMEOFUSE_ENABLED_6 = TimeOfUse_ChargeEnabledEntry(address=279, key="timeofuse_enabled_6", name="Time of Use Enabled 6")
 
     BMS_CHARGING_VOLTAGE = BatteryVoltageEntry(address=312, key="bms_charging_voltage", name="BMS Charging Voltage")
     BMS_DISCHARGE_VOLTAGE = BatteryVoltageEntry(address=313, key="bms_discharge_voltage", name="BMS Discharge Voltage")
@@ -178,3 +178,4 @@ class SolArkRegisterMap(RegisterMap):
     BMS_VOLTAGE = BatteryVoltageEntry(address=317, key="bms_voltage", name="BMS Voltage")
     BMS_CURRENT = BatteryCurrentEntry(address=318, key="bms_current", data_type=DataType.INT16, name="BMS Current")
     BMS_TEMP = TemperatureEntry(address=319, key="bms_temp", name="BMS Temperature")
+    # TODO - Add 320-325

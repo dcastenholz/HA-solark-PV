@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Any, Callable, TypedDict, Unpack
+from typing import TYPE_CHECKING, Any, Callable, Self, TypedDict, Unpack, cast
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.const import EntityCategory
@@ -33,7 +33,11 @@ class BinarySensorEntryOptional(TypedDict, total=False):
     on_data_updated: Callable[[Any, "SolArkData"], None]
 
 
-class BinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription]):
+class BinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription, bool, bool, bool]):
+    """
+    Abstract base class for all binarysensor entries.
+    """
+
     DEFAULTS = {
         "sensor_class": BinarySensorClass.BINARY,
     }
@@ -41,12 +45,21 @@ class BinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription]):
     def __init__(self, key: str, name: str, **kwargs: Unpack[BinarySensorEntryOptional]) -> None:
         super().__init__(key, name, **kwargs)
 
+    def set_sensor_value(self, runtime_data: "SolArkData") -> None:
+        # TODO - Get rid of cast
+        # self._sensor_value = cast(bool, self._base_value)
+        self._sensor_value = self._base_value
+
     def _create_entity_description(self) -> SolArkBinarySensorEntityDescription:
         return SolArkBinarySensorEntityDescription.from_kwargs(
             key=self.key,
             name=self.name,
             opts=self.opts,
         )
+
+    def dynamic_lookup_key(self, runtime_data: "SolArkData") -> bool | None:
+        return self.sensor_value
+
 
 # ----------------------------
 # Binary
@@ -56,12 +69,20 @@ class BinaryProblemEntry(BinarySensorEntry):
         "device_class": BinarySensorDeviceClass.PROBLEM,
     }
 
-class BinaryMetricsEntry(BinarySensorEntry):
+class MetricsSuccessEntry(BinarySensorEntry):
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "entity_category": EntityCategory.DIAGNOSTIC,
         "name_prefix": "Metric: ",
     }
+
+    LOOKUP_MAP = {
+        True: ("Success", "mdi:electric-switch"),
+        False: ("Failure", "mdi:electric-switch-closed"),
+    }
+
+    def dynamic_lookup_key(self, runtime_data: "SolArkData"):
+        return self.sensor_value
 
     def __init__(
         self,
@@ -74,10 +95,9 @@ class BinaryMetricsEntry(BinarySensorEntry):
         super().__init__(
             key,
             name,
-            on_data_updated=self._on_data_updated,
         )
 
-    def _on_data_updated(self, entry: Any, runtime_data: "SolArkData") -> None:
+    def _post_process(self: Self, runtime_data: "SolArkData") -> None:
         # get metric result and store it as sensor value
-        entry.sensor_value = self.metric(runtime_data.coordinator_metrics)
+        self._sensor_value = self.metric(runtime_data.coordinator_metrics)
 

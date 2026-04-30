@@ -1,19 +1,17 @@
-from abc import ABC
-from typing import ClassVar, Dict, Generic, Tuple, TypeVar, cast
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any, Generic, Self, Tuple
 
 from .base_map_entry import BaseEntry
-from .register_value_types import SensorValue
+from .register_value_types import TBaseValue, TLookupMapKey, TMappedSensorValue, TRegisterValue, TSensorValue
 
-T = TypeVar("T", bound="EntryLookup")
-TSensorValue = TypeVar("TSensorValue", bound=SensorValue)
+if TYPE_CHECKING:
+    from .data import SolArkData
 
-# class EntryLookup(Generic[TSensorValue], ABC):
-    # # Override in subclasses
-    # LOOKUP_MAP: Dict[TSensorValue, Tuple[str, str]]
-class EntryLookup(ABC):
-    # Override in subclasses
-    # TODO - The key should be a generic type
-    LOOKUP_MAP: Dict[int, Tuple[str, str]]
+class EntryLookup(Generic[TLookupMapKey, TBaseValue, TRegisterValue, TSensorValue], BaseEntry[Any, TBaseValue, TSensorValue], ABC):
+
+    LOOKUP_MAP: dict[TLookupMapKey, Tuple[TSensorValue, str]]
+
+    # mapped_sensor_value: TMappedSensorValue
 
     def __init__(self, *args, **kwargs) -> None:
         kwargs.setdefault("dynamic_icon", self.dynamic_icon)
@@ -33,25 +31,22 @@ class EntryLookup(ABC):
         if not isinstance(lookup, dict) or not lookup:
             raise TypeError(f"{cls.__name__}.LOOKUP_MAP must be a non-empty dict")
 
-    # @classmethod
-    # def lookup_icon_from_map(cls, state: str) -> str | None:
-    #     for _, (label, icon) in cls.LOOKUP_MAP.items():
-    #         if label == state:
-    #             return icon
-    #     return None
+    @abstractmethod
+    def dynamic_lookup_key(self, runtime_data: "SolArkData") -> TLookupMapKey:
+        pass
 
-    def set_mapped_sensor_value(self, entry: BaseEntry) -> None:
-        # TODO - The key should be a generic type
-        if not isinstance(self , BaseEntry):
-            raise ValueError("EntryLookup can only be applied to BaseEntry subclasses")
-        entry = cast(BaseEntry, self)
-        if not isinstance(entry.sensor_value , int):
-            raise NotImplementedError("Only int is allowed for key value in LOOKUP_MAP")
-        entry.sensor_value = self.LOOKUP_MAP[entry.sensor_value][0]
+    # TODO - This needs to be moved into BaseMap and rename this method with a separate call in the post processing pipeline.
+    def _map_lookup(self: Self, runtime_data: "SolArkData") -> None:
+        value: TLookupMapKey = self.dynamic_lookup_key(runtime_data)
 
-    @classmethod
-    def get_label_from_raw(self, raw: int) -> str:
-        return self.LOOKUP_MAP[raw][0]
+        if value is None:
+            return
+            # raise TypeError("sensor_value is None")
+
+        if value not in self.LOOKUP_MAP:
+            raise TypeError(f"Value {value!r} not valid for LOOKUP_MAP keys: {list(self.LOOKUP_MAP.keys())}")
+
+        self.sensor_value = self.LOOKUP_MAP[value][0]
 
     @classmethod
     def dynamic_icon(cls, value) -> str | None:

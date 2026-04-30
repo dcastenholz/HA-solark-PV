@@ -20,8 +20,7 @@ from .config_connection_type import ConnectionType
 from .const import MODBUS_EXCEPTIONS
 from .modbus_config import ModbusConfig
 from .pymodbus_wrapper import ModbusClientWrapper, ModbusResponse, ModbusResponseError
-from .register_map_entry import DataType, RegisterEntry, StringEntry
-from .register_value_types import NumericValue
+from .register_map_entry import DataType, RegisterEntry, RegisterNumericEntry, StringEntry
 from .solark_register_map import SolArkRegisterMap
 
 _LOGGER = logging.getLogger(__name__)
@@ -88,6 +87,7 @@ class SolArkModbusClient():
     def read_modbus_inverter_data(self) -> bool:
         """Read the static inverter data from the inverter and store the results in the register map."""
 
+        # TODO - Move this to a static data list and read once and save values.
         self._process_register_range(self._register_map.SN, self._register_map.INFO_RATED_POWER)   # R5 - R16
 
         if self._register_map.is_error():
@@ -112,6 +112,10 @@ class SolArkModbusClient():
         # self._process_register_range(self._register_map.GRIDL1N_V, self._register_map.GRIDLMTL1_P)  # R150 - R170
         # self._process_register_range(self._register_map.GRIDLMTL2_P, self._register_map.PV3_P)  # R171 - R188
         # self._process_register_range(self._register_map.BATT_P, self._register_map.GEN_FREQ)  # R190 - R196
+
+        # self._process_register_range(self._register_map.GRIDL1N_V, self._register_map.GRID_RLY)  # R150 - R194
+        # self._process_register_range(self._register_map.GEN_RLY_RAW)  # R195
+        # self._process_register_range(self._register_map.GEN_FREQ)  # R196
 
         self._process_register_range(self._register_map.GRIDL1N_V, self._register_map.GEN_FREQ)  # R150 - R196
 
@@ -163,47 +167,58 @@ class SolArkModbusClient():
                 gap = entry.address - next_address
                 decoder.skip_registers(gap)
 
-            self._decode_register_map_entry(decoder, entry)
+            if isinstance(entry, StringEntry):
+                self._decode_register_map_string_entry(decoder, entry)
 
-            if entry.register_value is None:
-                _LOGGER.error("Failed to decode register %s with data type %s: value is None", entry.address, entry.data_type)
-                self._register_map.set_error()
-                return
+                if entry.base_value is None:
+                    _LOGGER.error("Failed to decode register %s: value is None", entry.address)
+                    self._register_map.set_error()
+            elif isinstance(entry, RegisterNumericEntry):
+                self._decode_register_map_numeric_entry(decoder, entry)
+
+                if entry.base_value is None:
+                    _LOGGER.error("Failed to decode register %s with data type %s: value is None", entry.address, entry.data_type)
+                    self._register_map.set_error()
+            else:
+                raise RuntimeError(f"Unhandled entry type: {type(entry).__name__} (entry={entry})")
 
             next_address = entry.address + entry.register_length
 
-    def _decode_register_map_entry(self, decoder: BinaryPayloadDecoder, entry: RegisterEntry) -> None:
+    def _decode_register_map_string_entry(self, decoder: BinaryPayloadDecoder, entry: StringEntry) -> None:
         """Decode a single register map entry using the specified decoder, and store the value into the register entry."""
 
-        if isinstance(entry, StringEntry):
-            entry.register_value = decoder.decode_string(entry.register_length * 2).decode("ascii")
+        entry.set_base_value(decoder.decode_string(entry.register_length * 2).decode("ascii"))
+
+
+    def _decode_register_map_numeric_entry(self, decoder: BinaryPayloadDecoder, entry: RegisterNumericEntry) -> None:
+        """Decode a single register map entry using the specified decoder, and store the value into the register entry."""
+
+        int_value: int
+        if entry.data_type == DataType.INT16:
+            int_value = decoder.decode_16bit_int()
+        elif entry.data_type == DataType.UINT16:
+            int_value = decoder.decode_16bit_uint()
+        elif entry.data_type == DataType.INT32:
+            int_value = decoder.decode_32bit_int()
+        elif entry.data_type == DataType.UINT32:
+            int_value = decoder.decode_32bit_uint()
+        elif entry.data_type == DataType.INT64:
+            int_value = decoder.decode_64bit_int()
+        elif entry.data_type == DataType.UINT64:
+            int_value = decoder.decode_64bit_uint()
         else:
-            int_value: int
-            if entry.data_type == DataType.INT16:
-                int_value = decoder.decode_16bit_int()
-            elif entry.data_type == DataType.UINT16:
-                int_value = decoder.decode_16bit_uint()
-            elif entry.data_type == DataType.INT32:
-                int_value = decoder.decode_32bit_int()
-            elif entry.data_type == DataType.UINT32:
-                int_value = decoder.decode_32bit_uint()
-            elif entry.data_type == DataType.INT64:
-                int_value = decoder.decode_64bit_int()
-            elif entry.data_type == DataType.UINT64:
-                int_value = decoder.decode_64bit_uint()
-            else:
-                raise ModbusDecodeError(f"Failed to decode register {entry.address} having data type {entry.data_type})")
+            raise ModbusDecodeError(f"Failed to decode register {entry.address} having data type {entry.data_type})")
 
-            entry.register_value = int_value
+        entry.set_base_value(int_value)
 
-            # Apply offset
-            sensor_value: NumericValue = entry.register_value - entry.offset
+        # # Apply offset
+        # sensor_value: NumericValue = entry.register_value - entry.offset
 
-            # Apply scale if needed
-            if entry.scale != 1.0:
-                sensor_value *= entry.scale
+        # # Apply scale if needed
+        # if entry.scale != 1.0:
+        #     sensor_value *= entry.scale
 
-            entry.sensor_value = sensor_value
+        # entry.sensor_value = sensor_value
 
     def _read_holding_registers(self, address: int, count: int) -> ModbusResponse:
         """Reads a block of holding registers from the inverter via Modbus
