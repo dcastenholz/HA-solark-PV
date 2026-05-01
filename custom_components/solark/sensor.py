@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .base_map_entry import BaseEntry
 from .const import FORMAT_TOU_SENSORS_24HOUR
 from .data import SolArkData
 from .register_value_types import SensorValue
@@ -50,22 +51,21 @@ class SolArkSensorEntity(SensorEntity, ABC):
             description.on_sensor_creating(self, runtime_data)
 
     @property
-    def icon(self) -> str | None:
-        dynamic_icon = self.entity_description.dynamic_icon
-        if (dynamic_icon) is not None:
-            icon = dynamic_icon(self.data_value)
-            if icon is not None:
-                return icon
+    def entry_class(self) -> type[BaseEntry]:
+        return self.entity_description.entry_class
 
-        return self.entity_description.icon
+    @property
+    def icon(self) -> str | None:
+        '''Gets the icon to display.
+
+        Uses 'or' so empty string in dynamic dictionary will not be returned.'''
+        return self.entry_class.dynamic_icon(self.data_value) or self.entity_description.icon
 
     @property
     def native_value(self) -> Any | None:
-        dynamic_sensor_value = self.entity_description.dynamic_sensor_value
-        if (dynamic_sensor_value) is not None:
-            value = dynamic_sensor_value(self.data_value)
-            if value is not None:
-                return value
+        value = self.entry_class.dynamic_native_value(self.data_value)
+        if value is not None:
+            return value
 
         return self.data_value
 

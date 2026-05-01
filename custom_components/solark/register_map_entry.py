@@ -43,7 +43,6 @@ class RegisterEntryOptional(TypedDict, total=False):
     description: str
     exclude_from_recorder: bool
     should_poll: bool
-    dynamic_icon: Callable[[Any], str | None]
 
     on_sensor_creating: Callable[["SolArkSensorEntity", "SolArkData"], None]
     device_class: SensorDeviceClass
@@ -54,7 +53,7 @@ class RegisterEntryOptional(TypedDict, total=False):
     state_class: Optional[SensorStateClass]
     native_unit: NativeUnit
 
-    on_data_updated: Callable[[Any, "SolArkData"], None]
+    set_sensor_value_method: Callable[[Any, "SolArkData"], None]
     scale: float
     offset: int
 
@@ -99,9 +98,6 @@ class RegisterEntry(Generic[TBaseValue, TRegisterValue, TSensorValue], BaseSenso
     @abstractmethod
     def register_length(self) -> int:
         pass
-
-    def dynamic_lookup_key(self, runtime_data: "SolArkData") -> TRegisterValue | None:
-        return self.register_value
 
     def _validate(self):
         # RegisterEntry must have non-negative address
@@ -153,12 +149,18 @@ class RegisterIntEntry(RegisterNumericEntry[int, int]):
     def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]) -> None:
         super().__init__(address, key, name, data_type, **kwargs)
 
-    def set_base_value(self: Self, value: int) -> None:
-        super().set_base_value(value)
+    @property
+    def base_value(self) -> int | None:
+        return self._base_value
+
+    @base_value.setter
+    def base_value(self: Self, value: int) -> None:
+        self._base_value = value
         self._register_value = value
 
-    def set_sensor_value(self, runtime_data: "SolArkData") -> None:
+    def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
         self._sensor_value = self._register_value
+
 
 class RegisterFloatEntry(RegisterNumericEntry[float, float]):
     """
@@ -186,15 +188,19 @@ class RegisterFloatEntry(RegisterNumericEntry[float, float]):
         self.offset = self.opts["offset"]
         self.scale = self.opts["scale"]
 
-    def set_base_value(self: Self, value: int) -> None:
-        super().set_base_value(value)
+    @property
+    def base_value(self) -> int | None:
+        return self._base_value
 
-        if self.base_value is None:
+    @base_value.setter
+    def base_value(self: Self, value: int) -> None:
+        self._base_value = value
+        if self._base_value is None:
             raise ValueError(f"base_value is None")
 
-        self._register_value = (self.base_value - self.offset) * self.scale
+        self._register_value = (self._base_value - self.offset) * self.scale
 
-    def set_sensor_value(self, runtime_data: "SolArkData") -> None:
+    def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
         self._sensor_value = self._register_value
 
 
@@ -202,13 +208,10 @@ class RegisterFloatEntry(RegisterNumericEntry[float, float]):
 # Grid Relay
 # ----------------------------
 class GridRelayEntry(RegisterIntEntry):
-    LOOKUP_MAP = {
+    DynamicValueDict = {
         0: ("Open", "mdi:electric-switch"),
         1: ("Closed", "mdi:electric-switch-closed"),
     }
-
-    def dynamic_lookup_key(self, runtime_data: "SolArkData"):
-        return self.register_value
 
     DEFAULTS = {
         "state_class": None,
@@ -233,11 +236,16 @@ class StringEntry(RegisterEntry[str, str, str]):
 
         super().__init__(address, key, name, **kwargs)
 
-    def set_base_value(self: Self, value: str) -> None:
-        super().set_base_value(value)
+    @property
+    def base_value(self) -> str | None:
+        return self._base_value
+
+    @base_value.setter
+    def base_value(self: Self, value: str) -> None:
+        self._base_value = value
         self._register_value = value
 
-    def set_sensor_value(self, runtime_data: "SolArkData") -> None:
+    def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
         self._sensor_value = self._register_value
 
     def _validate(self):
@@ -258,6 +266,7 @@ class StringEntry(RegisterEntry[str, str, str]):
 # Serial Number Entry
 # ----------------------------
 class SerialNumberEntry(StringEntry):
+    # TODO - Make sure this is called!!!
     def _post_process(self: Self, runtime_data: "SolArkData") -> None:
         '''Save the serial number to the device info serial number property'''
 
@@ -446,7 +455,7 @@ class SOCEntry(RegisterIntEntry):
 # Time of Use Enabled
 # ----------------------------
 class TimeOfUse_EnabledEntry(RegisterIntEntry):
-    LOOKUP_MAP = {
+    DynamicValueDict = {
         0: ("Disabled", "mdi:checkbox-blank-circle-outline"),
         255: ("Enabled", "mdi:checkbox-marked-circle-outline"),
     }
@@ -461,7 +470,7 @@ class TimeOfUse_EnabledEntry(RegisterIntEntry):
 # Time of Use Charge Enabled
 # ----------------------------
 class TimeOfUse_ChargeEnabledEntry(RegisterIntEntry):
-    LOOKUP_MAP = {
+    DynamicValueDict = {
         0: ("Disabled", "mdi:checkbox-blank-circle-outline"),
         1: ("Enabled", "mdi:checkbox-marked-circle-outline"),
     }

@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Generic, Self, Tuple, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Self, Tuple, TypedDict, Union
 
 from homeassistant.const import EntityCategory
 from typing_extensions import Unpack
@@ -20,10 +20,9 @@ class BaseEntryOptional(TypedDict, total=False):
     description: str
     exclude_from_recorder: bool
     should_poll: bool
-    dynamic_icon: Callable[["SensorValue"], str | None]
 
     on_sensor_creating: Callable[[Any, "SolArkData"], None]
-    on_data_updated: Callable[[Any, "SolArkData"], None]
+    set_sensor_value_method: Callable[[Any, "SolArkData"], None]
 
 
 class BaseEntry(Generic[TEntityDescription, TBaseValue, TSensorValue, TLookupMapKey], ABC):
@@ -63,12 +62,10 @@ class BaseEntry(Generic[TEntityDescription, TBaseValue, TSensorValue, TLookupMap
     # _sensor_value holds the final value that will be displayed by the sensor
     _sensor_value: TSensorValue | None = None
 
-    data_updated: Callable[[Self, "SolArkData"], None] | None
+    set_sensor_value_method: Callable[[Self, "SolArkData"], None] | None
 
-    # If LOOKUP_MAP is a non-empty dict, then it triggers dynamic lookup of icon and native_value for the sensor
-    LOOKUP_MAP: dict[TSensorValue, Tuple[Any, str]] | None
-    # dynamic_icon: Callable[[TLookupMapKey], str | None] | None = None
-    # dynamic_sensor_value: Callable[[TLookupMapKey], TSensorValue | None] | None = None
+    # If DynamicValueDict is a non-empty dict, then it triggers dynamic lookup of icon and native_value for the sensor
+    DynamicValueDict: dict[TSensorValue, Tuple[Any, str]] | None = None
 
     def __init__(self, key: str, name: str, **kwargs: Unpack[BaseEntryOptional]) -> None:
         self.key = key
@@ -77,24 +74,12 @@ class BaseEntry(Generic[TEntityDescription, TBaseValue, TSensorValue, TLookupMap
         # Merge any DEFAULTS class properties with kwargs
         self.opts = {**self._merged_defaults, **kwargs}
 
-        dynamic_opts: dict[str, Any] = {}
-
-        dynamic_icon = self.opts.get("dynamic_icon")
-        if dynamic_icon is None and self.is_dynamic_lookup():
-            dynamic_opts["dynamic_icon"] = self.lookup_dynamic_icon
-
-        dynamic_sensor_value = self.opts.get("dynamic_sensor_value")
-        if dynamic_sensor_value is None and self.is_dynamic_lookup():
-            dynamic_opts["dynamic_sensor_value"] = self.lookup_dynamic_sensor_value
-
-        self.opts = {**self._merged_defaults, **dynamic_opts, **kwargs}
-
         # -----------------------------
         # Store fields using kwargs merged with DEFAULTS
         # -----------------------------
-        self.data_updated = self.opts.get("on_data_updated")
+        self.set_sensor_value_method = self.opts.get("set_sensor_value_method")
 
-        self._entity_description = self._create_entity_description()
+        self._entity_description = self._create_entity_description(self.__class__)
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -112,44 +97,36 @@ class BaseEntry(Generic[TEntityDescription, TBaseValue, TSensorValue, TLookupMap
         cls._merged_defaults = merged
 
     @abstractmethod
-    def _create_entity_description(self) -> TEntityDescription:
+    def _create_entity_description(self, entry_class: type[BaseEntry]) -> TEntityDescription:
         """Subclasses must construct the entity description."""
 
-    @abstractmethod
-    def dynamic_lookup_key(self, runtime_data: "SolArkData") -> TSensorValue | None:
-        '''Needs to return the sensor_value'''
-
     @classmethod
-    def is_dynamic_lookup(cls) -> bool:
-        return getattr(cls, "LOOKUP_MAP", None) is not None
-
-    @classmethod
-    def lookup_dynamic_sensor_value(cls, lookup_map_key: TSensorValue) -> TSensorValue | None:
+    def dynamic_icon(cls, lookup_map_key: TSensorValue) -> str | None:
         '''This gets called in the sensor platform after the coordinator data is updated'''
-        if cls.LOOKUP_MAP is None:
+        if cls.DynamicValueDict is None:
             return None
 
         if lookup_map_key is None:
             return None
 
-        if lookup_map_key not in cls.LOOKUP_MAP:
-            raise TypeError(f"Value {lookup_map_key!r} not valid for LOOKUP_MAP keys: {list(cls.LOOKUP_MAP.keys())}")
+        if lookup_map_key not in cls.DynamicValueDict:
+            raise TypeError(f"Value {lookup_map_key!r} not valid for DynamicValueDict keys: {list(cls.DynamicValueDict.keys())}")
 
-        return cls.LOOKUP_MAP[lookup_map_key][0] or None
+        return cls.DynamicValueDict[lookup_map_key][1] or None
 
     @classmethod
-    def lookup_dynamic_icon(cls, lookup_map_key: TSensorValue) -> str | None:
+    def dynamic_native_value(cls, lookup_map_key: TSensorValue) -> TSensorValue | None:
         '''This gets called in the sensor platform after the coordinator data is updated'''
-        if cls.LOOKUP_MAP is None:
+        if cls.DynamicValueDict is None:
             return None
 
         if lookup_map_key is None:
             return None
 
-        if lookup_map_key not in cls.LOOKUP_MAP:
-            raise TypeError(f"Value {lookup_map_key!r} not valid for LOOKUP_MAP keys: {list(cls.LOOKUP_MAP.keys())}")
+        if lookup_map_key not in cls.DynamicValueDict:
+            raise TypeError(f"Value {lookup_map_key!r} not valid for DynamicValueDict keys: {list(cls.DynamicValueDict.keys())}")
 
-        return cls.LOOKUP_MAP[lookup_map_key][1] or None
+        return cls.DynamicValueDict[lookup_map_key][0] or None
 
     # -----------------------------
     # Entity access
@@ -166,16 +143,27 @@ class BaseEntry(Generic[TEntityDescription, TBaseValue, TSensorValue, TLookupMap
     def base_value(self) -> TBaseValue | None:
         return self._base_value
 
+    @base_value.setter
+    def base_value(self, value: TBaseValue) -> None:
+        self._base_value = value
+
     @property
     def sensor_value(self) -> TSensorValue | None:
         return self._sensor_value
 
-    def set_base_value(self, value: TBaseValue) -> None:
-        self._base_value = value
+    @sensor_value.setter
+    def sensor_value(self, value: TSensorValue):
+        self._sensor_value = value
 
     @abstractmethod
-    def set_sensor_value(self: Self, runtime_data: "SolArkData") -> None:
+    def calc_sensor_value(self: Self, runtime_data: "SolArkData") -> None:
         '''This method must end up setting the sensor_value'''
+
+    def process_sensor_value(self: Self, runtime_data: "SolArkData"):
+        if self.set_sensor_value_method is not None:
+            self.set_sensor_value_method(self, runtime_data)
+        else:
+            self.calc_sensor_value(runtime_data)
 
     # -----------------------------
     # Validation hook

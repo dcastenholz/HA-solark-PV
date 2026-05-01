@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 
+from .base_map_entry import BaseEntry
 from .binary_sensor_class import BinarySensorClass
 from .register_value_types import SensorValue
 
@@ -23,7 +24,7 @@ class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
     exclude_from_recorder: bool = False
     # should_poll is ignored for coordinator sensors.
     should_poll: bool = True
-    dynamic_icon: Callable[["SensorValue"], str] | None = None
+    entry_class: type[BaseEntry]
     on_sensor_creating: Callable[["SolArkBinarySensor", "SolArkData"], None] | None = None
     name_prefix: str = ""
 
@@ -32,6 +33,7 @@ class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
         cls,
         key: str,
         name: str,
+        entry_class: type[BaseEntry],
         opts: dict[str, Any],
     ) -> "SolArkBinarySensorEntityDescription":
 
@@ -41,7 +43,7 @@ class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
             "description",
             "exclude_from_recorder",
             "should_poll",
-            "dynamic_icon",
+            # TODO - Can we get rid of this???
             "on_sensor_creating",
             "name_prefix",
 
@@ -57,6 +59,7 @@ class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
         base_kwargs = {
             "key": key,
             "name": name,
+            "entry_class": entry_class,
             **{k: v for k, v in opts.items()
             if k in passthrough and v is not None},
         }

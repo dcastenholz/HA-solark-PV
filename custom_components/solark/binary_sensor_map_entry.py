@@ -24,13 +24,12 @@ class BinarySensorEntryOptional(TypedDict, total=False):
     description: str
     exclude_from_recorder: bool
     should_poll: bool
-    dynamic_icon: Callable[["SensorValue"], str | None]
 
     on_sensor_creating: Callable[["SolArkSensorEntity", "SolArkData"], None]
     device_class: BinarySensorDeviceClass
     sensor_class: BinarySensorClass
 
-    on_data_updated: Callable[[Any, "SolArkData"], None]
+    set_sensor_value_method: Callable[[Any, "SolArkData"], None]
 
 
 class BinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription, bool, bool, bool]):
@@ -45,20 +44,17 @@ class BinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription, bool, boo
     def __init__(self, key: str, name: str, **kwargs: Unpack[BinarySensorEntryOptional]) -> None:
         super().__init__(key, name, **kwargs)
 
-    def set_sensor_value(self, runtime_data: "SolArkData") -> None:
-        # TODO - Get rid of cast
-        # self._sensor_value = cast(bool, self._base_value)
-        self._sensor_value = self._base_value
+    def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
+        if self.base_value is not None:
+            self.sensor_value = self.base_value
 
-    def _create_entity_description(self) -> SolArkBinarySensorEntityDescription:
+    def _create_entity_description(self, entry_class: type[BaseEntry]) -> SolArkBinarySensorEntityDescription:
         return SolArkBinarySensorEntityDescription.from_kwargs(
             key=self.key,
             name=self.name,
+            entry_class=entry_class,
             opts=self.opts,
         )
-
-    def dynamic_lookup_key(self, runtime_data: "SolArkData") -> bool | None:
-        return self.sensor_value
 
 
 # ----------------------------
@@ -76,13 +72,10 @@ class MetricsSuccessEntry(BinarySensorEntry):
         "name_prefix": "Metric: ",
     }
 
-    LOOKUP_MAP = {
+    DynamicValueDict = {
         True: ("Success", "mdi:electric-switch"),
         False: ("Failure", "mdi:electric-switch-closed"),
     }
-
-    def dynamic_lookup_key(self, runtime_data: "SolArkData"):
-        return self.sensor_value
 
     def __init__(
         self,
@@ -97,7 +90,7 @@ class MetricsSuccessEntry(BinarySensorEntry):
             name,
         )
 
-    def _post_process(self: Self, runtime_data: "SolArkData") -> None:
+    def calc_sensor_value(self: Self, runtime_data: "SolArkData") -> None:
         # get metric result and store it as sensor value
         self._sensor_value = self.metric(runtime_data.coordinator_metrics)
 

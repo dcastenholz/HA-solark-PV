@@ -25,7 +25,7 @@ class BaseMapProcessor():
                 # Post-process the register map entries after reading the raw values from the inverter.
                 # TODO - Handle case where the dependency registers were not read. Value is None
                 for entry in map:
-                    entry.set_sensor_value(map.runtime_data)
+                    entry.process_sensor_value(map.runtime_data)
         except Exception as e:
             pipeline_ok = False
             _LOGGER.exception("Unexpected error setting register values: %s", e)
@@ -35,18 +35,7 @@ class BaseMapProcessor():
             try:
                 for map in self.sensor_maps:
                     for entry in map:
-                        entry.set_base_value(map.runtime_data)
-                        entry.set_sensor_value(map.runtime_data)
-            except Exception as e:
-                pipeline_ok = False
-                _LOGGER.exception("Unexpected error post processing sensor map data: %s", e)
-
-        if pipeline_ok:
-            try:
-                for map in self.sensor_maps:
-                    for entry in map:
-                        if entry.data_updated is not None:
-                            entry.data_updated(entry, map.runtime_data)
+                        entry.process_sensor_value(map.runtime_data)
             except Exception as e:
                 pipeline_ok = False
                 _LOGGER.exception("Unexpected error post processing sensor map data: %s", e)
@@ -58,7 +47,7 @@ class BaseMapProcessor():
         try:
             for map in self.metrics_maps:
                 for entry in map:
-                    entry.set_sensor_value(map.runtime_data)
+                    entry.process_sensor_value(map.runtime_data)
         except Exception as e:
             pipeline_ok = False
             _LOGGER.exception("Unexpected error post processing metrics map data: %s", e)

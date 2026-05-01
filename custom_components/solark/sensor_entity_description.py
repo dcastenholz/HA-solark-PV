@@ -14,6 +14,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 
+from .base_map_entry import BaseEntry
 from .register_value_types import SensorValue
 from .sensor_class import SensorClass
 
@@ -51,10 +52,7 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
     exclude_from_recorder: bool = False
     # should_poll is ignored for coordinator sensors.
     should_poll: bool = True
-    # TODO - tighten up typing
-    dynamic_icon: Callable[[Any], str] | None = None
-    # TODO - tighten up typing
-    dynamic_sensor_value: Callable[[Any], "SensorValue"] | None = None
+    entry_class: type[BaseEntry]
     on_sensor_creating: Callable[["SolArkSensorEntity", "SolArkData"], None] | None = None
     name_prefix: str = ""
 
@@ -63,6 +61,7 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
         cls,
         key: str,
         name: str,
+        entry_class: type[BaseEntry],
         opts: dict[str, Any],
     ) -> "SolArkSensorEntityDescription":
 
@@ -72,8 +71,7 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
             "description",
             "exclude_from_recorder",
             "should_poll",
-            "dynamic_icon",
-            "dynamic_sensor_value",
+            # TODO - Can we get rid of this???
             "on_sensor_creating",
             "name_prefix",
 
@@ -92,6 +90,7 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
         base_kwargs = {
             "key": key,
             "name": name,
+            "entry_class": entry_class,
             **{k: v for k, v in opts.items()
             if k in passthrough and v is not None},
         }
