@@ -170,6 +170,9 @@ class SolArkRegisterMap(RegisterMap):
     TIMEOFUSE_ENABLED_5 = TimeOfUse_ChargeEnabledEntry(address=278, key="timeofuse_enabled_5", name="Time of Use Enabled 5")
     TIMEOFUSE_ENABLED_6 = TimeOfUse_ChargeEnabledEntry(address=279, key="timeofuse_enabled_6", name="Time of Use Enabled 6")
 
+    # ----------------------------
+    # BMS
+    # ----------------------------
     BMS_CHARGING_VOLTAGE = BatteryVoltageEntry(address=312, key="bms_charging_voltage", name="BMS Charging Voltage")
     BMS_DISCHARGE_VOLTAGE = BatteryVoltageEntry(address=313, key="bms_discharge_voltage", name="BMS Discharge Voltage")
     BMS_CHARGE_CURRENT_LIMIT = BatteryCurrentEntry(address=314, key="bms_charge_current_limit", name="BMS Charge Current Limit")

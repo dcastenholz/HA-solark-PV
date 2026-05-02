@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, Self, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, Self, TypedDict
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -12,7 +14,7 @@ from homeassistant.const import (
 )
 from typing_extensions import Unpack
 
-from .register_value_types import TBaseValue, TRegisterValue, TSensorValue
+from .register_value_types import TSensorValue
 from .sensor_entity_description import NativeUnit, SensorClass
 from .sensor_map_entry import BaseSensorEntry
 
@@ -44,16 +46,13 @@ class RegisterEntryOptional(TypedDict, total=False):
     exclude_from_recorder: bool
     should_poll: bool
 
-    on_sensor_creating: Callable[["SolArkSensorEntity", "SolArkData"], None]
     device_class: SensorDeviceClass
     sensor_class: SensorClass
 
-    # TODO - Eliminate suggested_display_precision. Should always be calculated from scale
-    suggested_display_precision: int
     state_class: Optional[SensorStateClass]
     native_unit: NativeUnit
 
-    set_sensor_value_method: Callable[[Any, "SolArkData"], None]
+    set_sensor_value: Callable[[Any, "SolArkData"], None]
     scale: float
     offset: int
 
@@ -61,13 +60,11 @@ class RegisterEntryOptional(TypedDict, total=False):
 # ----------------------------------
 # Register Entry
 # ----------------------------------
-class RegisterEntry(Generic[TBaseValue, TRegisterValue, TSensorValue], BaseSensorEntry[TBaseValue, TSensorValue, TRegisterValue], ABC):
+class RegisterEntry(Generic[TSensorValue], BaseSensorEntry[TSensorValue], ABC):
     """
-    RegisterEntry[TBaseValue, TRegisterValue, TSensorValue]
+    RegisterEntry[TSensorValue]
 
         Type Parameters:
-            TBaseValue: the type of the base value.
-            TRegisterValue: the type of the decoded value from the register.
             TSensorValue: the type of the sensor display value.
 
     Abstract base class for all modbus register-backed sensors.
@@ -81,18 +78,10 @@ class RegisterEntry(Generic[TBaseValue, TRegisterValue, TSensorValue], BaseSenso
 
     address: int
 
-    # _base_value holds the raw value read from the register (soruce of truth)
-    # _register_value holds the value read from the register that has been processed according to the SolArk modbus documentation
-    _register_value: TRegisterValue | None = None
-
     def __init__(self, address: int, key: str, name: str, **kwargs: Unpack[RegisterEntryOptional]) -> None:
         super().__init__(key, name, **kwargs)
 
         self.address = address
-
-    @property
-    def register_value(self) -> TRegisterValue | None:
-        return self._register_value
 
     @property
     @abstractmethod
@@ -105,7 +94,7 @@ class RegisterEntry(Generic[TBaseValue, TRegisterValue, TSensorValue], BaseSenso
             raise ValueError(f"RegisterEntry {self._entity_description.key}: address must be >= 0")
 
 
-class RegisterNumericEntry(Generic[TRegisterValue, TSensorValue], RegisterEntry[int, TRegisterValue, TSensorValue], ABC):
+class RegisterNumericEntry(Generic[TSensorValue], RegisterEntry[TSensorValue], ABC):
     """
     RegisterNumericEntry[TRegisterValue, TSensorValue]
 
@@ -138,7 +127,7 @@ class RegisterNumericEntry(Generic[TRegisterValue, TSensorValue], RegisterEntry[
         raise ValueError(f"Unknown DataType {self.data_type} for {self._entity_description.key}")
 
 
-class RegisterIntEntry(RegisterNumericEntry[int, int]):
+class RegisterIntEntry(RegisterNumericEntry[int]):
     """
     Class for all modbus integer register backed integer sensors.
 
@@ -149,20 +138,8 @@ class RegisterIntEntry(RegisterNumericEntry[int, int]):
     def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]) -> None:
         super().__init__(address, key, name, data_type, **kwargs)
 
-    @property
-    def base_value(self) -> int | None:
-        return self._base_value
 
-    @base_value.setter
-    def base_value(self: Self, value: int) -> None:
-        self._base_value = value
-        self._register_value = value
-
-    def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
-        self._sensor_value = self._register_value
-
-
-class RegisterFloatEntry(RegisterNumericEntry[float, float]):
+class RegisterFloatEntry(RegisterNumericEntry[float]):
     """
     Class for all modbus float register backed float sensors.
 
@@ -189,19 +166,12 @@ class RegisterFloatEntry(RegisterNumericEntry[float, float]):
         self.scale = self.opts["scale"]
 
     @property
-    def base_value(self) -> int | None:
-        return self._base_value
+    def sensor_value(self) -> float | None:
+        return self._sensor_value
 
-    @base_value.setter
-    def base_value(self: Self, value: int) -> None:
-        self._base_value = value
-        if self._base_value is None:
-            raise ValueError(f"base_value is None")
-
-        self._register_value = (self._base_value - self.offset) * self.scale
-
-    def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
-        self._sensor_value = self._register_value
+    @sensor_value.setter
+    def sensor_value(self: Self, value: int) -> None:
+        self._sensor_value = (value - self.offset) * self.scale
 
 
 # ----------------------------
@@ -221,7 +191,7 @@ class GridRelayEntry(RegisterIntEntry):
 # ----------------------------
 # String
 # ----------------------------
-class StringEntry(RegisterEntry[str, str, str]):
+class StringEntry(RegisterEntry[str]):
     """
     Class for all modbus string register backed string sensors.
 
@@ -235,18 +205,6 @@ class StringEntry(RegisterEntry[str, str, str]):
         self.length = length
 
         super().__init__(address, key, name, **kwargs)
-
-    @property
-    def base_value(self) -> str | None:
-        return self._base_value
-
-    @base_value.setter
-    def base_value(self: Self, value: str) -> None:
-        self._base_value = value
-        self._register_value = value
-
-    def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
-        self._sensor_value = self._register_value
 
     def _validate(self):
         # StringEntry must have string_register_length defined
@@ -274,7 +232,7 @@ class SerialNumberEntry(StringEntry):
         # just prior to it running.  _post_process is a sledgehammer
         from .device_info import SolArkDeviceInfo
         a = self.sensor_value
-        SolArkDeviceInfo.handle_serial_number_change(runtime_data, str(self._register_value))
+        SolArkDeviceInfo.handle_serial_number_change(runtime_data, str(self.sensor_value))
 
 
 # ----------------------------
@@ -341,8 +299,6 @@ class BatteryVoltageEntry(RegisterFloatEntry):
         "scale": 0.01,
         "native_unit": NativeUnit.V,
         "state_class": SensorStateClass.MEASUREMENT,
-        # TODO - Eliminate suggested_display_precision. Should always be calculated from scale
-        "suggested_display_precision": 2,
     }
 
 

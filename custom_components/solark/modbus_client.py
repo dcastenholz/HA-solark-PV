@@ -170,13 +170,13 @@ class SolArkModbusClient():
             if isinstance(entry, StringEntry):
                 self._decode_register_map_string_entry(decoder, entry)
 
-                if entry.base_value is None:
+                if entry.sensor_value is None:
                     _LOGGER.error("Failed to decode register %s: value is None", entry.address)
                     self._register_map.set_error()
             elif isinstance(entry, RegisterNumericEntry):
                 self._decode_register_map_numeric_entry(decoder, entry)
 
-                if entry.base_value is None:
+                if entry.sensor_value is None:
                     _LOGGER.error("Failed to decode register %s with data type %s: value is None", entry.address, entry.data_type)
                     self._register_map.set_error()
             else:
@@ -187,7 +187,7 @@ class SolArkModbusClient():
     def _decode_register_map_string_entry(self, decoder: BinaryPayloadDecoder, entry: StringEntry) -> None:
         """Decode a single register map entry using the specified decoder, and store the value into the register entry."""
 
-        entry.base_value = decoder.decode_string(entry.register_length * 2).decode("ascii")
+        entry.sensor_value = decoder.decode_string(entry.register_length * 2).decode("ascii")
 
 
     def _decode_register_map_numeric_entry(self, decoder: BinaryPayloadDecoder, entry: RegisterNumericEntry) -> None:
@@ -209,7 +209,7 @@ class SolArkModbusClient():
         else:
             raise ModbusDecodeError(f"Failed to decode register {entry.address} having data type {entry.data_type})")
 
-        entry.base_value = int_value
+        entry.sensor_value = int_value
 
     def _read_holding_registers(self, address: int, count: int) -> ModbusResponse:
         """Reads a block of holding registers from the inverter via Modbus

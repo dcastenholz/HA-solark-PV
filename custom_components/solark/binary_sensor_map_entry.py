@@ -1,5 +1,7 @@
+"""Binary sensor map entries for Sol-Ark entities."""
+
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Self, TypedDict, Unpack, cast
+from typing import TYPE_CHECKING, Any, Callable, Self, Tuple, TypedDict, Unpack
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.const import EntityCategory
@@ -18,6 +20,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class BinarySensorEntryOptional(TypedDict, total=False):
+    """Optional keyword arguments for binary sensor map entries."""
+
     icon: str
     entity_registry_enabled_default: bool
     entity_category: EntityCategory
@@ -25,30 +29,28 @@ class BinarySensorEntryOptional(TypedDict, total=False):
     exclude_from_recorder: bool
     should_poll: bool
 
-    on_sensor_creating: Callable[["SolArkSensorEntity", "SolArkData"], None]
     device_class: BinarySensorDeviceClass
     sensor_class: BinarySensorClass
 
-    set_sensor_value_method: Callable[[Any, "SolArkData"], None]
+    set_sensor_value: Callable[[Any, "SolArkData"], None]
 
 
-class BinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription, bool, bool, bool]):
-    """
-    Abstract base class for all binarysensor entries.
-    """
+class BinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription, bool]):
+    """Base class for all binary sensor map entries."""
 
     DEFAULTS = {
         "sensor_class": BinarySensorClass.BINARY,
     }
 
+    # Dynamic maps let entry classes override an icon for specific values.
+    DynamicValueDict: dict[bool, Tuple[Any, str]] | None = None
+
     def __init__(self, key: str, name: str, **kwargs: Unpack[BinarySensorEntryOptional]) -> None:
+        """Initialize the binary sensor entry."""
         super().__init__(key, name, **kwargs)
 
-    def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
-        if self.base_value is not None:
-            self.sensor_value = self.base_value
-
     def _create_entity_description(self, entry_class: type[BaseEntry]) -> SolArkBinarySensorEntityDescription:
+        """Create the Home Assistant entity description for this entry."""
         return SolArkBinarySensorEntityDescription.from_kwargs(
             key=self.key,
             name=self.name,
@@ -61,20 +63,24 @@ class BinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription, bool, boo
 # Binary
 # ----------------------------
 class BinaryProblemEntry(BinarySensorEntry):
+    """Binary sensor entry that reports a problem state."""
+
     DEFAULTS = {
         "device_class": BinarySensorDeviceClass.PROBLEM,
     }
 
 class MetricsSuccessEntry(BinarySensorEntry):
+    """Binary sensor entry backed by coordinator metric success values."""
+
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "entity_category": EntityCategory.DIAGNOSTIC,
         "name_prefix": "Metric: ",
     }
 
-    DynamicValueDict = {
-        True: ("Success", "mdi:electric-switch"),
-        False: ("Failure", "mdi:electric-switch-closed"),
+    DynamicValueDict: dict[bool, Tuple[Any, str]] = {
+        True: (None, "mdi:check-circle"),
+        False: (None, "mdi:alert-circle"),
     }
 
     def __init__(
@@ -91,6 +97,5 @@ class MetricsSuccessEntry(BinarySensorEntry):
         )
 
     def calc_sensor_value(self: Self, runtime_data: "SolArkData") -> None:
-        # get metric result and store it as sensor value
+        """Calculate the sensor value from coordinator metrics."""
         self._sensor_value = self.metric(runtime_data.coordinator_metrics)
-

@@ -25,7 +25,6 @@ class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
     # should_poll is ignored for coordinator sensors.
     should_poll: bool = True
     entry_class: type[BaseEntry]
-    on_sensor_creating: Callable[["SolArkBinarySensor", "SolArkData"], None] | None = None
     name_prefix: str = ""
 
     @classmethod
@@ -43,8 +42,6 @@ class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
             "description",
             "exclude_from_recorder",
             "should_poll",
-            # TODO - Can we get rid of this???
-            "on_sensor_creating",
             "name_prefix",
 
             # BinarySensorEntityDescription

@@ -125,27 +125,27 @@ class SolArkSensorMap(SensorMap):
     # ----------------------------------
     # Post processed sensor definitions
     # ----------------------------------
-    FIRMWARE = DiagnosticEntry(key="firmware", name="Firmware Versions", set_sensor_value_method=firmware_data_updated)
-    MPPT_INFO = DiagnosticEntry(key="info_mppt_count", name="MPPT Count", set_sensor_value_method=info_mppt_count_data_updated)
-    PHASE_INFO = DiagnosticEntry(key="info_phase_count", name="Phase Count", set_sensor_value_method=info_phase_count_data_updated)
+    FIRMWARE = DiagnosticEntry(key="firmware", name="Firmware Versions", set_sensor_value=firmware_data_updated)
+    MPPT_INFO = DiagnosticEntry(key="info_mppt_count", name="MPPT Count", set_sensor_value=info_mppt_count_data_updated)
+    PHASE_INFO = DiagnosticEntry(key="info_phase_count", name="Phase Count", set_sensor_value=info_phase_count_data_updated)
     SYSTEM_DATE_TIME = SensorEntry_NoSet(
         key="system_date_time", name="System Date Time", icon="mdi:clock", sensor_class=SensorClass.DATETIME, exclude_from_recorder=True,
-        set_sensor_value_method=system_date_time_data_updated
+        set_sensor_value=system_date_time_data_updated
         )
 
     # TODO - Add 2 separate sensors or get concensus on changing entiity name(s) to match the SolArk documentation.
     # Caution: this is used by the hub to indicate a communication error with the device.
     # TODO - Another option is to create another entity, with the old one set to be not enabled by default.
     FAULTMSG = SensorEntry_NoSet(
-        key="faultmsg", name="Inverter error Message", icon="mdi:message-alert-outline", set_sensor_value_method=faultmsg_data_updated)
+        key="faultmsg", name="Inverter error Message", icon="mdi:message-alert-outline", set_sensor_value=faultmsg_data_updated)
 
-    PV_P = PowerEntry(key="pv_p", name="PV Input Power", icon="mdi:solar-power", set_sensor_value_method=pv_p_data_updated)
+    PV_P = PowerEntry(key="pv_p", name="PV Input Power", icon="mdi:solar-power", set_sensor_value=pv_p_data_updated)
     GEN_RLY = GeneratorRelayEntry(key="gen_rly", name="Generator Relay")
-    TOTALGRIDBUY_E = EnergyTotalIncreasingCalculatedEntry(key="totalgridbuy_e", name="Total Grid Buy Energy", set_sensor_value_method=totalgridbuy_e_data_updated)
+    TOTALGRIDBUY_E = EnergyTotalIncreasingCalculatedEntry(key="totalgridbuy_e", name="Total Grid Buy Energy", set_sensor_value=totalgridbuy_e_data_updated)
 
     CONFIG_INFO = ConfigEntry(key="config_info", name="Configuration Information")
 
 
 
 # TODO - BELOW are all metrics. Move to metrics map and finish
-    HAS_FAULT = BinaryProblemEntry(key="has_fault", name="ZZ Has Inverter Fault", set_sensor_value_method=has_fault_data_updated)
+    HAS_FAULT = BinaryProblemEntry(key="has_fault", name="ZZ Has Inverter Fault", set_sensor_value=has_fault_data_updated)

@@ -8,7 +8,7 @@ from homeassistant.const import EntityCategory
 from .base_map_entry import BaseEntry
 from .config_sensor import ConfigSensor
 from .coordinator_metrics import CoordinatorMetrics
-from .register_value_types import TBaseValue, TLookupMapKey, TSensorValue
+from .register_value_types import TSensorValue
 from .sensor_entity_description import NativeUnit, SensorClass, SolArkSensorEntityDescription
 
 if TYPE_CHECKING:
@@ -26,7 +26,6 @@ class BaseSensorEntryOptional(TypedDict, total=False):
     exclude_from_recorder: bool
     should_poll: bool
 
-    on_sensor_creating: Callable[["SolArkSensorEntity", "SolArkData"], None]
     device_class: SensorDeviceClass
     sensor_class: SensorClass
 
@@ -35,16 +34,14 @@ class BaseSensorEntryOptional(TypedDict, total=False):
     state_class: Optional[SensorStateClass]
     native_unit: NativeUnit
 
-    set_sensor_value_method: Callable[[Any, "SolArkData"], None]
+    set_sensor_value: Callable[[Any, "SolArkData"], None]
 
 
-class BaseSensorEntry(Generic[TBaseValue, TSensorValue, TLookupMapKey],
-                  BaseEntry["SolArkSensorEntityDescription", TBaseValue, TSensorValue, TLookupMapKey], ABC):
+class BaseSensorEntry(Generic[TSensorValue], BaseEntry["SolArkSensorEntityDescription", TSensorValue], ABC):
     """
-    BaseSensorEntry[TBaseValue, TSensorValue]
+    BaseSensorEntry[TSensorValue]
 
     Type Parameters:
-        TBaseValue: the type of the base value.
         TSensorValue: the type of the sensor display value.
         TLookupMapKey: the type of the dynamic lookup key value.
 
@@ -73,11 +70,8 @@ class BaseSensorEntry(Generic[TBaseValue, TSensorValue, TLookupMapKey],
 
 
 # TODO - Review all uses of this class for possible BaseSensorEntry inheritance instead
-class SensorEntry_NoSet(Generic[TSensorValue], BaseSensorEntry[TSensorValue, TSensorValue, TSensorValue]):
-
-    def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
-        self._sensor_value = self.base_value
-
+class SensorEntry_NoSet(Generic[TSensorValue], BaseSensorEntry[TSensorValue]):
+    pass
 
 class MetricsEntry(BaseSensorEntry):
     DEFAULTS = {
@@ -91,6 +85,7 @@ class MetricsEntry(BaseSensorEntry):
         self,
         key: str,
         name: str,
+        # TODO - Can this be moved to an existing mechanism???
         metric: Callable[[CoordinatorMetrics], Any],
     ) -> None:
         self.metric = metric
@@ -140,17 +135,10 @@ class DiagnosticEntry(SensorEntry_NoSet[str]):
 # Config
 # ----------------------------
 class ConfigEntry(SensorEntry_NoSet[str]):
-    @staticmethod
-    def sensor_creating(sensor: "SolArkSensorEntity", runtime_data: "SolArkData") -> None:
-        sensor._attr_native_value = runtime_data.name   # pylint: disable=protected-access
-        sensor.extra_state_attributes = ConfigSensor.get_data(runtime_data.config_entry)
-        return
-
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "entity_category": EntityCategory.DIAGNOSTIC,
-        "sensor_class": SensorClass.STATIC_VALUE,
-        "on_sensor_creating": sensor_creating,
+        "sensor_class": SensorClass.CONFIG,
         "should_poll": False,
         "exclude_from_recorder": True,
     }
@@ -159,7 +147,7 @@ class ConfigEntry(SensorEntry_NoSet[str]):
 # ----------------------------
 # Generator Relay
 # ----------------------------
-class GeneratorRelayEntry(BaseSensorEntry[int, int, int]):
+class GeneratorRelayEntry(BaseSensorEntry[int]):
     # This is the most fundamental value that is read from the registers
     _register_value_low_4_bits: int
 
@@ -171,7 +159,7 @@ class GeneratorRelayEntry(BaseSensorEntry[int, int, int]):
     }
 
     def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
-        value = runtime_data.register_map.GEN_RLY_RAW.register_value
+        value = runtime_data.register_map.GEN_RLY_RAW.sensor_value
         self._sensor_value = (value & 0x0F) if value is not None else None  # mask low 4 bits
 
     DEFAULTS = {

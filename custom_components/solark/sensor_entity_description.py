@@ -15,7 +15,6 @@ from homeassistant.const import (
 )
 
 from .base_map_entry import BaseEntry
-from .register_value_types import SensorValue
 from .sensor_class import SensorClass
 
 if TYPE_CHECKING:
@@ -48,12 +47,13 @@ class NativeUnit(Enum):
 class SolArkSensorEntityDescription(SensorEntityDescription):
     """SolArk-specific sensor description."""
     sensor_class: SensorClass = SensorClass.COORDINATOR
+    # TODO - Is this needed at all???
     description: str | None = None
+    # TODO - Is this needed at all???
     exclude_from_recorder: bool = False
     # should_poll is ignored for coordinator sensors.
     should_poll: bool = True
     entry_class: type[BaseEntry]
-    on_sensor_creating: Callable[["SolArkSensorEntity", "SolArkData"], None] | None = None
     name_prefix: str = ""
 
     @classmethod
@@ -71,15 +71,11 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
             "description",
             "exclude_from_recorder",
             "should_poll",
-            # TODO - Can we get rid of this???
-            "on_sensor_creating",
             "name_prefix",
 
             # SensorEntityDescription
             "device_class",
             "state_class",
-            # TODO - Eliminate suggested_display_precision. Should always be calculated from scale
-            "suggested_display_precision",
 
             # EntityDescription
             "icon",
@@ -96,19 +92,17 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
         }
 
         # -----------------------------
-        # Derive precision from scale
+        # Derive suggested display precision from scale
         # -----------------------------
-        # TODO - Eliminate suggested_display_precision. Should always be calculated from scale
-        if "suggested_display_precision" not in base_kwargs:
-            scale = opts.get("scale")
+        scale = opts.get("scale")
 
-            # TODO - Convert scale to be a power of 10.  This will become trivial.
-            if isinstance(scale, (int, float)) and scale not in (0, 1):
-                try:
-                    precision = max(0, int(round(-math.log10(scale))))
-                    base_kwargs["suggested_display_precision"] = precision
-                except (ValueError, OverflowError):
-                    pass  # ignore invalid scale
+        # TODO - Convert scale to be a power of 10.  This will become trivial.
+        if isinstance(scale, (int, float)) and scale not in (0, 1):
+            try:
+                precision = max(0, int(round(-math.log10(scale))))
+                base_kwargs["suggested_display_precision"] = precision
+            except (ValueError, OverflowError):
+                pass  # ignore invalid scale
 
         # -----------------------------
         # Unit handling

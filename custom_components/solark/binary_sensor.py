@@ -1,4 +1,7 @@
 
+from typing import Any
+
+from .base_map_entry import BaseEntry
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -27,14 +30,7 @@ class SolArkBinarySensor(BinarySensorEntity):
     """Base binary sensor entity.
     All binary sensor classes used in a BinarySensorMap must inherit from this."""
 
-    def __init__(
-        self,
-        runtime_data: SolArkData,
-        description: SolArkBinarySensorEntityDescription,
-    ):
-        if description.on_sensor_creating:
-            description.on_sensor_creating(self, runtime_data)
-
+    def __init__(self, runtime_data: SolArkData, description: SolArkBinarySensorEntityDescription):
         self.runtime_data = runtime_data
         self.entity_description: SolArkBinarySensorEntityDescription = description
 
@@ -49,6 +45,21 @@ class SolArkBinarySensor(BinarySensorEntity):
         self._attr_device_class = description.device_class
 
     @property
+    def entry_class(self) -> type[BaseEntry]:
+        return self.entity_description.entry_class
+
+    @property
+    def icon(self) -> str | None:
+        '''Gets the icon to display.
+
+        Uses 'or' so empty string in dynamic dictionary will not be returned.'''
+        return self.entry_class.dynamic_icon(self.data_value) or self.entity_description.icon
+
+    @property
+    def data_value(self):
+        return self.data.get(self.entity_description.key)
+
+    @property
     def data(self):
         return self.runtime_data.coordinator.data
 
@@ -58,7 +69,7 @@ class SolArkBinarySensor(BinarySensorEntity):
         if self.data is None:
             return None
 
-        value = self.data.get(self.entity_description.key)
+        value = self.data_value
 
         if value is None:
             return None

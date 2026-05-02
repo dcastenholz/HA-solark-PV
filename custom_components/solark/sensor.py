@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -10,6 +8,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .base_map_entry import BaseEntry
+from .config_sensor import ConfigSensor
 from .const import FORMAT_TOU_SENSORS_24HOUR
 from .data import SolArkData
 from .register_value_types import SensorValue
@@ -18,7 +17,7 @@ from .sensor_entity_description import SolArkSensorEntityDescription
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
-    runtime_data: SolArkData = entry.runtime_data
+    runtime_data: "SolArkData" = entry.runtime_data
 
     entities = []
 
@@ -46,9 +45,6 @@ class SolArkSensorEntity(SensorEntity, ABC):
         self._attr_device_info = runtime_data.device_info
         self._attr_exclude_from_recorder = description.exclude_from_recorder
         self._attr_should_poll = description.should_poll
-
-        if description.on_sensor_creating:
-            description.on_sensor_creating(self, runtime_data)
 
     @property
     def entry_class(self) -> type[BaseEntry]:
@@ -107,6 +103,7 @@ class SolArkStaticValueSensor(SolArkSensorEntity):
 
     # Instances of this class must set a static native_value
     _attr_native_value: SensorValue = None
+
     @property
     def data_value(self):
         return None
@@ -116,6 +113,14 @@ class SolArkStaticValueSensor(SolArkSensorEntity):
         if self._attr_native_value is None:
             raise RuntimeError(f"The sensor '{self._attr_name}' is a {type(self).__name__}, so '_attr_native_value' must be set.")
         return self._attr_native_value
+
+
+class SolArkConfigSensor(SolArkStaticValueSensor):
+    def __init__(self, runtime_data: "SolArkData", description: SolArkSensorEntityDescription):
+        super().__init__(runtime_data, description)
+
+        self._attr_native_value = runtime_data.name   # pylint: disable=protected-access
+        self.extra_state_attributes = ConfigSensor.get_data(runtime_data.config_entry)
 
 
 class SolArkMetricsSensor(SolArkCoordinatorSensor):
@@ -162,6 +167,7 @@ SENSOR_CLASS_MAP = {
     SensorClass.STATIC_VALUE: SolArkStaticValueSensor,
     SensorClass.COORDINATOR: SolArkCoordinatorSensor,
     SensorClass.METRICS: SolArkMetricsSensor,
+    SensorClass.CONFIG: SolArkConfigSensor,
     SensorClass.TOU_TIME: SolArkTOU_TimeSensor,
     SensorClass.DATETIME: SolArkDateTimeSensor,
 }
