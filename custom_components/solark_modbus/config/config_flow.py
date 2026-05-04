@@ -8,6 +8,20 @@ from homeassistant.config_entries import CONN_CLASS_LOCAL_POLL, ConfigFlow, Conf
 from homeassistant.const import CONF_DEVICE_ID, CONF_NAME, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 
+from ..const import (
+    DEFAULT_HOST,
+    DEFAULT_MAX_STALE_DATA_AGE_SECONDS,
+    DEFAULT_NAME,
+    DEFAULT_PORT_RTU,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+)
+from ..modbus_config import (
+    is_valid_device_id,
+    is_valid_rtu_port,
+    is_valid_tcp_host,
+    is_valid_tcp_port,
+)
 from .config_connection_type import ConnectionType
 from .config_data import ConfigData
 from .config_schema import (
@@ -17,20 +31,6 @@ from .config_schema import (
     CONF_TCP_HOST,
     CONF_TCP_PORT,
     SolArkConfigSchema,
-)
-from .const import (
-    DEFAULT_HOST,
-    DEFAULT_MAX_STALE_DATA_AGE_SECONDS,
-    DEFAULT_NAME,
-    DEFAULT_PORT_RTU,
-    DEFAULT_SCAN_INTERVAL,
-    DOMAIN,
-)
-from .modbus_config import (
-    is_valid_device_id,
-    is_valid_rtu_port,
-    is_valid_tcp_host,
-    is_valid_tcp_port,
 )
 
 

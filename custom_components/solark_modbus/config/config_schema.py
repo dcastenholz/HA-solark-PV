@@ -15,14 +15,14 @@ from homeassistant.helpers.selector import (
     TextSelectorConfig,
 )
 
-from .config_connection_type import CONF_CONNECTION_TYPE, CONNECTION_RTU, CONNECTION_TCP
-from .const import (
+from ..const import (
     MAX_DEVICE_ID,
     MAX_PORT_NUMBER,
     MIN_DEVICE_ID,
     MIN_PORT,
     MIN_SCAN_INTERVAL_SECONDS,
 )
+from .config_connection_type import CONF_CONNECTION_TYPE, CONNECTION_RTU, CONNECTION_TCP
 
 if TYPE_CHECKING:
     from .config_data import ConfigData

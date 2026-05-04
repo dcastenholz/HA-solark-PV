@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from homeassistant.util import dt
 
-from .binary_sensor_map_entry import BinaryProblemEntry
+from .binary_sensor_entry import BinaryProblemEntry
 from .fault_info import translate_fault_code_to_messages
 from .sensor_class import SensorClass
 from .sensor_entry import (

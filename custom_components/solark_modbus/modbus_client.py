@@ -16,7 +16,7 @@ from typing import Iterator
 from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
 from .binary_payload_decoder import BinaryPayloadDecoder
-from .config_connection_type import ConnectionType
+from .config.config_connection_type import ConnectionType
 from .const import MODBUS_EXCEPTIONS
 from .modbus_config import ModbusConfig
 from .pymodbus_wrapper import ModbusClientWrapper, ModbusResponse, ModbusResponseError

@@ -4,9 +4,9 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, CONF_SCAN_INTERVAL
 
-from .config_connection_type import CONF_CONNECTION_TYPE, ConnectionType
-from .config_data import ConfigData
-from .config_schema import CONF_MAX_STALE_DATA_AGE_SECONDS
+from .config.config_connection_type import CONF_CONNECTION_TYPE, ConnectionType
+from .config.config_data import ConfigData
+from .config.config_schema import CONF_MAX_STALE_DATA_AGE_SECONDS
 
 
 class ConfigSensor:

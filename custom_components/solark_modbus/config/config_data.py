@@ -5,10 +5,8 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 
-from ._dev_options import DevOptions_ConfigData_DebugValues
-from .config_connection_type import ConnectionType
-from .config_versions import ConfigVersions
-from .const import (
+from .._dev_options import DevOptions_ConfigData_DebugValues
+from ..const import (
     DEFAULT_DEVICE_ID,
     DEFAULT_HOST,
     DEFAULT_MAX_STALE_DATA_AGE_SECONDS,
@@ -17,6 +15,8 @@ from .const import (
     DEFAULT_PORT_RTU,
     DEFAULT_SCAN_INTERVAL,
 )
+from .config_connection_type import ConnectionType
+from .config_versions import ConfigVersions
 
 
 # ------------------------------------------------------------

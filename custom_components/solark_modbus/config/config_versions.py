@@ -9,9 +9,9 @@ from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry
 
+from ..const import DEFAULT_MAX_STALE_DATA_AGE_SECONDS, DEFAULT_PORT, DEFAULT_SCAN_INTERVAL, MAX_DEVICE_ID
 from .config_connection_type import CONNECTION_TCP, ConnectionType
 from .config_schema import CONF_MAX_STALE_DATA_AGE_SECONDS
-from .const import DEFAULT_MAX_STALE_DATA_AGE_SECONDS, DEFAULT_PORT, DEFAULT_SCAN_INTERVAL, MAX_DEVICE_ID
 
 if TYPE_CHECKING:
     from .config_data import ConfigData

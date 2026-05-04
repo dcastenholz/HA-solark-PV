@@ -13,7 +13,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 
 from .base_map import BaseMap
-from .config_data import ConfigData
+from .config.config_data import ConfigData
 from .const import ATTR_MANUFACTURER, DOMAIN
 from .coordinator_data import CoordinatorData
 from .coordinator_metrics import CoordinatorMetrics

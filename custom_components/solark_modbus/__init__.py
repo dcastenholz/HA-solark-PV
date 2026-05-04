@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from .base_entry_list import BaseEntryList
 
 # This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
-from .config_versions import ConfigVersions
+from .config.config_versions import ConfigVersions
 from .coordinator import SolArkCoordinator
 from .data import SolArkData
 

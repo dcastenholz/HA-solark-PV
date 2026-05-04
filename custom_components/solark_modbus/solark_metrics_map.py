@@ -1,6 +1,6 @@
 """Metrics sensor map for SolArk."""
 
-from .binary_sensor_map_entry import MetricsSuccessEntry
+from .binary_sensor_entry import MetricsSuccessEntry
 from .coordinator_metrics import CoordinatorMetrics as CM
 
 # from .metrics_map import MetricsMap

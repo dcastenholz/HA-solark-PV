@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING
 
 import voluptuous as vol
 
-from .config_connection_type import ConnectionType
+from .config.config_connection_type import ConnectionType
 from .const import MAX_DEVICE_ID, MAX_PORT_NUMBER
 
 if TYPE_CHECKING:
-    from .config_data import ConfigData
+    from .config.config_data import ConfigData
 
 
 @dataclass

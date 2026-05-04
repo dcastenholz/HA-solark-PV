@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .config_data import ConfigData
+    from .config.config_data import ConfigData
 
 USE_TEST_CONFIG_VALUES: bool = True
 
