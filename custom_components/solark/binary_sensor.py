@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .base_map_entry import BaseEntry
+from .base_entry import BaseEntry
 from .binary_sensor_class import BinarySensorClass
 from .binary_sensor_entity_description import SolArkBinarySensorEntityDescription
 from .data import SolArkData

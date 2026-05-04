@@ -16,7 +16,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 
-from .base_map_entry import BaseEntry
+from .base_entry import BaseEntry
 from .sensor_class import SensorClass
 
 

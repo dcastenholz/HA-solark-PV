@@ -5,7 +5,7 @@ from typing import Iterable, TypeVar
 
 from homeassistant.helpers.entity import EntityDescription
 
-from .base_map_entry import BaseEntry
+from .base_entry import BaseEntry
 
 TEntityDescription = TypeVar("TEntityDescription", bound=EntityDescription)
 TEntry = TypeVar("TEntry", bound=BaseEntry)

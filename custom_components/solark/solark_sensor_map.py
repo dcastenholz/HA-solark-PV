@@ -10,8 +10,7 @@ from homeassistant.util import dt
 from .binary_sensor_map_entry import BinaryProblemEntry
 from .fault_info import translate_fault_code_to_messages
 from .sensor_class import SensorClass
-from .sensor_map import SensorMap
-from .sensor_map_entry import (
+from .sensor_entry import (
     ConfigEntry,
     DiagnosticEntry,
     EnergyTotalIncreasingCalculatedEntry,
@@ -19,6 +18,7 @@ from .sensor_map_entry import (
     PowerEntry,
     SensorEntry_NoSet,
 )
+from .sensor_map import SensorMap
 from .solark_register_map import SolArkRegisterMap
 
 if TYPE_CHECKING:

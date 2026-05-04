@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Generic, Iterator, Type, TypeVa
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.entity import EntityDescription
 
-from .base_map_entry import BaseEntry
+from .base_entry import BaseEntry
 from .register_value_types import SensorValue
 
 _LOGGER = logging.getLogger(__name__)

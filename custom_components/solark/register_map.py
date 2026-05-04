@@ -3,7 +3,7 @@ from abc import ABC
 from typing import Iterator
 
 from .base_map import BaseMap
-from .register_map_entry import RegisterEntry
+from .register_entry import RegisterEntry
 
 
 class RegisterMap(BaseMap[RegisterEntry], ABC):

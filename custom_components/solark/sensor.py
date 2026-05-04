@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .base_map_entry import BaseEntry
+from .base_entry import BaseEntry
 from .config_sensor import ConfigSensor
 from .const import FORMAT_TOU_SENSORS_24HOUR
 from .data import SolArkData

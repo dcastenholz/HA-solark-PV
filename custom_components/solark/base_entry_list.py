@@ -2,9 +2,9 @@
 
 from homeassistant.config_entries import ConfigEntry
 
+from .base_entry import BaseEntry
 from .base_map import BaseMap
-from .base_map_entry import BaseEntry
-from .entity_description import EntityDescriptionHelper
+from .entity_description_helper import EntityDescriptionHelper
 from .solark_metrics_map import SolArkMetricsMap
 from .solark_register_map import SolArkRegisterMap
 from .solark_sensor_map import SolArkSensorMap

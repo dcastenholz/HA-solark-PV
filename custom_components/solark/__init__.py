@@ -6,7 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .base_map_entry_list import BaseEntryList
+from .base_entry_list import BaseEntryList
 
 # This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
 from .config_versions import ConfigVersions

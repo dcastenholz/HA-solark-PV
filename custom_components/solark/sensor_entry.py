@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, Self, TypedD
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import EntityCategory
 
-from .base_map_entry import BaseEntry
+from .base_entry import BaseEntry
 from .coordinator_metrics import CoordinatorMetrics
 from .register_value_types import TSensorValue
 from .sensor_entity_description import NativeUnit, SensorClass, SolArkSensorEntityDescription

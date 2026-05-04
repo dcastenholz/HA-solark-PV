@@ -5,7 +5,7 @@ from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 
-from .base_map_entry import BaseEntry
+from .base_entry import BaseEntry
 from .binary_sensor_class import BinarySensorClass
 
 

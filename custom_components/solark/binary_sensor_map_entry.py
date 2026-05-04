@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Callable, Self, Tuple, TypedDict, Unpack
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.const import EntityCategory
 
-from .base_map_entry import BaseEntry
+from .base_entry import BaseEntry
 from .binary_sensor_class import BinarySensorClass
 from .binary_sensor_entity_description import SolArkBinarySensorEntityDescription
 from .coordinator_metrics import CoordinatorMetrics

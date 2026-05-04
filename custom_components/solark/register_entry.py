@@ -18,7 +18,7 @@ from typing_extensions import Unpack
 
 from .register_value_types import TSensorValue
 from .sensor_entity_description import NativeUnit, SensorClass
-from .sensor_map_entry import BaseSensorEntry
+from .sensor_entry import BaseSensorEntry
 
 if TYPE_CHECKING:
     from .data import SolArkData

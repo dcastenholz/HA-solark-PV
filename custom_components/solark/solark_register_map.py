@@ -6,8 +6,7 @@ from homeassistant.components.sensor import (
     EntityCategory,
 )
 
-from .register_map import RegisterMap
-from .register_map_entry import (
+from .register_entry import (
     BatteryCurrentEntry,
     BatteryVoltageEntry,
     CurrentEntry,
@@ -31,6 +30,7 @@ from .register_map_entry import (
     TimeOfUse_EnabledEntry,
     TimeOfUse_TimeEntry,
 )
+from .register_map import RegisterMap
 
 T = TypeVar("T", bound="RegisterMap")  # T is the real subclass
 

@@ -2,10 +2,10 @@
 
 from .binary_sensor_map_entry import MetricsSuccessEntry
 from .coordinator_metrics import CoordinatorMetrics as CM
-from .sensor_map import SensorMap
 
 # from .metrics_map import MetricsMap
-from .sensor_map_entry import MetricsEntry
+from .sensor_entry import MetricsEntry
+from .sensor_map import SensorMap
 
 
 class SolArkMetricsMap(SensorMap):
