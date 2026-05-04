@@ -1,3 +1,5 @@
+"""Sensor entities."""
+
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -17,6 +19,7 @@ from .sensor_entity_description import SolArkSensorEntityDescription
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
+    """Set up sensors from a config entry."""
     runtime_data: "SolArkData" = entry.runtime_data
 
     entities = []
@@ -35,6 +38,7 @@ class SolArkSensorEntity(SensorEntity, ABC):
     All sensor classes used in a SensorMap must inherit from this."""
 
     def __init__(self, runtime_data: SolArkData, description: SolArkSensorEntityDescription):
+        """Initialize the sensor entity."""
         self.runtime_data = runtime_data
         self.entity_description: SolArkSensorEntityDescription = description
 
@@ -48,17 +52,17 @@ class SolArkSensorEntity(SensorEntity, ABC):
 
     @property
     def entry_class(self) -> type[BaseEntry]:
+        """Return the map entry class that created this entity."""
         return self.entity_description.entry_class
 
     @property
     def icon(self) -> str | None:
-        '''Gets the icon to display.
-
-        Uses 'or' so empty string in dynamic dictionary will not be returned.'''
+        """Return the dynamic icon when available."""
         return self.entry_class.dynamic_icon(self.data_value) or self.entity_description.icon
 
     @property
     def native_value(self) -> Any | None:
+        """Return the dynamic native value when available."""
         value = self.entry_class.dynamic_native_value(self.data_value)
         if value is not None:
             return value
@@ -68,6 +72,7 @@ class SolArkSensorEntity(SensorEntity, ABC):
     @property
     @abstractmethod
     def data_value(self):
+        """Return the raw data value for this entity."""
         pass
 
 
@@ -76,10 +81,12 @@ class SolArkCoordinatorEntity(CoordinatorEntity, ABC):
 
     @property
     def data(self):
+        """Return the latest coordinator data."""
         return self.coordinator.data
 
     @property
     def data_value(self):
+        """Return this entity's latest coordinator value."""
         data = self.data
         if data is None:
             return None
@@ -94,6 +101,7 @@ class SolArkCoordinatorSensor(SolArkCoordinatorEntity, SolArkSensorEntity):
         runtime_data: SolArkData,
         description: SolArkSensorEntityDescription,
     ):
+        """Initialize the coordinator-backed sensor."""
         SolArkSensorEntity.__init__(self, runtime_data, description)
         SolArkCoordinatorEntity.__init__(self, runtime_data.coordinator)
 
@@ -106,17 +114,22 @@ class SolArkStaticValueSensor(SolArkSensorEntity):
 
     @property
     def data_value(self):
+        """There is no data value for static sensors."""
         return None
 
     @property
     def native_value(self) -> SensorValue:
+        """Return the statically set native value."""
         if self._attr_native_value is None:
             raise RuntimeError(f"The sensor '{self._attr_name}' is a {type(self).__name__}, so '_attr_native_value' must be set.")
         return self._attr_native_value
 
 
 class SolArkConfigSensor(SolArkStaticValueSensor):
+    """Static sensor that exposes SolArk configuration details."""
+
     def __init__(self, runtime_data: "SolArkData", description: SolArkSensorEntityDescription):
+        """Initialize the config sensor."""
         super().__init__(runtime_data, description)
 
         self._attr_native_value = runtime_data.name   # pylint: disable=protected-access
@@ -128,8 +141,11 @@ class SolArkMetricsSensor(SolArkCoordinatorSensor):
 
 
 class SolArkTOU_TimeSensor(SolArkCoordinatorSensor):
+    """Coordinator sensor that formats time-of-use HHMM values."""
+
     @property
     def native_value(self) -> str | None:
+        """Return the formatted time-of-use value."""
         raw_value = self.data.get(self.entity_description.key) if self.data else None
         if not isinstance(raw_value, int):
             return None  # return None if no value yet
@@ -154,8 +170,11 @@ class SolArkTOU_TimeSensor(SolArkCoordinatorSensor):
 
 
 class SolArkDateTimeSensor(SolArkCoordinatorSensor):
+    """Coordinator sensor that formats datetime values."""
+
     @property
     def native_value(self) -> str | None:
+        """Return the formatted datetime value."""
         dt = self.data.get(self.entity_description.key) if self.data else None
         if dt is None:
             return None  # return None if no value yet

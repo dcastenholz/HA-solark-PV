@@ -1,3 +1,5 @@
+"""Sensor map for sensors that are not DIRECTLY backed by scaled and offset register reads."""
+
 import calendar
 import datetime
 import random
@@ -10,7 +12,6 @@ from .fault_info import translate_fault_code_to_messages
 from .sensor_class import SensorClass
 from .sensor_map import SensorMap
 from .sensor_map_entry import (
-    BaseSensorEntry,
     ConfigEntry,
     DiagnosticEntry,
     EnergyTotalIncreasingCalculatedEntry,
@@ -28,24 +29,28 @@ if TYPE_CHECKING:
 # ----------------------------
 @staticmethod
 def int_to_month(month_int: int) -> str:
+    """Return the month name for a month number."""
     if 1 <= month_int <= 12:
         return calendar.month_name[month_int]
     raise ValueError("Month must be between 1 and 12")
 
 @staticmethod
 def get_mppt_phase_info(decimal_number: int) -> tuple[int, int]:
+    """Return MPPT and phase counts from an encoded register value."""
     hex_tuple: tuple[str, str, str, str] = decimal_to_hex_tuple(decimal_number)
     info: tuple[int, int] = combine_decimal_digits(hex_tuple[0], hex_tuple[1]), combine_decimal_digits(hex_tuple[2], hex_tuple[3])
     return info
 
 @staticmethod
 def get_firmware(decimal_number: int) -> str:
+    """Return a firmware version string from an encoded register value."""
     hex_tuple: tuple[str, ...] = decimal_to_hex_tuple(decimal_number)
     firmware: str = f"{hex_tuple[0]}.{hex_tuple[1]}.{hex_tuple[2]}.{hex_tuple[3]}"
     return firmware
 
 @staticmethod
 def decimal_to_hex_tuple(decimal_number: int) -> tuple[str, str, str, str]:
+    """Return a four-character uppercase hex tuple for a decimal value."""
     # Convert to hex without the '0x' prefix and make uppercase
     hex_str = f"{decimal_number:04X}"
     # Create a tuple with each hex digit as a string
@@ -53,10 +58,12 @@ def decimal_to_hex_tuple(decimal_number: int) -> tuple[str, str, str, str]:
 
 @staticmethod
 def combine_decimal_digits(a: int, b: int) -> int:
+    """Combine two decimal digits into a two-digit integer."""
     return int(a) * 10 + int(b)
 
 @staticmethod
 def plural(value: int, word: str) -> str:
+    """Return a value and pluralized word."""
     return f"{value} {word}{'' if value == 1 else 's'}"
 
 
@@ -65,6 +72,7 @@ def plural(value: int, word: str) -> str:
 # ----------------------------------
 @staticmethod
 def firmware_data_updated(entry: "SensorEntry_NoSet", runtime_data: "SolArkData") -> None:
+    """Update the firmware sensor value from firmware registers."""
     firmware: str = f"M {get_firmware(int(runtime_data.register_map.INFO_FIRMWARE_M))} / "
     firmware += f"S {get_firmware(int(runtime_data.register_map.INFO_FIRMWARE_S))} / "
     firmware += f"C {get_firmware(int(runtime_data.register_map.INFO_FIRMWARE_C))}"
@@ -73,18 +81,21 @@ def firmware_data_updated(entry: "SensorEntry_NoSet", runtime_data: "SolArkData"
 
 @staticmethod
 def info_mppt_count_data_updated(entry: "SensorEntry_NoSet", runtime_data: "SolArkData") -> None:
+    """Update the MPPT count sensor value."""
     info: tuple[int, int] = get_mppt_phase_info(int(runtime_data.register_map.INFO_MPPT_PHASE_COUNTS_RAW))
     entry.sensor_value = f"{plural(info[0], 'MPPT')}"
     return
 
 @staticmethod
 def info_phase_count_data_updated(entry: "SensorEntry_NoSet", runtime_data: "SolArkData") -> None:
+    """Update the phase count sensor value."""
     info: tuple[int, int] = get_mppt_phase_info(int(runtime_data.register_map.INFO_MPPT_PHASE_COUNTS_RAW))
     entry.sensor_value = f"{plural(info[1], 'phase')}"
     return
 
 @staticmethod
 def system_date_time_data_updated(entry: "SensorEntry_NoSet", runtime_data: "SolArkData") -> None:
+    """Update the system date time sensor value from raw time registers."""
     register_map: SolArkRegisterMap = runtime_data.register_map
     year_month: tuple[int, int] = register_map.SYSTEM_TIME_YM_RAW.split_bytes_uint16()
     day_hour: tuple[int, int] = register_map.SYSTEM_TIME_DH_RAW.split_bytes_uint16()
@@ -95,17 +106,20 @@ def system_date_time_data_updated(entry: "SensorEntry_NoSet", runtime_data: "Sol
 
 @staticmethod
 def faultmsg_data_updated(entry: "SensorEntry_NoSet", runtime_data: "SolArkData") -> None:
+    """Update the fault message sensor value."""
     fault_message_list = translate_fault_code_to_messages(int(runtime_data.register_map.FAULT_INFO_RAW))
     entry.sensor_value = ", ".join(fault_message_list)
     return
 
 @staticmethod
 def pv_p_data_updated(entry: "SensorEntry_NoSet", runtime_data: "SolArkData") -> None:
+    """Update the total PV power sensor value."""
     entry.sensor_value = runtime_data.register_map.PV1_P + runtime_data.register_map.PV2_P + runtime_data.register_map.PV3_P
     return
 
 @staticmethod
 def totalgridbuy_e_data_updated(entry: "SensorEntry_NoSet", runtime_data: "SolArkData") -> None:
+    """Update total grid buy energy from discontiguous raw registers."""
     high: int = int(runtime_data.register_map.TOTALGRIDBUY_E_HIGH_RAW)
     low: int = int(runtime_data.register_map.TOTALGRIDBUY_E_LOW_RAW)
     value_int: int = (high << 16) | low
@@ -117,6 +131,7 @@ def totalgridbuy_e_data_updated(entry: "SensorEntry_NoSet", runtime_data: "SolAr
 
 @staticmethod
 def has_fault_data_updated(entry: "SensorEntry_NoSet[bool]", runtime_data: "SolArkData") -> None:
+    """Update the fault-state test sensor value."""
     entry.sensor_value = random.choice([True, False])
     return
 

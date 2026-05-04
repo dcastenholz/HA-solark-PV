@@ -1,3 +1,6 @@
+"""Data update coordinator for SolArk."""
+from __future__ import annotations
+
 import logging
 from datetime import timedelta
 from typing import Any
@@ -33,6 +36,7 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
     _coordinator_metrics: CoordinatorMetrics
 
     def __init__(self, runtime_data: SolArkData):
+        """Initialize the SolArk data update coordinator."""
         # Register the coordinator with the runtime_data
         self._runtime_data = runtime_data
         self._runtime_data.coordinator = self

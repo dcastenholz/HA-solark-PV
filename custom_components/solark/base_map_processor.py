@@ -1,3 +1,5 @@
+"""Post-process values for SolArk register, sensor, and metrics maps."""
+
 import logging
 
 from .data import SolArkData
@@ -7,6 +9,8 @@ from .sensor_map import SensorMap
 _LOGGER = logging.getLogger(__name__)
 
 class BaseMapProcessor():
+    """Run post-processing pipelines for SolArk maps."""
+
     register_maps: list[RegisterMap]
 
     sensor_maps: list[SensorMap]
@@ -14,11 +18,15 @@ class BaseMapProcessor():
     metrics_maps: list[SensorMap]
 
     def __init__(self, runtime_data: SolArkData):
+        """Initialize the processor with maps from runtime data."""
         self.register_maps = [runtime_data.register_map]
         self.sensor_maps = [runtime_data.calculated_sensor_map]
         self.metrics_maps = [runtime_data.metrics_map]
 
     def post_process(self) -> bool:
+        """Process register and calculated sensor maps."""
+
+        # Process the register map first, as the calculated sensor map may depend on values from the register map.
         pipeline_ok = True
         try:
             for map in self.register_maps:
@@ -30,7 +38,7 @@ class BaseMapProcessor():
             pipeline_ok = False
             _LOGGER.exception("Unexpected error setting register values: %s", e)
 
-
+        # Post-process the calculated sensor map entries after processing the register map, as they may depend on values from the register map.
         if pipeline_ok:
             try:
                 for map in self.sensor_maps:
@@ -43,6 +51,10 @@ class BaseMapProcessor():
         return pipeline_ok
 
     def post_process_metrics_maps(self) -> bool:
+        """Process metrics maps."""
+
+        # Post-process the metrics map entries after processing everything else.
+        # We need the values for the metrics to be set after all processing, because they shop processing performance.
         pipeline_ok = True
         try:
             for map in self.metrics_maps:

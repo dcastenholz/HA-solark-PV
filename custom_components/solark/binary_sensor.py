@@ -1,18 +1,20 @@
+"""Binary sensor platform for the SolArk integration."""
 
-from typing import Any
 
-from .base_map_entry import BaseEntry
+
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .base_map_entry import BaseEntry
 from .binary_sensor_class import BinarySensorClass
 from .binary_sensor_entity_description import SolArkBinarySensorEntityDescription
 from .data import SolArkData
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
+    """Set up SolArk binary sensors from the config entry."""
     runtime_data: SolArkData = entry.runtime_data
 
     entities = []
@@ -25,12 +27,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities)
     return True
 
-
+# TODO - This whole class and associated platform setup should go away unless we acutally want the On/ Off behavior.
+# Most uses require setting a custom display value, which is not directly supported except through the device_class, which is not ideal.
+# We should consider adding a dynamic_display_value function to the entry class that can be used to override the display value based on the raw value and runtime data, similar to the dynamic_icon function that we already have for icons.
 class SolArkBinarySensor(BinarySensorEntity):
-    """Base binary sensor entity.
-    All binary sensor classes used in a BinarySensorMap must inherit from this."""
+    """Represent a SolArk binary sensor entity."""
 
     def __init__(self, runtime_data: SolArkData, description: SolArkBinarySensorEntityDescription):
+        """Initialize the binary sensor entity."""
         self.runtime_data = runtime_data
         self.entity_description: SolArkBinarySensorEntityDescription = description
 
@@ -46,25 +50,27 @@ class SolArkBinarySensor(BinarySensorEntity):
 
     @property
     def entry_class(self) -> type[BaseEntry]:
+        """Return the map entry class that created this entity."""
         return self.entity_description.entry_class
 
     @property
     def icon(self) -> str | None:
-        '''Gets the icon to display.
-
-        Uses 'or' so empty string in dynamic dictionary will not be returned.'''
+        """Return the dynamic icon when available."""
         return self.entry_class.dynamic_icon(self.data_value) or self.entity_description.icon
 
     @property
     def data_value(self):
+        """Return this entity's latest coordinator value."""
         return self.data.get(self.entity_description.key)
 
     @property
     def data(self):
+        """Return the latest coordinator data."""
         return self.runtime_data.coordinator.data
 
     @property
     def is_on(self) -> bool | None:
+        """Return whether the binary sensor is on or off."""
 
         if self.data is None:
             return None
@@ -83,6 +89,7 @@ BINARYSENSOR_CLASS_MAP = {
 }
 
 def _get_sensor_class(sensor_class: BinarySensorClass) -> type[SolArkBinarySensor]:
+    """Return the sensor class that will be used to create the actual sensor."""
     try:
         return BINARYSENSOR_CLASS_MAP[sensor_class]
     except KeyError as err:

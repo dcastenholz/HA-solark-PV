@@ -1,4 +1,4 @@
-"""Binary sensor map entries for Sol-Ark entities."""
+"""Binary sensor map entries for SolArk entities."""
 
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Self, Tuple, TypedDict, Unpack
@@ -10,11 +10,10 @@ from .base_map_entry import BaseEntry
 from .binary_sensor_class import BinarySensorClass
 from .binary_sensor_entity_description import SolArkBinarySensorEntityDescription
 from .coordinator_metrics import CoordinatorMetrics
-from .register_value_types import SensorValue
 
 if TYPE_CHECKING:
     from .data import SolArkData
-    from .sensor import SolArkSensorEntity
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +31,7 @@ class BinarySensorEntryOptional(TypedDict, total=False):
     device_class: BinarySensorDeviceClass
     sensor_class: BinarySensorClass
 
+    # TODO - Is this unused???
     set_sensor_value: Callable[[Any, "SolArkData"], None]
 
 
@@ -89,6 +89,7 @@ class MetricsSuccessEntry(BinarySensorEntry):
         name: str,
         metric: Callable[[CoordinatorMetrics], Any],
     ) -> None:
+        """Initialize the metrics success entry."""
         self.metric = metric
 
         super().__init__(

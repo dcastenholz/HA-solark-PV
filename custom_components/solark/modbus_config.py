@@ -1,3 +1,5 @@
+"""Modbus configuration helpers for SolArk."""
+
 import ipaddress
 import re
 import socket
@@ -15,6 +17,8 @@ if TYPE_CHECKING:
 
 @dataclass
 class ModbusConfig:
+    """Resolved Modbus connection settings."""
+
     # Common connection parameters
     connection_type: ConnectionType
     device_id: int
@@ -27,6 +31,7 @@ class ModbusConfig:
     serial_port: str | None
 
     def __init__(self, config_data: "ConfigData"):
+        """Initialize Modbus settings from config data."""
         self.name = config_data.name
         self.device_id = config_data.device_id
         self.connection_type = config_data.connection_type
@@ -87,6 +92,7 @@ def is_valid_tcp_host(value: str) -> bool:
     return False
 
 def is_valid_tcp_port(tcp_port: int):
+    """Return True if value is a valid TCP port."""
     return tcp_port >= 1 and tcp_port <= MAX_PORT_NUMBER
 
 def is_valid_rtu_port(rtu_port: str) -> bool:
@@ -113,4 +119,5 @@ def rtu_port_exists(rtu_port: str) -> bool:
     return rtu_port in available
 
 def is_valid_device_id(device_id: int):
+    """Return True if value is a valid Modbus device ID."""
     return device_id >= 1 and device_id <= MAX_DEVICE_ID

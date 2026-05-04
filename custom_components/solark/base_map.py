@@ -1,3 +1,5 @@
+"""Base map container for SolArk map entries."""
+
 import logging
 from abc import ABC
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Iterator, Type, TypeVar, cast
@@ -26,6 +28,7 @@ class BaseMap(Generic[TEntry], ABC):
     runtime_data: "SolArkData"
 
     def __init__(self, runtime_data: "SolArkData"):
+        """Initialize the map from collected class entries."""
         self.runtime_data = runtime_data
 
         self._entries: list[TEntry] = cast(
@@ -40,6 +43,7 @@ class BaseMap(Generic[TEntry], ABC):
 
 
     def __init_subclass__(cls, **kwargs):
+        """Collect entry attributes when a map subclass is defined."""
         super().__init_subclass__(**kwargs)
 
         entry_type = getattr(cls, "_entry_type", None)
@@ -82,6 +86,7 @@ class BaseMap(Generic[TEntry], ABC):
         return entries
 
     def descriptions_of_type(self, entry_type: type[TFilter]) -> list[TFilter]:
+        """Return entity descriptions matching the requested type."""
         return [
             entry.entity_description
             for entry in self._entries
@@ -105,6 +110,7 @@ class BaseMap(Generic[TEntry], ABC):
 
     @property
     def data(self) -> dict[str, SensorValue]:
+        """Return processed sensor values keyed by entity description key."""
         return {
             entry.entity_description.key: entry.sensor_value
             for entry in self._entries

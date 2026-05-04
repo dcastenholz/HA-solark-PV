@@ -1,3 +1,5 @@
+"""Base class for all SolArk entities."""
+
 import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, Generic, Self, Tuple, TypedDict, Union
@@ -14,6 +16,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class BaseEntryOptional(TypedDict, total=False):
+    """Optional keyword arguments shared by all map entries."""
+
     icon: str
     entity_registry_enabled_default: bool
     entity_category: EntityCategory
@@ -54,15 +58,17 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
     name: str
     _entity_description: TEntityDescription
 
-    # _sensor_value holds the final value that will be displayed by the sensor
+    # Holds the final value sent to the sensor for display in the UI.
+    # The UI can do further processing on the actual displayed value as well as the icon shown.
     _sensor_value: TSensorValue | None = None
 
     set_sensor_value: Callable[[Self, "SolArkData"], None] | None
 
-    # If DynamicValueDict is a non-empty dict, then it triggers dynamic lookup of icon and native_value for the sensor
+    # Dynamic maps let entry classes convert raw values to custom display values and icons.
     DynamicValueDict: dict[TSensorValue, Tuple[Any, str]] | None = None
 
     def __init__(self, key: str, name: str, **kwargs: Unpack[BaseEntryOptional]) -> None:
+        """Initialize the map entry."""
         self.key = key
         self.name = name
 
@@ -77,6 +83,7 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
         self._entity_description = self._create_entity_description(self.__class__)
 
     def __init_subclass__(cls, **kwargs):
+        """Merge defaults from the inheritance chain for each subclass."""
         super().__init_subclass__(**kwargs)
 
         # -----------------------------
@@ -120,12 +127,14 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
 
     @classmethod
     def dynamic_icon(cls, lookup_map_key: TSensorValue) -> str | None:
+        """Return a dynamic icon for the value if one is configured."""
         entry = cls._get_dynamic_entry(lookup_map_key)
         return entry[1] if entry else None
 
 
     @classmethod
     def dynamic_native_value(cls, lookup_map_key: TSensorValue) -> TSensorValue | None:
+        """Return a dynamic display value if one is configured."""
         entry = cls._get_dynamic_entry(lookup_map_key)
         return entry[0] if entry else None
 
@@ -134,25 +143,30 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
     # -----------------------------
     @property
     def entity_description(self) -> TEntityDescription:
+        """Return the entity description for this entry."""
         return self._entity_description
 
     @entity_description.setter
     def entity_description(self, value: TEntityDescription) -> None:
+        """Set the entity description for this entry."""
         self._entity_description = value
 
     @property
     def sensor_value(self) -> TSensorValue | None:
+        """Return the processed sensor value."""
         return self._sensor_value
 
     @sensor_value.setter
     def sensor_value(self, value: TSensorValue):
+        """Set the processed sensor value."""
         self._sensor_value = value
 
     def calc_sensor_value(self: Self, runtime_data: "SolArkData") -> None:
-        '''This method must end up setting the sensor_value'''
+        """Overridable method to calculate and store this entry's sensor value."""
         return
 
     def process_sensor_value(self: Self, runtime_data: "SolArkData"):
+        """Process this entry's sensor value using a custom hook or default logic."""
         if self.set_sensor_value is not None:
             self.set_sensor_value(self, runtime_data)
         else:
@@ -167,45 +181,6 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
         Subclasses may extend this.
         """
         return
-
-    # -----------------------------
-    # Post processing
-    # -----------------------------
-    # def post_process(self: Self, runtime_data: "SolArkData") -> None:
-    #     """Execute post-processing across class hierarchy (base -> subclass)."""
-
-    #     for cls in reversed(type(self).mro()):
-    #         # Skip object base class
-    #         if cls is object:
-    #             continue
-
-    #         # Only call if the class defines its own implementation
-    #         method = cls.__dict__.get("_post_process")
-    #         if method is None:
-    #             continue
-
-    #         # Avoid calling this same method recursively
-    #         if method is BaseEntry.post_process:
-    #             continue
-
-    #         try:
-    #             method(self, runtime_data)
-    #         except Exception:  # pylint: disable=broad-exception-caught
-    #             _LOGGER.exception(
-    #                 "Error while running data updated event of entry %s (class %s)",
-    #                 self._entity_description.key,
-    #                 cls.__name__,
-    #             )
-
-    #     # Execute any post-processing static method that may be set by subclasses.
-    #     if self.data_updated:
-    #         try:
-    #             self.data_updated(self, runtime_data)
-    #         except Exception:  # pylint: disable=broad-exception-caught
-    #             _LOGGER.exception(
-    #                 "Error while running data updated event of entry %s",
-    #                 self._entity_description.key,
-    #             )
 
     # -----------------------------
     # Numeric helpers

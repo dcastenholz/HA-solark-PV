@@ -1,4 +1,4 @@
-"""Utilities for decoding Sol-Ark fault bitmaps."""
+"""Utilities for decoding SolArk fault bitmaps."""
 
 from dataclasses import dataclass
 
@@ -7,7 +7,7 @@ from .const import FAULT_TABLE
 
 @dataclass(frozen=True)
 class DecodedFault:
-    """Structured representation of a decoded fault from the Sol-Ark inverter."""
+    """Structured representation of a decoded fault from the SolArk inverter."""
 
     code: str
     name: str

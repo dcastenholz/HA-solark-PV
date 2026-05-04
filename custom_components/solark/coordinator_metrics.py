@@ -1,3 +1,5 @@
+"""Coordinator metrics for SolArk."""
+
 import logging
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -8,10 +10,13 @@ _LOGGER = logging.getLogger(__name__)
 F = TypeVar("F", bound=Callable[..., Any])
 
 def metric(func: F) -> F:
+    """Mark a method as a coordinator metric. This allows it to be used in a metrics sensor."""
     func._is_metric = True  # mark method
     return func
 
 class ReturnedDataType(StrEnum):
+    """Type of data set returned by the coordinator."""
+
     REALTIME_DATA = "Real-time data"
     RECENT_DATA = "Recent cached data"
     NO_RECENT_DATA = "No recent cached data"
@@ -19,7 +24,12 @@ class ReturnedDataType(StrEnum):
 
 
 class CoordinatorMetrics:
+    """Track coordinator lifecycle and data update metrics."""
+
     def __init__(self) -> None:
+        """Initialize coordinator metrics."""
+
+        # TODO - We may want to get rid of the read ones, as this is a bit too much detail.
         self._data_updating_count: int = 0
         self._data_updated_count: int = 0
         self._data_update_failed_count: int = 0
@@ -65,6 +75,7 @@ class CoordinatorMetrics:
         return
 
     def on_data_read_result(self, data_read_successful: bool):
+        """Record the result of a Modbus data read attempt."""
         if data_read_successful:
             # Record the successful data read
             self._on_data_read()
@@ -75,6 +86,7 @@ class CoordinatorMetrics:
             _LOGGER.error("Last data read failed. Duration: %s", self.last_data_read_attempt_duration())
 
     def on_data_update_result(self, data_update_successful: bool):
+        """Record the result of a coordinator data update."""
         if data_update_successful:
             # Record the successful data update
             self._on_data_updated()
@@ -144,56 +156,69 @@ class CoordinatorMetrics:
 
     @metric
     def last_data_read_result(self) -> bool:
+        """Return whether the last data read succeeded."""
         return self._last_data_read_result
 
     @metric
     def last_data_update_result(self) -> bool:
+        """Return whether the last data update succeeded."""
         return self._last_data_update_result
 
     @metric
     def last_data_read_timestamp(self) -> datetime | None:
+        """Return the timestamp of the last successful data read."""
         return self._last_data_read_timestamp
 
     @metric
     def last_data_read_failed_timestamp(self) -> datetime | None:
+        """Return the timestamp of the last failed data read."""
         return self._last_data_read_failed_timestamp
 
     @metric
     def last_data_updated_timestamp(self) -> datetime | None:
+        """Return the timestamp of the last successful data update."""
         return self._last_data_updated_timestamp
 
     @metric
     def last_data_update_failed_timestamp(self) -> datetime | None:
+        """Return the timestamp of the last failed data update."""
         return self._last_data_update_failed_timestamp
 
     @metric
     def last_data_read_attempt_duration(self) -> timedelta | None:
+        """Return the duration of the last data read attempt."""
         return self.update_duration(self._last_data_reading_timestamp, self.last_data_read_attempt_end_timestamp())
 
     @metric
     def last_data_update_attempt_duration(self) -> timedelta | None:
+        """Return the duration of the last data update attempt."""
         return self.update_duration(self._last_data_updating_timestamp, self.last_data_update_attempt_end_timestamp())
 
     @metric
     def last_data_updated_duration(self) -> timedelta | None:
+        """Return the duration of the last successful data update."""
         return self.update_duration(self._last_data_updating_timestamp, self._last_data_updated_timestamp)
 
     @metric
     def last_returned_data_type(self) -> str | None:
+        """Return the last data return type as a string."""
         return self._last_returned_data_type.value
 
     @metric
     def max_data_updated_duration(self) -> timedelta | None:
+        """Return the maximum successful data update duration."""
         return self._max_data_updated_duration
 
     @metric
     def min_data_updated_duration(self) -> timedelta | None:
+        """Return the minimum successful data update duration."""
         return self._min_data_updated_duration
 
     # ----------------------------------
     # Storage and retrieval methods
     # ----------------------------------
     def to_dict(self) -> dict:
+        """Serialize metrics to a dictionary."""
         return {
             "data_updating_count": self._data_updating_count,
             "data_updated_count": self._data_updated_count,
@@ -220,6 +245,7 @@ class CoordinatorMetrics:
         }
 
     def from_dict(self, data: dict) -> None:
+        """Restore metrics from a dictionary."""
         def dt(v):
             return datetime.fromisoformat(v) if v else None
 
@@ -251,11 +277,13 @@ class CoordinatorMetrics:
     # Private methods
     # ----------------------------------
     def last_data_read_attempt_end_timestamp(self) -> datetime | None:
+        """Return the end timestamp of the last data read attempt."""
         if self._last_data_read_result:
             return self._last_data_read_timestamp
         return self._last_data_read_failed_timestamp
 
     def last_data_update_attempt_end_timestamp(self) -> datetime | None:
+        """Return the end timestamp of the last data update attempt."""
         if self._last_data_update_result:
             return self._last_data_updated_timestamp
         return self._last_data_update_failed_timestamp
@@ -297,6 +325,7 @@ class CoordinatorMetrics:
 
     @staticmethod
     def update_duration(start: datetime | None, end: datetime | None) -> timedelta | None:
+        """Return the duration between two timestamps."""
         if start is None or end is None:
             return None
         return end - start

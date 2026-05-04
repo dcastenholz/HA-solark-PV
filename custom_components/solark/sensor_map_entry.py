@@ -1,3 +1,5 @@
+"""Sensor map entries for SolArk."""
+
 import logging
 from abc import ABC
 from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, Self, TypedDict, Unpack
@@ -6,19 +8,20 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import EntityCategory
 
 from .base_map_entry import BaseEntry
-from .config_sensor import ConfigSensor
 from .coordinator_metrics import CoordinatorMetrics
 from .register_value_types import TSensorValue
 from .sensor_entity_description import NativeUnit, SensorClass, SolArkSensorEntityDescription
 
 if TYPE_CHECKING:
     from .data import SolArkData
-    from .sensor import SolArkSensorEntity
+
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class BaseSensorEntryOptional(TypedDict, total=False):
+    """Optional keyword arguments for sensor map entries."""
+
     icon: str
     entity_registry_enabled_default: bool
     entity_category: EntityCategory
@@ -29,8 +32,6 @@ class BaseSensorEntryOptional(TypedDict, total=False):
     device_class: SensorDeviceClass
     sensor_class: SensorClass
 
-    # TODO - Eliminate suggested_display_precision. Should always be calculated from scale
-    suggested_display_precision: int
     state_class: Optional[SensorStateClass]
     native_unit: NativeUnit
 
@@ -57,7 +58,10 @@ class BaseSensorEntry(Generic[TSensorValue], BaseEntry["SolArkSensorEntityDescri
         "sensor_class": SensorClass.COORDINATOR,
     }
 
+    # This is needed to introduce the sensor_class parameter to the entity description,
+    # which is required for dynamic icons and other behavior.
     def __init__(self, key: str, name: str, **kwargs: Unpack[BaseSensorEntryOptional]) -> None:
+        """Initialize the base sensor entry."""
         super().__init__(key, name, **kwargs)
 
     def _create_entity_description(self, entry_class: type[BaseEntry]) -> SolArkSensorEntityDescription:
@@ -71,9 +75,12 @@ class BaseSensorEntry(Generic[TSensorValue], BaseEntry["SolArkSensorEntityDescri
 
 # TODO - Review all uses of this class for possible BaseSensorEntry inheritance instead
 class SensorEntry_NoSet(Generic[TSensorValue], BaseSensorEntry[TSensorValue]):
+    """Sensor entry that uses the default sensor value behavior."""
     pass
 
 class MetricsEntry(BaseSensorEntry):
+    """Sensor entry backed by coordinator metrics."""
+
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "sensor_class": SensorClass.METRICS,
@@ -85,9 +92,10 @@ class MetricsEntry(BaseSensorEntry):
         self,
         key: str,
         name: str,
-        # TODO - Can this be moved to an existing mechanism???
+        # TODO - Can this be moved to set_sensor_value???
         metric: Callable[[CoordinatorMetrics], Any],
     ) -> None:
+        """Initialize the metrics entry."""
         self.metric = metric
 
         super().__init__(
@@ -96,13 +104,15 @@ class MetricsEntry(BaseSensorEntry):
         )
 
     def calc_sensor_value(self: Self, runtime_data: "SolArkData") -> None:
-        # get metric result and store it as sensor value
+        """Calculate the sensor value from coordinator metrics."""
         self._sensor_value = self.metric(runtime_data.coordinator_metrics)
 
 # ----------------------------
 # Power
 # ----------------------------
 class PowerEntry(SensorEntry_NoSet[float]):
+    """Sensor entry for power values."""
+
     DEFAULTS = {
         "native_unit": NativeUnit.WATT,
         "device_class": SensorDeviceClass.POWER,
@@ -114,6 +124,8 @@ class PowerEntry(SensorEntry_NoSet[float]):
 # Energy Total Increasing
 # ----------------------------
 class EnergyTotalIncreasingCalculatedEntry(SensorEntry_NoSet[float]):
+    """Sensor entry for total increasing energy values."""
+
     DEFAULTS = {
         "native_unit": NativeUnit.KWH,
         "device_class": SensorDeviceClass.ENERGY,
@@ -125,6 +137,8 @@ class EnergyTotalIncreasingCalculatedEntry(SensorEntry_NoSet[float]):
 # Diagnostic
 # ----------------------------
 class DiagnosticEntry(SensorEntry_NoSet[str]):
+    """Sensor entry for diagnostic values."""
+
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "entity_category": EntityCategory.DIAGNOSTIC,
@@ -135,6 +149,8 @@ class DiagnosticEntry(SensorEntry_NoSet[str]):
 # Config
 # ----------------------------
 class ConfigEntry(SensorEntry_NoSet[str]):
+    """Sensor entry for configuration values."""
+
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "entity_category": EntityCategory.DIAGNOSTIC,
@@ -148,6 +164,8 @@ class ConfigEntry(SensorEntry_NoSet[str]):
 # Generator Relay
 # ----------------------------
 class GeneratorRelayEntry(BaseSensorEntry[int]):
+    """Sensor entry for generator relay state."""
+
     # This is the most fundamental value that is read from the registers
     _register_value_low_4_bits: int
 
@@ -159,6 +177,7 @@ class GeneratorRelayEntry(BaseSensorEntry[int]):
     }
 
     def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
+        """Calculate generator relay state from the raw register value."""
         value = runtime_data.register_map.GEN_RLY_RAW.sensor_value
         self._sensor_value = (value & 0x0F) if value is not None else None  # mask low 4 bits
 

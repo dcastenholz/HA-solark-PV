@@ -1,3 +1,5 @@
+"""Device information helpers."""
+
 import logging
 
 from homeassistant.helpers import device_registry as dr
@@ -8,6 +10,8 @@ from .data import SolArkData
 _LOGGER = logging.getLogger(__name__)
 
 class SolArkDeviceInfo:
+    """Helpers for updating the device registry entry."""
+
     @staticmethod
     def _update_device(runtime_data: SolArkData, **kwargs) -> None:
         def _do_update():

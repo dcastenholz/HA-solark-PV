@@ -1,3 +1,5 @@
+"""Configuration version helpers for SolArk."""
+
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
@@ -15,15 +17,18 @@ if TYPE_CHECKING:
     from .config_data import ConfigData
 
 class ConfigVersions:
+    """Helpers for migrating and serializing config entry versions."""
 
     @staticmethod
     async def migrate(hass: HomeAssistant, entry: ConfigEntry) -> None:
+        """Migrate a config entry to the current version."""
         if entry.version == 1:
             await ConfigVersions.migrate_entities_v1_to_v2(hass, entry)
 
 
     @staticmethod
     async def migrate_entities_v1_to_v2(hass: HomeAssistant, entry: ConfigEntry) -> None:
+        """Migrate entity registry data from version 1 to version 2."""
         registry = entity_registry.async_get(hass)
 
         for entity in entity_registry.async_entries_for_config_entry(registry, entry.entry_id):
@@ -92,13 +97,14 @@ class ConfigVersions:
 
     @staticmethod
     def to_storage_data_v1(config_data: "ConfigData") -> dict[str, str]:
+        """Serialize config data using the version 1 storage format."""
         data: dict[str, Any] = {
             CONF_NAME: config_data.name,
             CONF_SCAN_INTERVAL: config_data.scan_interval,
             CONF_MAX_STALE_DATA_AGE_SECONDS: config_data.max_stale_data_age_seconds,
         }
 
-        """Add the VERSION 1 canonical host string for the entry."""
+        # Add the VERSION 1 canonical host string for the entry.
         host_string: str
         if config_data.connection_type == CONNECTION_TCP:
             host_string = f"{config_data.tcp_host}:{config_data.tcp_port}/;{config_data.device_id}"

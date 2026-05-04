@@ -134,11 +134,11 @@ class SolArkModbusClient():
         register_count = end_register.address + end_register.register_length - start_register.address
 
         # Per SolArk modbus documentation, register count read is 0x0001~ 0x007D, or 1 to 125
-        if(register_count > MAX_READ_REGISTER_COUNT):
+        if register_count > MAX_READ_REGISTER_COUNT:
             raise RuntimeError(f"Holding register read count exceeds maximum of {MAX_READ_REGISTER_COUNT}. Register range requested contains {register_count} registers.")
 
         # Init the register map entries prior to read attempt
-        self._register_map.init_register_range(start_register, end_register)
+        # self._register_map.init_register_range(start_register, end_register)
 
         # Read the registers from the inverter
         modbus_response = self._read_holding_registers(address=start_register.address, count=register_count)

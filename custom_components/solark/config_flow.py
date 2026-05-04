@@ -33,10 +33,10 @@ from .modbus_config import (
     is_valid_tcp_port,
 )
 
+
 # ------------------------------------------------------------
 # Config Flow
 # ------------------------------------------------------------
-
 class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
     """SolArk Modbus config flow."""
 
@@ -47,12 +47,17 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
     is_reconfiguration: bool = False
 
     def __init__(self) -> None:
+        """Initialize the config flow."""
         self._config_data = ConfigData()
         self._schema = SolArkConfigSchema(self._config_data)
         # Prevent overwriting user input when reconfiguring: load entry data only once
         self._reconfigure_loaded = False
 
     def is_matching(self, other_flow: ConfigFlow) -> bool:
+        """Return whether this flow will create a conflict with another one.
+
+        Implements base class method to prevent multiple config flows for the same SolArk device.
+        This is needed to properly support reconfiguration of existing entries."""
         return (
             isinstance(other_flow, SolArkConfigFlow)
             and self.context.get("name") is not None
@@ -62,8 +67,8 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
     # ------------------------------------------------------------
     # Step: user
     # ------------------------------------------------------------
-
     async def async_step_user(self, user_input=None):
+        """Handle the common user step."""
 
         errors: dict[str, str] = {}
 
@@ -103,7 +108,6 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
     # ------------------------------------------------------------
     # Step: TCP
     # ------------------------------------------------------------
-
     async def async_step_tcp(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -189,10 +193,10 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
     # ------------------------------------------------------------
     # Reconfigure
     # ------------------------------------------------------------
-
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Handle reconfiguration of an existing entry."""
 
         self.is_reconfiguration = True
         entry = self._get_reconfigure_entry()
@@ -219,7 +223,6 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
     # ------------------------------------------------------------
     # Finish flow
     # ------------------------------------------------------------
-
     @callback
     def _finish_flow(self) -> ConfigFlowResult:
         data: dict[str, Any] = self._config_data.to_storage_data(self.VERSION)
@@ -233,7 +236,6 @@ class SolArkConfigFlow(ConfigFlow, domain=DOMAIN):
 # ------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------
-
 @callback
 def existing_config_entry_names(hass: HomeAssistant) -> set[str]:
     """Return names already configured."""

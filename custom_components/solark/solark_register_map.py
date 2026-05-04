@@ -1,3 +1,5 @@
+"""Register map for SolArk."""
+
 from typing import TypeVar
 
 from homeassistant.components.sensor import (
@@ -32,8 +34,9 @@ from .register_map_entry import (
 
 T = TypeVar("T", bound="RegisterMap")  # T is the real subclass
 
-"""SolArk Modbus Register Map class"""
 class SolArkRegisterMap(RegisterMap):
+    """Declare the Modbus register map."""
+
     SN = SerialNumberEntry(address=3, length=5, key="sn", name="Serial Number", icon="mdi:information-outline")
     INFO_FIRMWARE_S = RawInfoEntry(address=11, key="info_firmware_s", name="Firmware S", icon="mdi:information-outline")
     INFO_FIRMWARE_M = RawInfoEntry(address=13, key="info_firmware_m", name="Firmware Control Board", icon="mdi:information-outline")

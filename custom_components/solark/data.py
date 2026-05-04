@@ -1,3 +1,5 @@
+"""Runtime data container for SolArk."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -30,6 +32,8 @@ TFilter = TypeVar("TFilter", bound=EntityDescription)
 
 @dataclass
 class SolArkData:
+    """Runtime data container for a SolArk config entry."""
+
     hass: HomeAssistant
     config_entry: ConfigEntry
     config_data: ConfigData
@@ -53,6 +57,7 @@ class SolArkData:
     serial_number: str = ""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        """Initialize runtime data for a config entry."""
         from .solark_sensor_map import SolArkSensorMap
 
         self.hass = hass
@@ -97,22 +102,26 @@ class SolArkData:
     # ----------------------------------
     @property
     def name(self) -> str:
+        """Return the configured instance name."""
         return self.config_entry.data[CONF_NAME]
 
     @property
     def coordinator(self) -> "SolArkCoordinator":
+        """Return the initialized data update coordinator."""
         if self._coordinator is None:
             raise RuntimeError("Coordinator not initialized")
         return self._coordinator
 
     @coordinator.setter
     def coordinator(self, value: "SolArkCoordinator") -> None:
+        """Set the data update coordinator."""
         self._coordinator = value
 
     # ----------------------------------
     # entity helpers
     # ----------------------------------
     def descriptions_of_type(self, entry_type: type[TFilter]) -> list[TFilter]:
+        """Return entity descriptions of the requested type from all maps."""
         result: list[TFilter] = []
         for entry_map in self.entry_maps:
             result.extend(entry_map.descriptions_of_type(entry_type))
@@ -147,6 +156,7 @@ class SolArkData:
     # data cache
     # ----------------------------------
     def cache_updated_data(self) -> None:
+        """Cache the latest successful register and calculated sensor data."""
         self.previous_data_updated = self.last_data_updated
 
         data = self.register_map.data | self.calculated_sensor_map.data

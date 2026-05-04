@@ -1,3 +1,5 @@
+"""Helpers for setting default enabled SolArk sensors."""
+
 from homeassistant.config_entries import ConfigEntry
 
 from .base_map import BaseMap
@@ -9,6 +11,8 @@ from .solark_sensor_map import SolArkSensorMap
 
 
 class BaseEntryList(list[BaseEntry]):
+    """Collections of predefined map entries."""
+
     ENABLED_BY_DEFAULT_CLASSIC: list[BaseEntry] = [
         SolArkRegisterMap.DAILYINV_E,
         SolArkRegisterMap.TOTALGRID_E,
@@ -46,9 +50,12 @@ class BaseEntryList(list[BaseEntry]):
 
     @classmethod
     def set_config_enabled_by_default(cls, entry: ConfigEntry) -> None:
+        """Enable the sensors based on configuration choices by user."""
         # TODO - Get the list from the config entry
+        # For now, just enable the sensors that were enabled by the previous version of the integration.
         cls._set_enabled_by_default(BaseEntryList.ENABLED_BY_DEFAULT_CLASSIC)
 
     @classmethod
     def set_map_enabled_by_default(cls, base_map: BaseMap) -> None:
+        """Set all entries in a map as enabled by default."""
         EntityDescriptionHelper.set_map_entity_registry_enabled_default(base_map, True)

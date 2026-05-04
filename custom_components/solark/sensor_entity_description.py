@@ -1,7 +1,9 @@
+"""Sensor entity descriptions for SolArk."""
+
 import math
 from dataclasses import dataclass
 from enum import Enum, StrEnum
-from typing import TYPE_CHECKING, Any, Callable
+from typing import Any
 
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.const import (
@@ -17,12 +19,10 @@ from homeassistant.const import (
 from .base_map_entry import BaseEntry
 from .sensor_class import SensorClass
 
-if TYPE_CHECKING:
-    from .data import SolArkData
-    from .sensor import SolArkSensorEntity
-
 
 class BatteryChargeHelper(StrEnum):
+    """Additional battery charge units."""
+
     AH = "Ah"
 
 
@@ -30,6 +30,8 @@ class BatteryChargeHelper(StrEnum):
 # Native Unit of Measurement Enum
 # ----------------------------------
 class NativeUnit(Enum):
+    """Native units used by SolArk sensors."""
+
     KWH = UnitOfEnergy.KILO_WATT_HOUR
     WATT = UnitOfPower.WATT
     V = UnitOfElectricPotential.VOLT
@@ -48,7 +50,7 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
     """SolArk-specific sensor description."""
     sensor_class: SensorClass = SensorClass.COORDINATOR
     # TODO - Is this needed at all???
-    description: str | None = None
+    # description: str | None = None
     # TODO - Is this needed at all???
     exclude_from_recorder: bool = False
     # should_poll is ignored for coordinator sensors.
@@ -64,6 +66,7 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
         entry_class: type[BaseEntry],
         opts: dict[str, Any],
     ) -> "SolArkSensorEntityDescription":
+        """Create a sensor entity description from entry options."""
 
         passthrough = {
             # SolArkSensorEntityDescription
@@ -96,6 +99,7 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
         # -----------------------------
         scale = opts.get("scale")
 
+        # Inject an appriopriate display precision based on the scale.
         # TODO - Convert scale to be a power of 10.  This will become trivial.
         if isinstance(scale, (int, float)) and scale not in (0, 1):
             try:

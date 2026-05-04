@@ -1,4 +1,4 @@
-"""Persistent storage for Sol-Ark metrics.
+"""Persistent storage for SolArk metrics.
 
 Provides a lightweight wrapper around Home Assistant's storage helper to
 load and save coordinator metrics on a per-config-entry basis. Data is

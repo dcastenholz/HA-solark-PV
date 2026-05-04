@@ -1,3 +1,5 @@
+"""Register map entries for modbus register-backed sensors."""
+
 from __future__ import annotations
 
 import logging
@@ -20,7 +22,6 @@ from .sensor_map_entry import BaseSensorEntry
 
 if TYPE_CHECKING:
     from .data import SolArkData
-    from .sensor import SolArkSensorEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,6 +31,8 @@ _LOGGER = logging.getLogger(__name__)
 # ----------------------------------
 # TODO - Unused strings??? convert to auto()
 class DataType(Enum):
+    """Supported Modbus register data types."""
+
     INT16 = "int16"
     UINT16 = "uint16"
     INT32 = "int32"
@@ -39,6 +42,8 @@ class DataType(Enum):
 
 
 class RegisterEntryOptional(TypedDict, total=False):
+    """Optional keyword arguments for register-backed entries."""
+
     icon: str
     entity_registry_enabled_default: bool
     entity_category: EntityCategory
@@ -52,6 +57,7 @@ class RegisterEntryOptional(TypedDict, total=False):
     state_class: Optional[SensorStateClass]
     native_unit: NativeUnit
 
+    # TODO - Is this unused???
     set_sensor_value: Callable[[Any, "SolArkData"], None]
     scale: float
     offset: int
@@ -79,6 +85,7 @@ class RegisterEntry(Generic[TSensorValue], BaseSensorEntry[TSensorValue], ABC):
     address: int
 
     def __init__(self, address: int, key: str, name: str, **kwargs: Unpack[RegisterEntryOptional]) -> None:
+        """Initialize a register-backed entry."""
         super().__init__(key, name, **kwargs)
 
         self.address = address
@@ -86,6 +93,7 @@ class RegisterEntry(Generic[TSensorValue], BaseSensorEntry[TSensorValue], ABC):
     @property
     @abstractmethod
     def register_length(self) -> int:
+        """Return the number of Modbus registers to read."""
         pass
 
     def _validate(self):
@@ -111,6 +119,7 @@ class RegisterNumericEntry(Generic[TSensorValue], RegisterEntry[TSensorValue], A
     data_type: DataType
 
     def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]) -> None:
+        """Initialize a numeric register entry."""
         super().__init__(address, key, name, **kwargs)
 
         self.data_type = data_type
@@ -136,6 +145,7 @@ class RegisterIntEntry(RegisterNumericEntry[int]):
     """
 
     def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]) -> None:
+        """Initialize an integer register entry."""
         super().__init__(address, key, name, data_type, **kwargs)
 
 
@@ -157,6 +167,7 @@ class RegisterFloatEntry(RegisterNumericEntry[float]):
     }
 
     def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]) -> None:
+        """Initialize a floating-point register entry."""
         super().__init__(address, key, name, data_type, **kwargs)
 
         # -----------------------------
@@ -167,10 +178,12 @@ class RegisterFloatEntry(RegisterNumericEntry[float]):
 
     @property
     def sensor_value(self) -> float | None:
+        """Return the scaled and offset sensor value."""
         return self._sensor_value
 
     @sensor_value.setter
     def sensor_value(self: Self, value: int) -> None:
+        """Set the scaled and offset sensor value from a raw register value."""
         self._sensor_value = (value - self.offset) * self.scale
 
 
@@ -178,6 +191,8 @@ class RegisterFloatEntry(RegisterNumericEntry[float]):
 # Grid Relay
 # ----------------------------
 class GridRelayEntry(RegisterIntEntry):
+    """Register entry for grid relay state."""
+
     DynamicValueDict = {
         0: ("Open", "mdi:electric-switch"),
         1: ("Closed", "mdi:electric-switch-closed"),
@@ -199,9 +214,11 @@ class StringEntry(RegisterEntry[str]):
             logic for setting base value and sensor value
             the length of the register range to read for string entries
     """
+    # TODO - Should we just combine with SerialNumber???  Depends on potential reuse.
     length: int
 
     def __init__(self, address: int, key: str, name: str, length: int, **kwargs: Unpack[RegisterEntryOptional]) -> None:
+        """Initialize a string register entry."""
         self.length = length
 
         super().__init__(address, key, name, **kwargs)
@@ -213,6 +230,7 @@ class StringEntry(RegisterEntry[str]):
 
     @property
     def register_length(self) -> int:
+        """Return the configured string register length."""
         if not self.length:
             raise ValueError(f"StringEntry missing length for {self._entity_description.key}")
         if self.length < 1:
@@ -224,6 +242,8 @@ class StringEntry(RegisterEntry[str]):
 # Serial Number Entry
 # ----------------------------
 class SerialNumberEntry(StringEntry):
+    """String register entry for the inverter serial number."""
+
     # TODO - Make sure this is called!!!
     def _post_process(self: Self, runtime_data: "SolArkData") -> None:
         '''Save the serial number to the device info serial number property'''
@@ -231,7 +251,6 @@ class SerialNumberEntry(StringEntry):
         # TODO - This must be moved to a location where it will only be run if the register is read
         # just prior to it running.  _post_process is a sledgehammer
         from .device_info import SolArkDeviceInfo
-        a = self.sensor_value
         SolArkDeviceInfo.handle_serial_number_change(runtime_data, str(self.sensor_value))
 
 
@@ -282,6 +301,8 @@ class RawValueSystemTimeEntry(RegisterIntEntry):
 # Grid Voltage
 # ----------------------------
 class GridVoltageEntry(RegisterFloatEntry):
+    """Register entry for grid voltage values."""
+
     DEFAULTS = {
         "icon": "mdi:flash",
         "scale": 0.1,
@@ -294,6 +315,8 @@ class GridVoltageEntry(RegisterFloatEntry):
 # Battery Voltage
 # ----------------------------
 class BatteryVoltageEntry(RegisterFloatEntry):
+    """Register entry for battery voltage values."""
+
     DEFAULTS = {
         "icon": "mdi:battery-plus-outline",
         "scale": 0.01,
@@ -306,6 +329,8 @@ class BatteryVoltageEntry(RegisterFloatEntry):
 # PV Voltage
 # ----------------------------
 class PVVoltageEntry(RegisterFloatEntry):
+    """Register entry for photovoltaic voltage values."""
+
     DEFAULTS = {
         "icon": "mdi:solar-power",
         "scale": 0.1,
@@ -318,6 +343,8 @@ class PVVoltageEntry(RegisterFloatEntry):
 # Frequency
 # ----------------------------
 class FrequencyEntry(RegisterFloatEntry):
+    """Register entry for frequency values."""
+
     DEFAULTS = {
         "icon": "mdi:sine-wave",
         "scale": 0.01,
@@ -331,6 +358,8 @@ class FrequencyEntry(RegisterFloatEntry):
 # Current
 # ----------------------------
 class CurrentEntry(RegisterFloatEntry):
+    """Register entry for current values."""
+
     DEFAULTS = {
         "scale": 0.01,
         "native_unit": NativeUnit.A,
@@ -343,6 +372,8 @@ class CurrentEntry(RegisterFloatEntry):
 # Battery Current
 # ----------------------------
 class BatteryCurrentEntry(RegisterIntEntry):
+    """Register entry for battery current values."""
+
     DEFAULTS = {
         "icon": "mdi:current-dc",
         "native_unit": NativeUnit.A,
@@ -355,6 +386,8 @@ class BatteryCurrentEntry(RegisterIntEntry):
 # Power
 # ----------------------------
 class PowerEntry(RegisterIntEntry):
+    """Register entry for power values."""
+
     DEFAULTS = {
         "device_class": SensorDeviceClass.POWER,
         "state_class": SensorStateClass.MEASUREMENT,
@@ -366,6 +399,8 @@ class PowerEntry(RegisterIntEntry):
 # Energy
 # ----------------------------
 class EnergyEntry(RegisterFloatEntry):
+    """Register entry for energy values."""
+
     DEFAULTS = {
         "scale": 0.1,
         "native_unit": NativeUnit.KWH,
@@ -378,6 +413,8 @@ class EnergyEntry(RegisterFloatEntry):
 # Energy Total Increasing
 # ----------------------------
 class EnergyTotalIncreasingEntry(EnergyEntry):
+    """Register entry for total increasing energy values."""
+
     DEFAULTS = {
         "state_class": SensorStateClass.TOTAL_INCREASING,
     }
@@ -387,6 +424,8 @@ class EnergyTotalIncreasingEntry(EnergyEntry):
 # Temperature
 # ----------------------------
 class TemperatureEntry(RegisterFloatEntry):
+    """Register entry for temperature values."""
+
     DEFAULTS = {
         "scale": 0.1,
         "offset": 1000,
@@ -400,6 +439,8 @@ class TemperatureEntry(RegisterFloatEntry):
 # State of Charge
 # ----------------------------
 class SOCEntry(RegisterIntEntry):
+    """Register entry for state of charge values."""
+
     DEFAULTS = {
         "native_unit": NativeUnit.PERCENT,
         "device_class": SensorDeviceClass.BATTERY,
@@ -411,6 +452,8 @@ class SOCEntry(RegisterIntEntry):
 # Time of Use Enabled
 # ----------------------------
 class TimeOfUse_EnabledEntry(RegisterIntEntry):
+    """Register entry for time-of-use enabled state."""
+
     DynamicValueDict = {
         0: ("Disabled", "mdi:checkbox-blank-circle-outline"),
         255: ("Enabled", "mdi:checkbox-marked-circle-outline"),
@@ -426,6 +469,8 @@ class TimeOfUse_EnabledEntry(RegisterIntEntry):
 # Time of Use Charge Enabled
 # ----------------------------
 class TimeOfUse_ChargeEnabledEntry(RegisterIntEntry):
+    """Register entry for time-of-use charge enabled state."""
+
     DynamicValueDict = {
         0: ("Disabled", "mdi:checkbox-blank-circle-outline"),
         1: ("Enabled", "mdi:checkbox-marked-circle-outline"),
@@ -441,6 +486,8 @@ class TimeOfUse_ChargeEnabledEntry(RegisterIntEntry):
 # Time of Use Time
 # ----------------------------
 class TimeOfUse_TimeEntry(RegisterIntEntry):
+    """Register entry for time-of-use time values."""
+
     DEFAULTS = {
         "icon": "mdi:clock-outline",
         "sensor_class": SensorClass.TOU_TIME,

@@ -1,3 +1,5 @@
+"""Configuration data helpers for SolArk."""
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -22,6 +24,8 @@ from .const import (
 # ------------------------------------------------------------
 @dataclass
 class ConfigData:
+    """Runtime representation of users SolArk configuration."""
+
     name: str = DEFAULT_NAME
     scan_interval: int = DEFAULT_SCAN_INTERVAL
     max_stale_data_age_seconds: int = DEFAULT_MAX_STALE_DATA_AGE_SECONDS
@@ -33,6 +37,7 @@ class ConfigData:
 
     @staticmethod
     def from_storage_data(entry: ConfigEntry) ->  ConfigData:
+        """Create config data from an entry stored in the storage database."""
         if entry.version == 1:
             config_data: ConfigData = ConfigData()
             ConfigVersions.from_storage_data_v1(config_data, entry.data)
@@ -45,6 +50,7 @@ class ConfigData:
             raise ValueError(entry.version)
 
     def to_storage_data(self, version: int) -> dict[str, Any]:
+        """Serialize config data for storage in the storage database."""
         if version == 1:
             return ConfigVersions.to_storage_data_v1(self)
         else:

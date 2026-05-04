@@ -19,6 +19,7 @@ Home Assistant Version  Pymodbus Version   Python Version
 
 """
 
+# TODO - Keep this in sync with the manifest and README regarding supported PyModbus versions.
 from __future__ import annotations
 
 import logging
@@ -131,16 +132,19 @@ class ModbusClientWrapper:
             raise ValueError("Either host or serial_port must be provided")
 
     def close(self) -> None:
+        """Close the underlying Modbus client."""
         if self._client:
             self._client.close()
 
     def connect(self) -> bool:
+        """Connect the underlying Modbus client."""
         if self._client:
             return self._client.connect()
         return False
 
     # ---- Sync read ----
     def read_holding_registers(self, address: int, count: int, device_id: int) -> ModbusResponse:
+        """Read holding registers from the configured Modbus device."""
         device_kw = self._get_device_id_param_name(device_id)
         resp = self._client.read_holding_registers(address=address, count=count, **device_kw)  # type: ignore[arg-type]
         return ModbusResponse(resp)

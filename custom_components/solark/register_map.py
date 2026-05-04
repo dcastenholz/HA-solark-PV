@@ -43,13 +43,13 @@ class RegisterMap(BaseMap[RegisterEntry], ABC):
         self.set_error(False)
 
     # ---------- register range helpers ----------
-    def init_register_range(self, start: RegisterEntry, end: RegisterEntry | None = None):
-        """Initialize the register map entries in the range before reading."""
-        entries = self.entries_register_read_in_range(start, end)
+    # def init_register_range(self, start: RegisterEntry, end: RegisterEntry | None = None):
+    #     """Initialize the register map entries in the range before reading."""
+    #     entries = self.entries_register_read_in_range(start, end)
 
-        # TODO - Do we need to clear this somehow???
-        # for entry in entries:
-        #     entry.register_value = None
+    #     # TODO - Do we need to clear this somehow???
+    #     # for entry in entries:
+    #     #     entry.register_value = None
 
     def entries_register_read_in_range(self, start: RegisterEntry, end: RegisterEntry | None = None) -> Iterator[RegisterEntry]:
         """Yield registers from start to end (inclusive). If end is None, yield only start."""

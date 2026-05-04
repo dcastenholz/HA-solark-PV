@@ -43,6 +43,7 @@ class SolArkConfigSchema:
     config_data: "ConfigData"
 
     def __init__(self, config_data: "ConfigData"):
+        """Initialize schema helpers with current config data."""
         self.config_data = config_data
 
     # ------------------------------------------------------------
