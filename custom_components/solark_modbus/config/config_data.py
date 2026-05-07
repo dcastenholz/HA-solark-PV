@@ -5,7 +5,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 
-from .._dev_options import DevOptions_ConfigData_DebugValues
+from .._dev._dev_options import DevOptions_ConfigData_DebugValues
 from ..const import (
     DEFAULT_DEVICE_ID,
     DEFAULT_HOST,

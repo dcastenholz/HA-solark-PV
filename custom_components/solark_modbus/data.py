@@ -12,20 +12,20 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 
-from .base_map import BaseMap
 from .config.config_data import ConfigData
 from .const import ATTR_MANUFACTURER, DOMAIN
-from .coordinator_data import CoordinatorData
-from .coordinator_metrics import CoordinatorMetrics
-from .coordinator_metrics_storage import MetricsStorage
-from .modbus_client import SolArkModbusClient
-from .modbus_config import ModbusConfig
-from .solark_metrics_map import SolArkMetricsMap
-from .solark_register_map import SolArkRegisterMap
+from .coordinator.coordinator_data import CoordinatorData
+from .coordinator.coordinator_metrics import CoordinatorMetrics
+from .coordinator.coordinator_metrics_storage import MetricsStorage
+from .entry_map.base_map import BaseMap
+from .maps.solark_metrics_map import SolArkMetricsMap
+from .maps.solark_register_map import SolArkRegisterMap
+from .modbus.modbus_client import SolArkModbusClient
+from .modbus.modbus_config import ModbusConfig
 
 if TYPE_CHECKING:
     from .coordinator import SolArkCoordinator
-    from .solark_sensor_map import SolArkSensorMap
+    from .maps.solark_sensor_map import SolArkSensorMap
 
 TFilter = TypeVar("TFilter", bound=EntityDescription)
 
@@ -58,7 +58,7 @@ class SolArkData:
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize runtime data for a config entry."""
-        from .solark_sensor_map import SolArkSensorMap
+        from .maps.solark_sensor_map import SolArkSensorMap
 
         self.hass = hass
         self.config_entry = entry

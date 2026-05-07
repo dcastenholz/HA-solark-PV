@@ -9,13 +9,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .base_entry import BaseEntry
-from .config_sensor import ConfigSensor
+from ._sensor.sensor_class import SensorClass
+from ._sensor.sensor_entity_description import SolArkSensorEntityDescription
+from .config.config_sensor import ConfigSensor
 from .const import FORMAT_TOU_SENSORS_24HOUR
 from .data import SolArkData
+from .entry_map.base_entry import BaseEntry
 from .register_value_types import SensorValue
-from .sensor_class import SensorClass
-from .sensor_entity_description import SolArkSensorEntityDescription
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):

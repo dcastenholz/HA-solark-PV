@@ -1,16 +1,14 @@
 """Binary sensor platform for the SolArk integration."""
 
-
-
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .base_entry import BaseEntry
-from .binary_sensor_class import BinarySensorClass
-from .binary_sensor_entity_description import SolArkBinarySensorEntityDescription
+from ._binary_sensor.binary_sensor_class import BinarySensorClass
+from ._binary_sensor.binary_sensor_entity_description import SolArkBinarySensorEntityDescription
 from .data import SolArkData
+from .entry_map.base_entry import BaseEntry
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):

@@ -6,15 +6,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .base_entry_list import BaseEntryList
-
 # This line can be removed if manifest.json has "homeassistant": "2024.6.0" or greater
 from .config.config_versions import ConfigVersions
-from .coordinator import SolArkCoordinator
+from .coordinator.coordinator import SolArkCoordinator
 from .data import SolArkData
+from .helpers.base_entry_list import BaseEntryList
 
 _LOGGER = logging.getLogger(__name__)
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
+PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
 # TODO - Complete version logic and delete this
 ALLOW_VERSION_UPDATE: bool = False
