@@ -7,7 +7,7 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.const import EntityCategory
 
 from ..coordinator.coordinator_metrics import CoordinatorMetrics
-from ..entry_map.base_entry import BaseEntry
+from ..entry_map.base_entry import BaseEntry, BaseRegisterEntry
 from .binary_sensor_class import BinarySensorClass
 from .binary_sensor_entity_description import SolArkBinarySensorEntityDescription
 
@@ -59,6 +59,28 @@ class BinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription, bool]):
         )
 
 
+class RegisterBoolEntry(BaseRegisterEntry[SolArkBinarySensorEntityDescription, bool]):
+    """Class for all modbus register backed boolean sensors."""
+
+    def __init__(self, address: int, key: str, name: str, **kwargs) -> None:
+        """Initialize a numeric register entry."""
+        super().__init__(address, key, name, **kwargs)
+
+    def _create_entity_description(self, entry_class: type[BaseEntry]) -> SolArkBinarySensorEntityDescription:
+        """Create the Home Assistant entity description for this entry."""
+        return SolArkBinarySensorEntityDescription.from_kwargs(
+            key=self.key,
+            name=self.name,
+            entry_class=entry_class,
+            opts=self.opts,
+        )
+
+    @property
+    def register_length(self) -> int:
+        """The register count."""
+        return 1
+
+
 # ----------------------------
 # Binary
 # ----------------------------
@@ -69,13 +91,14 @@ class BinaryProblemEntry(BinarySensorEntry):
         "device_class": BinarySensorDeviceClass.PROBLEM,
     }
 
-class MetricsSuccessEntry(BinarySensorEntry):
+class MetricsSuccessFailureEntry(BinarySensorEntry):
     """Binary sensor entry backed by coordinator metric success values."""
 
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "entity_category": EntityCategory.DIAGNOSTIC,
         "name_prefix": "Metric: ",
+        "sensor_class": BinarySensorClass.SUCCESS_FAILURE,
     }
 
     DynamicValueDict: dict[bool, Tuple[Any, str]] = {
@@ -100,3 +123,20 @@ class MetricsSuccessEntry(BinarySensorEntry):
     def calc_sensor_value(self: Self, runtime_data: "SolArkData") -> None:
         """Calculate the sensor value from coordinator metrics."""
         self._sensor_value = self.metric(runtime_data.coordinator_metrics)
+
+
+# ----------------------------
+# Time of Use Charge Enabled
+# ----------------------------
+class TimeOfUse_ChargeEnabledEntry(RegisterBoolEntry):
+    """Register entry for time-of-use charge enabled state."""
+
+    DEFAULTS = {
+        # "state_class": None,
+        "sensor_class": BinarySensorClass.ENABLED_DISABLED,
+    }
+
+    DynamicValueDict = {
+        True: ("Enabled", "mdi:checkbox-marked-circle-outline"),
+        False: ("Disabled", "mdi:checkbox-blank-circle-outline"),
+    }

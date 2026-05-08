@@ -1,6 +1,6 @@
 """Metrics sensor map for SolArk."""
 
-from .._binary_sensor.binary_sensor_entry import MetricsSuccessEntry
+from .._binary_sensor.binary_sensor_entry import MetricsSuccessFailureEntry
 from ..coordinator.coordinator_metrics import CoordinatorMetrics as CM
 from ..entry_map.sensor_entry import MetricsEntry
 from ..entry_map.sensor_map import SensorMap
@@ -17,8 +17,8 @@ class SolArkMetricsMap(SensorMap):
     # This will prevent the appearance of a restart, when in fact, the counter has just rolled over.
     UPDATE_CNT_DEPRECATED = MetricsEntry(key="update_cnt", name="Update Count - 16 bit rollover", metric=CM.update_cnt)
 
-    READ_RESULT = MetricsSuccessEntry(key="metric_modbus_read_result", name="Modbus Data Read Result", metric=CM.last_data_read_result)
-    UPDATE_RESULT = MetricsSuccessEntry(key="metric_data_update_result", name="Data Update Result", metric=CM.last_data_update_result)
+    READ_RESULT = MetricsSuccessFailureEntry(key="metric_modbus_read_result", name="Modbus Data Read Result", metric=CM.last_data_read_result)
+    UPDATE_RESULT = MetricsSuccessFailureEntry(key="metric_data_update_result", name="Data Update Result", metric=CM.last_data_update_result)
 
     READ_DURATION = MetricsEntry(key="metric_modbus_data_read_duration", name="Modbus Data Read Duration", metric=CM.last_data_read_attempt_duration)
     UPDATE_DURATION = MetricsEntry(key="metric_data_update_duration", name="Data Update Duration", metric=CM.last_data_update_attempt_duration)

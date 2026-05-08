@@ -15,8 +15,10 @@ from typing import Iterator
 
 from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
+from .._binary_sensor.binary_sensor_entry import RegisterBoolEntry
 from ..config.config_connection_type import ConnectionType
 from ..const import MODBUS_EXCEPTIONS
+from ..entry_map.base_entry import BaseRegisterEntry
 from ..entry_map.register_entry import DataType, RegisterEntry, RegisterNumericEntry, StringEntry
 from ..maps.solark_register_map import SolArkRegisterMap
 from .binary_payload_decoder import BinaryPayloadDecoder
@@ -125,8 +127,8 @@ class SolArkModbusClient():
 
         return not self._register_map.is_error()
 
-    def _process_register_range(self, start_register: RegisterEntry, end_register: RegisterEntry | None = None):
-        """Read the holding registers and decode the vlues for a range of RegisterEntry objects."""
+    def _process_register_range(self, start_register: BaseRegisterEntry, end_register: BaseRegisterEntry | None = None):
+        """Read the holding registers and decode the vlues for a range of BaseRegisterEntry objects."""
 
         if end_register is None:
             end_register = start_register
@@ -157,7 +159,7 @@ class SolArkModbusClient():
         entries = self._register_map.entries_register_read_in_range(start_register, end_register)
         self._decode_register_map_entries(decoder, entries)
 
-    def _decode_register_map_entries(self, decoder: BinaryPayloadDecoder, entries: Iterator[RegisterEntry]) -> None:
+    def _decode_register_map_entries(self, decoder: BinaryPayloadDecoder, entries: Iterator[BaseRegisterEntry]) -> None:
         """Decode the Modbus response registers and update the register map entries with the decoded values."""
         next_address: int | None = None
 
@@ -171,7 +173,13 @@ class SolArkModbusClient():
                 self._decode_register_map_string_entry(decoder, entry)
 
                 if entry.sensor_value is None:
-                    _LOGGER.error("Failed to decode register %s: value is None", entry.address)
+                    _LOGGER.error("Failed to decode register %s with data type string: value is None", entry.address)
+                    self._register_map.set_error()
+            elif isinstance(entry, RegisterBoolEntry):
+                self._decode_register_map_bool_entry(decoder, entry)
+
+                if entry.sensor_value is None:
+                    _LOGGER.error("Failed to decode register %s with data type bool: value is None", entry.address)
                     self._register_map.set_error()
             elif isinstance(entry, RegisterNumericEntry):
                 self._decode_register_map_numeric_entry(decoder, entry)
@@ -189,6 +197,10 @@ class SolArkModbusClient():
 
         entry.sensor_value = decoder.decode_string(entry.register_length * 2).decode("ascii")
 
+    def _decode_register_map_bool_entry(self, decoder: BinaryPayloadDecoder, entry: RegisterBoolEntry) -> None:
+        """Decode a single register map entry using the specified decoder, and store the value into the register entry."""
+
+        entry.sensor_value = bool(decoder.decode_16bit_uint())
 
     def _decode_register_map_numeric_entry(self, decoder: BinaryPayloadDecoder, entry: RegisterNumericEntry) -> None:
         """Decode a single register map entry using the specified decoder, and store the value into the register entry."""

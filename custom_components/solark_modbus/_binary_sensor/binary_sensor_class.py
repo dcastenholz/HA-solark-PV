@@ -7,3 +7,5 @@ class BinarySensorClass(Enum):
     """Binary sensor implementation classes."""
 
     BINARY = auto()
+    SUCCESS_FAILURE = auto()
+    ENABLED_DISABLED = auto()

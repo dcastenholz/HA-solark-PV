@@ -52,5 +52,23 @@
       "already_configured": "Device is already configured",
       "reconfigure_successful": "Reconfiguration successful"
     }
+  },
+  "entity": {
+    "binary_sensor": {
+      "success_failure": {
+        "name": "Status",
+        "state": {
+          "on": "Success",
+          "off": "Failure"
+        }
+      },
+      "enabled_disabled": {
+        "name": "Status",
+        "state": {
+          "on": "Enabled",
+          "off": "Disabled"
+        }
+      }
+    }
   }
 }

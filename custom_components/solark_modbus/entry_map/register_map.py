@@ -2,13 +2,13 @@
 from abc import ABC
 from typing import Iterator
 
+from ..entry_map.base_entry import BaseRegisterEntry
 from ..entry_map.base_map import BaseMap
-from .register_entry import RegisterEntry
 
 
-class RegisterMap(BaseMap[RegisterEntry], ABC):
+class RegisterMap(BaseMap[BaseRegisterEntry], ABC):
     '''Register map may contain only entries that are, or are a subclass of, RegisterEntry'''
-    _entry_type = RegisterEntry
+    _entry_type = BaseRegisterEntry
 
     # ---------- sorting ----------
     def _sort(self):
@@ -51,7 +51,7 @@ class RegisterMap(BaseMap[RegisterEntry], ABC):
     #     # for entry in entries:
     #     #     entry.register_value = None
 
-    def entries_register_read_in_range(self, start: RegisterEntry, end: RegisterEntry | None = None) -> Iterator[RegisterEntry]:
+    def entries_register_read_in_range(self, start: BaseRegisterEntry, end: BaseRegisterEntry | None = None) -> Iterator[BaseRegisterEntry]:
         """Yield registers from start to end (inclusive). If end is None, yield only start."""
 
         end = end or start

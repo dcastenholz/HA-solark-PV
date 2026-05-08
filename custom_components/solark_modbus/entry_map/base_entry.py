@@ -124,13 +124,11 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
                 f"Value {lookup_map_key!r} not valid for DynamicValueDict keys: {list(d.keys())}"
             ) from None
 
-
     @classmethod
     def dynamic_icon(cls, lookup_map_key: TSensorValue) -> str | None:
         """Return a dynamic icon for the value if one is configured."""
         entry = cls._get_dynamic_entry(lookup_map_key)
         return entry[1] if entry else None
-
 
     @classmethod
     def dynamic_native_value(cls, lookup_map_key: TSensorValue) -> TSensorValue | None:
@@ -224,3 +222,38 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
         high = (value >> 8) & 0xFF
         low = value & 0xFF
         return high, low
+
+class BaseRegisterEntry(Generic[TEntityDescription, TSensorValue], BaseEntry[TEntityDescription, TSensorValue], ABC):
+    """
+    RegisterEntry[TSensorValue]
+
+        Type Parameters:
+            TSensorValue: the type of the sensor display value.
+
+    Abstract base class for all modbus register-backed sensors.
+
+        Adds:
+            the register address for the start of the range to read
+            the length of the register range to read
+            storage of decoded register read value
+            validation
+    """
+
+    address: int
+
+    def __init__(self, address: int, key: str, name: str, **kwargs) -> None:
+        """Initialize a register-backed entry."""
+        super().__init__(key, name, **kwargs)
+
+        self.address = address
+
+    @property
+    @abstractmethod
+    def register_length(self) -> int:
+        """Return the number of Modbus registers to read."""
+        pass
+
+    def _validate(self):
+        # RegisterEntry must have non-negative address
+        if self.address < 0:
+            raise ValueError(f"RegisterEntry {self._entity_description.key}: address must be >= 0")

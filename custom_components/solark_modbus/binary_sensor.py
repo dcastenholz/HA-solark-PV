@@ -82,8 +82,30 @@ class SolArkBinarySensor(BinarySensorEntity):
         return bool(value)
 
 
+class MetricsSusccessBinarySensor(SolArkBinarySensor):
+    """Represent a SolArk binary sensor entity."""
+
+    def __init__(self, runtime_data: SolArkData, description: SolArkBinarySensorEntityDescription):
+        """Initialize the binary sensor entity."""
+        super().__init__(runtime_data, description)
+
+        self._attr_translation_key = "success_failure"
+
+
+class EnabledDisabledBinarySensor(SolArkBinarySensor):
+    """Represent a SolArk binary sensor entity."""
+
+    def __init__(self, runtime_data: SolArkData, description: SolArkBinarySensorEntityDescription):
+        """Initialize the binary sensor entity."""
+        super().__init__(runtime_data, description)
+
+        self._attr_translation_key = "enabled_disabled"
+
+
 BINARYSENSOR_CLASS_MAP = {
     BinarySensorClass.BINARY: SolArkBinarySensor,
+    BinarySensorClass.SUCCESS_FAILURE: MetricsSusccessBinarySensor,
+    BinarySensorClass.ENABLED_DISABLED: EnabledDisabledBinarySensor,
 }
 
 def _get_sensor_class(sensor_class: BinarySensorClass) -> type[SolArkBinarySensor]:

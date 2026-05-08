@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from abc import ABC, abstractmethod
+from abc import ABC
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, Self, TypedDict
 
@@ -17,9 +17,9 @@ from homeassistant.const import (
 from typing_extensions import Unpack
 
 from .._sensor.sensor_class import SensorClass
-from .._sensor.sensor_entity_description import NativeUnit
+from .._sensor.sensor_entity_description import NativeUnit, SolArkSensorEntityDescription
+from ..entry_map.base_entry import BaseRegisterEntry
 from ..register_value_types import TSensorValue
-from .sensor_entry import BaseSensorEntry
 
 if TYPE_CHECKING:
     from ..data import SolArkData
@@ -67,7 +67,7 @@ class RegisterEntryOptional(TypedDict, total=False):
 # ----------------------------------
 # Register Entry
 # ----------------------------------
-class RegisterEntry(Generic[TSensorValue], BaseSensorEntry[TSensorValue], ABC):
+class RegisterEntry(Generic[TSensorValue], BaseRegisterEntry["SolArkSensorEntityDescription", TSensorValue], ABC):
     """
     RegisterEntry[TSensorValue]
 
@@ -87,20 +87,15 @@ class RegisterEntry(Generic[TSensorValue], BaseSensorEntry[TSensorValue], ABC):
 
     def __init__(self, address: int, key: str, name: str, **kwargs: Unpack[RegisterEntryOptional]) -> None:
         """Initialize a register-backed entry."""
-        super().__init__(key, name, **kwargs)
+        super().__init__(address, key, name, **kwargs)
 
-        self.address = address
-
-    @property
-    @abstractmethod
-    def register_length(self) -> int:
-        """Return the number of Modbus registers to read."""
-        pass
-
-    def _validate(self):
-        # RegisterEntry must have non-negative address
-        if self.address < 0:
-            raise ValueError(f"RegisterEntry {self._entity_description.key}: address must be >= 0")
+    def _create_entity_description(self, entry_class: type[BaseRegisterEntry]) -> SolArkSensorEntityDescription:
+        return SolArkSensorEntityDescription.from_kwargs(
+            key=self.key,
+            name=self.name,
+            entry_class=entry_class,
+            opts=self.opts,
+        )
 
 
 class RegisterNumericEntry(Generic[TSensorValue], RegisterEntry[TSensorValue], ABC):
@@ -458,23 +453,6 @@ class TimeOfUse_EnabledEntry(RegisterIntEntry):
     DynamicValueDict = {
         0: ("Disabled", "mdi:checkbox-blank-circle-outline"),
         255: ("Enabled", "mdi:checkbox-marked-circle-outline"),
-    }
-
-    DEFAULTS = {
-        "icon": "mdi:check-circle",
-        "state_class": None,
-    }
-
-
-# ----------------------------
-# Time of Use Charge Enabled
-# ----------------------------
-class TimeOfUse_ChargeEnabledEntry(RegisterIntEntry):
-    """Register entry for time-of-use charge enabled state."""
-
-    DynamicValueDict = {
-        0: ("Disabled", "mdi:checkbox-blank-circle-outline"),
-        1: ("Enabled", "mdi:checkbox-marked-circle-outline"),
     }
 
     DEFAULTS = {
