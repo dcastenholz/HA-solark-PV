@@ -18,6 +18,7 @@ from typing_extensions import Unpack
 
 from .._sensor.sensor_class import SensorClass
 from .._sensor.sensor_entity_description import NativeUnit, SolArkSensorEntityDescription
+from .._sensor.sensor_mixin import SensorMixin
 from ..entry_map.base_entry import BaseRegisterEntry
 from ..register_value_types import TSensorValue
 
@@ -67,38 +68,34 @@ class RegisterEntryOptional(TypedDict, total=False):
 # ----------------------------------
 # Register Entry
 # ----------------------------------
-class RegisterEntry(Generic[TSensorValue], BaseRegisterEntry["SolArkSensorEntityDescription", TSensorValue], ABC):
+class BaseRegisterSensorEntry(Generic[TSensorValue], BaseRegisterEntry[SolArkSensorEntityDescription, TSensorValue], SensorMixin[TSensorValue], ABC):
     """
-    RegisterEntry[TSensorValue]
+    BaseRegisterSensorEntry[TSensorValue]
 
         Type Parameters:
             TSensorValue: the type of the sensor display value.
 
     Abstract base class for all modbus register-backed sensors.
-
-        Adds:
-            the register address for the start of the range to read
-            the length of the register range to read
-            storage of decoded register read value
-            validation
     """
 
-    address: int
+    # ENTITY_DESCRIPTION_CLS = SolArkSensorEntityDescription
 
-    def __init__(self, address: int, key: str, name: str, **kwargs: Unpack[RegisterEntryOptional]) -> None:
-        """Initialize a register-backed entry."""
-        super().__init__(address, key, name, **kwargs)
+    # address: int
 
-    def _create_entity_description(self, entry_class: type[BaseRegisterEntry]) -> SolArkSensorEntityDescription:
-        return SolArkSensorEntityDescription.from_kwargs(
-            key=self.key,
-            name=self.name,
-            entry_class=entry_class,
-            opts=self.opts,
-        )
+    # def __init__(self, address: int, key: str, name: str, **kwargs: Unpack[RegisterEntryOptional]) -> None:
+    #     """Initialize a register-backed entry."""
+    #     super().__init__(address, key, name, **kwargs)
+
+    # def _create_entity_description(self, entry_class: type[BaseRegisterEntry]) -> SolArkSensorEntityDescription:
+    #     return SolArkSensorEntityDescription.from_kwargs(
+    #         key=self.key,
+    #         name=self.name,
+    #         entry_class=entry_class,
+    #         opts=self.opts,
+    #     )
 
 
-class RegisterNumericEntry(Generic[TSensorValue], RegisterEntry[TSensorValue], ABC):
+class RegisterNumericEntry(Generic[TSensorValue], BaseRegisterSensorEntry[TSensorValue], ABC):
     """
     RegisterNumericEntry[TRegisterValue, TSensorValue]
 
@@ -202,7 +199,7 @@ class GridRelayEntry(RegisterIntEntry):
 # ----------------------------
 # String
 # ----------------------------
-class StringEntry(RegisterEntry[str]):
+class StringEntry(BaseRegisterSensorEntry[str]):
     """
     Class for all modbus string register backed string sensors.
 
@@ -283,7 +280,8 @@ class RawInfoEntry(RegisterIntEntry):
 # ----------------------------
 # Raw Value System Time
 # ----------------------------
-class RawValueSystemTimeEntry(RegisterIntEntry):
+# TODO - Get rid of this class???
+class RawValueSystemTimeEntry(RawInfoEntry):
     '''Values read from registers that are not normally displayed in UI screens.
     These are values that are based on the inverter system time but are specifically
     excluded from history to avoid pointless database entries.'''

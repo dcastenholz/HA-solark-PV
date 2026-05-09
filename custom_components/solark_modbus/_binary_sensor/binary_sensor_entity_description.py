@@ -1,13 +1,14 @@
 """Binary sensor entity descriptions for SolArk."""
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 
-from ..entry_map.base_entry import BaseEntry
 from .binary_sensor_class import BinarySensorClass
 
+if TYPE_CHECKING:
+    from ..entry_map.binary_sensor_entry import BaseBinarySensorEntry
 
 # ----------------------------------
 # Sensor Entity Description
@@ -22,7 +23,7 @@ class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
     exclude_from_recorder: bool = False
     # should_poll is ignored for coordinator sensors.
     should_poll: bool = True
-    entry_class: type[BaseEntry]
+    entry_class: type["BaseBinarySensorEntry"]
     name_prefix: str = ""
 
     @classmethod
@@ -30,7 +31,7 @@ class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
         cls,
         key: str,
         name: str,
-        entry_class: type[BaseEntry],
+        entry_class: type["BaseBinarySensorEntry"],
         opts: dict[str, Any],
     ) -> "SolArkBinarySensorEntityDescription":
         """Create a binary sensor entity description from entry options."""

@@ -6,10 +6,12 @@ from typing import TYPE_CHECKING, Any, Callable, Self, Tuple, TypedDict, Unpack
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.const import EntityCategory
 
+from .._binary_sensor.binary_sensor_class import BinarySensorClass
+from .._binary_sensor.binary_sensor_dynamic_value_set import BinarySensorDynamicValueSet
+from .._binary_sensor.binary_sensor_entity_description import SolArkBinarySensorEntityDescription
+from .._binary_sensor.binary_sensor_mixin import BinarySensorMixin
 from ..coordinator.coordinator_metrics import CoordinatorMetrics
-from ..entry_map.base_entry import BaseEntry, BaseRegisterEntry
-from .binary_sensor_class import BinarySensorClass
-from .binary_sensor_entity_description import SolArkBinarySensorEntityDescription
+from .base_entry import BaseEntry, BaseRegisterEntry
 
 if TYPE_CHECKING:
     from ..data import SolArkData
@@ -30,43 +32,66 @@ class BinarySensorEntryOptional(TypedDict, total=False):
 
     device_class: BinarySensorDeviceClass
     sensor_class: BinarySensorClass
+    binary_sensor_state_values: BinarySensorDynamicValueSet
 
     # TODO - Is this unused???
     set_sensor_value: Callable[[Any, "SolArkData"], None]
 
 
-class BinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription, bool]):
+class BaseBinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription, bool], BinarySensorMixin):
     """Base class for all binary sensor map entries."""
 
     DEFAULTS = {
         "sensor_class": BinarySensorClass.BINARY,
     }
 
-    # Dynamic maps let entry classes override an icon for specific values.
-    DynamicValueDict: dict[bool, Tuple[Any, str]] | None = None
+    # ENTITY_DESCRIPTION_CLS = SolArkBinarySensorEntityDescription
+
+    # # Dynamic maps let entry classes override an icon for specific values.
+    # DynamicIcon: dict[bool, str] | None = None
 
     def __init__(self, key: str, name: str, **kwargs: Unpack[BinarySensorEntryOptional]) -> None:
         """Initialize the binary sensor entry."""
         super().__init__(key, name, **kwargs)
 
-    def _create_entity_description(self, entry_class: type[BaseEntry]) -> SolArkBinarySensorEntityDescription:
-        """Create the Home Assistant entity description for this entry."""
-        return SolArkBinarySensorEntityDescription.from_kwargs(
-            key=self.key,
-            name=self.name,
-            entry_class=entry_class,
-            opts=self.opts,
-        )
+    # @classmethod
+    # def _get_dynamic_entry(
+    #     cls, lookup_map_key: bool
+    # ) -> str | None:
+    #     ''' Return the dictionary entry for the given key if DynamicIcon is configured. '''
+    #     d = cls.DynamicIcon
+    #     if not d:
+    #         return None
+
+    #     if lookup_map_key is None:
+    #         raise ValueError(
+    #             f"Value {lookup_map_key!r} is None. DynamicIcon keys: {list(d.keys())}"
+    #         ) from None
+
+    #     try:
+    #         return d[lookup_map_key]
+    #     except KeyError:
+    #         raise ValueError(
+    #             f"Value {lookup_map_key!r} not valid for DynamicIcon keys: {list(d.keys())}"
+    #         ) from None
+
+    # @classmethod
+    # def dynamic_icon(cls, lookup_map_key: bool) -> str | None:
+    #     """Return a dynamic icon for the value if one is configured."""
+    #     entry = cls._get_dynamic_entry(lookup_map_key)
+    #     return entry[0] if entry else None
 
 
-class RegisterBoolEntry(BaseRegisterEntry[SolArkBinarySensorEntityDescription, bool]):
+class RegisterBoolEntry(BaseRegisterEntry[SolArkBinarySensorEntityDescription, bool], BinarySensorMixin):
     """Class for all modbus register backed boolean sensors."""
 
-    def __init__(self, address: int, key: str, name: str, **kwargs) -> None:
-        """Initialize a numeric register entry."""
-        super().__init__(address, key, name, **kwargs)
+    ENTITY_DESCRIPTION_CLS = SolArkBinarySensorEntityDescription
 
-    def _create_entity_description(self, entry_class: type[BaseEntry]) -> SolArkBinarySensorEntityDescription:
+    # def __init__(self, address: int, key: str, name: str, **kwargs) -> None:
+    #     """Initialize a numeric register entry."""
+    #     super().__init__(address, key, name, **kwargs)
+
+    def _create_entity_description(self, entry_class: type[BaseBinarySensorEntry]) -> SolArkBinarySensorEntityDescription:
         """Create the Home Assistant entity description for this entry."""
         return SolArkBinarySensorEntityDescription.from_kwargs(
             key=self.key,
@@ -84,14 +109,14 @@ class RegisterBoolEntry(BaseRegisterEntry[SolArkBinarySensorEntityDescription, b
 # ----------------------------
 # Binary
 # ----------------------------
-class BinaryProblemEntry(BinarySensorEntry):
+class BinaryProblemEntry(BaseBinarySensorEntry):
     """Binary sensor entry that reports a problem state."""
 
     DEFAULTS = {
         "device_class": BinarySensorDeviceClass.PROBLEM,
     }
 
-class MetricsSuccessFailureEntry(BinarySensorEntry):
+class MetricsSuccessFailureEntry(BaseBinarySensorEntry):
     """Binary sensor entry backed by coordinator metric success values."""
 
     DEFAULTS = {

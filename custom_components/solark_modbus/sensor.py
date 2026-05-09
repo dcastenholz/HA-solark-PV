@@ -14,7 +14,7 @@ from ._sensor.sensor_entity_description import SolArkSensorEntityDescription
 from .config.config_sensor import ConfigSensor
 from .const import FORMAT_TOU_SENSORS_24HOUR
 from .data import SolArkData
-from .entry_map.base_entry import BaseEntry
+from .entry_map.sensor_entry import BaseSensorEntry
 from .register_value_types import SensorValue
 
 
@@ -51,7 +51,7 @@ class SolArkSensorEntity(SensorEntity, ABC):
         self._attr_should_poll = description.should_poll
 
     @property
-    def entry_class(self) -> type[BaseEntry]:
+    def entry_class(self) -> type[BaseSensorEntry]:
         """Return the map entry class that created this entity."""
         return self.entity_description.entry_class
 

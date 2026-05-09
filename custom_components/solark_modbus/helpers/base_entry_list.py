@@ -2,12 +2,12 @@
 
 from homeassistant.config_entries import ConfigEntry
 
-from ..maps.solark_metrics_map import SolArkMetricsMap
-from ..maps.solark_register_map import SolArkRegisterMap
-from ..maps.solark_sensor_map import SolArkSensorMap
 from ..entry_map.base_entry import BaseEntry
 from ..entry_map.base_map import BaseMap
 from ..helpers.entity_description_helper import EntityDescriptionHelper
+from ..maps.solark_metrics_map import SolArkMetricsMap
+from ..maps.solark_register_map import SolArkRegisterMap
+from ..maps.solark_sensor_map import SolArkSensorMap
 
 
 class BaseEntryList(list[BaseEntry]):
@@ -43,6 +43,40 @@ class BaseEntryList(list[BaseEntry]):
         SolArkMetricsMap.UPDATE_SUCCESSFUL_COUNT,
     ]
 
+    ENABLED_BY_DEFAULT_TOU: list[BaseEntry] = [
+        SolArkRegisterMap.TIMEOFUSE_ENABLED,
+        SolArkRegisterMap.TIMEOFUSE_TIME_1,
+        SolArkRegisterMap.TIMEOFUSE_TIME_2,
+        SolArkRegisterMap.TIMEOFUSE_TIME_3,
+        SolArkRegisterMap.TIMEOFUSE_TIME_4,
+        SolArkRegisterMap.TIMEOFUSE_TIME_5,
+        SolArkRegisterMap.TIMEOFUSE_TIME_6,
+        SolArkRegisterMap.TIMEOFUSE_POWER_1,
+        SolArkRegisterMap.TIMEOFUSE_POWER_2,
+        SolArkRegisterMap.TIMEOFUSE_POWER_3,
+        SolArkRegisterMap.TIMEOFUSE_POWER_4,
+        SolArkRegisterMap.TIMEOFUSE_POWER_5,
+        SolArkRegisterMap.TIMEOFUSE_POWER_6,
+        SolArkRegisterMap.TIMEOFUSE_VOLTAGE_1,
+        SolArkRegisterMap.TIMEOFUSE_VOLTAGE_2,
+        SolArkRegisterMap.TIMEOFUSE_VOLTAGE_3,
+        SolArkRegisterMap.TIMEOFUSE_VOLTAGE_4,
+        SolArkRegisterMap.TIMEOFUSE_VOLTAGE_5,
+        SolArkRegisterMap.TIMEOFUSE_VOLTAGE_6,
+        SolArkRegisterMap.TIMEOFUSE_SOC_1,
+        SolArkRegisterMap.TIMEOFUSE_SOC_2,
+        SolArkRegisterMap.TIMEOFUSE_SOC_3,
+        SolArkRegisterMap.TIMEOFUSE_SOC_4,
+        SolArkRegisterMap.TIMEOFUSE_SOC_5,
+        SolArkRegisterMap.TIMEOFUSE_SOC_6,
+        SolArkRegisterMap.TIMEOFUSE_ENABLED_1,
+        SolArkRegisterMap.TIMEOFUSE_ENABLED_2,
+        SolArkRegisterMap.TIMEOFUSE_ENABLED_3,
+        SolArkRegisterMap.TIMEOFUSE_ENABLED_4,
+        SolArkRegisterMap.TIMEOFUSE_ENABLED_5,
+        SolArkRegisterMap.TIMEOFUSE_ENABLED_6,
+    ]
+
 
     @staticmethod
     def _set_enabled_by_default(base_map_entry_list: list[BaseEntry]) -> None:
@@ -54,6 +88,7 @@ class BaseEntryList(list[BaseEntry]):
         # TODO - Get the list from the config entry
         # For now, just enable the sensors that were enabled by the previous version of the integration.
         cls._set_enabled_by_default(BaseEntryList.ENABLED_BY_DEFAULT_CLASSIC)
+        cls._set_enabled_by_default(BaseEntryList.ENABLED_BY_DEFAULT_TOU)
 
     @classmethod
     def set_map_enabled_by_default(cls, base_map: BaseMap) -> None:

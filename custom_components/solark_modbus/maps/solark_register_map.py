@@ -6,8 +6,8 @@ from homeassistant.components.sensor import (
     EntityCategory,
 )
 
-from .._binary_sensor.binary_sensor_entry import TimeOfUse_ChargeEnabledEntry
 from .._sensor.sensor_entity_description import NativeUnit
+from ..entry_map.binary_sensor_entry import TimeOfUse_ChargeEnabledEntry
 from ..entry_map.register_entry import (
     BatteryCurrentEntry,
     BatteryVoltageEntry,

@@ -1,9 +1,21 @@
 """Register value type aliases for SolArk."""
 
 import datetime
-from typing import TypeVar, Union
+from typing import Protocol, Self, TypeVar, Union
 
 from homeassistant.helpers.entity import EntityDescription
+
+# class EntityDescriptionFactory(EntityDescription, Protocol):
+#     @classmethod
+#     def from_kwargs(
+#         cls,
+#         *,
+#         key: str,
+#         name: str,
+#         entry_class: type,
+#         opts: dict,
+#     ) -> Self: ...
+
 
 # TODO - Cleanup any combinable  types.
 NumericValue = Union[int, float]

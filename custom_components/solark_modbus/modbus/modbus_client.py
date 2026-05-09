@@ -15,11 +15,11 @@ from typing import Iterator
 
 from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
-from .._binary_sensor.binary_sensor_entry import RegisterBoolEntry
 from ..config.config_connection_type import ConnectionType
 from ..const import MODBUS_EXCEPTIONS
 from ..entry_map.base_entry import BaseRegisterEntry
-from ..entry_map.register_entry import DataType, RegisterEntry, RegisterNumericEntry, StringEntry
+from ..entry_map.binary_sensor_entry import RegisterBoolEntry
+from ..entry_map.register_entry import DataType, RegisterNumericEntry, StringEntry
 from ..maps.solark_register_map import SolArkRegisterMap
 from .binary_payload_decoder import BinaryPayloadDecoder
 from .modbus_config import ModbusConfig

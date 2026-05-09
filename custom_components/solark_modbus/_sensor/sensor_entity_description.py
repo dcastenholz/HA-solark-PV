@@ -3,7 +3,7 @@
 import math
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.const import (
@@ -17,7 +17,9 @@ from homeassistant.const import (
 )
 
 from .._sensor.sensor_class import SensorClass
-from ..entry_map.base_entry import BaseEntry
+
+if TYPE_CHECKING:
+    from ..entry_map.sensor_entry import BaseSensorEntry
 
 
 # ----------------------------------
@@ -49,7 +51,7 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
     exclude_from_recorder: bool = False
     # should_poll is ignored for coordinator sensors.
     should_poll: bool = True
-    entry_class: type[BaseEntry]
+    entry_class: type["BaseSensorEntry"]
     name_prefix: str = ""
 
     @classmethod
@@ -57,7 +59,7 @@ class SolArkSensorEntityDescription(SensorEntityDescription):
         cls,
         key: str,
         name: str,
-        entry_class: type[BaseEntry],
+        entry_class: type["BaseSensorEntry"],
         opts: dict[str, Any],
     ) -> "SolArkSensorEntityDescription":
         """Create a sensor entity description from entry options."""

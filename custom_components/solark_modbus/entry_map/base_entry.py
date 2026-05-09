@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Generic, Self, Tuple, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Callable, Generic, Protocol, Self, TypedDict, Union, cast
 
 from homeassistant.const import EntityCategory
 from typing_extensions import Unpack
@@ -26,6 +26,18 @@ class BaseEntryOptional(TypedDict, total=False):
     should_poll: bool
 
     set_sensor_value: Callable[[Any, "SolArkData"], None]
+
+
+class EntityDescriptionFactory(Protocol):
+    @classmethod
+    def from_kwargs(
+        cls,
+        *,
+        key: str,
+        name: str,
+        entry_class: type,
+        opts: dict,
+    ) -> Self: ...
 
 
 class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
@@ -57,15 +69,14 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
     key: str
     name: str
     _entity_description: TEntityDescription
+    ENTITY_DESCRIPTION_CLS: type[EntityDescriptionFactory]
+    # ENTITY_DESCRIPTION_CLS: ClassVar[type[TEntityDescription]]
 
     # Holds the final value sent to the sensor for display in the UI.
     # The UI can do further processing on the actual displayed value as well as the icon shown.
     _sensor_value: TSensorValue | None = None
 
     set_sensor_value: Callable[[Self, "SolArkData"], None] | None
-
-    # Dynamic maps let entry classes convert raw values to custom display values and icons.
-    DynamicValueDict: dict[TSensorValue, Tuple[Any, str]] | None = None
 
     def __init__(self, key: str, name: str, **kwargs: Unpack[BaseEntryOptional]) -> None:
         """Initialize the map entry."""
@@ -98,43 +109,15 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
 
         cls._merged_defaults = merged
 
-    @abstractmethod
+    # @abstractmethod
     def _create_entity_description(self, entry_class: type[BaseEntry]) -> TEntityDescription:
         """Subclasses must construct the entity description."""
-
-    @classmethod
-    def _get_dynamic_entry(
-        cls, lookup_map_key: TSensorValue
-    ) -> tuple[Any, str] | None:
-        d = cls.DynamicValueDict
-        if not d:
-            return None
-
-        # _LOGGER.debug("Looking up dynamic entry for key %s in DynamicValueDict: %s", lookup_map_key, d)
-
-        if lookup_map_key is None:
-            raise ValueError(
-                f"Value {lookup_map_key!r} is None. DynamicValueDict keys: {list(d.keys())}"
-            ) from None
-
-        try:
-            return d[lookup_map_key]
-        except KeyError:
-            raise ValueError(
-                f"Value {lookup_map_key!r} not valid for DynamicValueDict keys: {list(d.keys())}"
-            ) from None
-
-    @classmethod
-    def dynamic_icon(cls, lookup_map_key: TSensorValue) -> str | None:
-        """Return a dynamic icon for the value if one is configured."""
-        entry = cls._get_dynamic_entry(lookup_map_key)
-        return entry[1] if entry else None
-
-    @classmethod
-    def dynamic_native_value(cls, lookup_map_key: TSensorValue) -> TSensorValue | None:
-        """Return a dynamic display value if one is configured."""
-        entry = cls._get_dynamic_entry(lookup_map_key)
-        return entry[0] if entry else None
+        return cast(TEntityDescription, self.ENTITY_DESCRIPTION_CLS.from_kwargs(
+            key=self.key,
+            name=self.name,
+            entry_class=entry_class,
+            opts=self.opts,
+        ))
 
     # -----------------------------
     # Entity access
@@ -180,6 +163,12 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
         """
         return
 
+    # @classmethod
+    # @abstractmethod
+    # def dynamic_icon(cls, lookup_map_key: TSensorValue) -> str | None:
+    #     """Return a dynamic icon for the value if one is configured."""
+    #     pass
+
     # -----------------------------
     # Numeric helpers
     # -----------------------------
@@ -222,6 +211,7 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
         high = (value >> 8) & 0xFF
         low = value & 0xFF
         return high, low
+
 
 class BaseRegisterEntry(Generic[TEntityDescription, TSensorValue], BaseEntry[TEntityDescription, TSensorValue], ABC):
     """

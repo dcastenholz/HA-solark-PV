@@ -2,13 +2,14 @@
 
 import logging
 from abc import ABC
-from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, Self, TypedDict, Unpack
+from typing import TYPE_CHECKING, Any, Callable, Generic, Self
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import EntityCategory
 
 from .._sensor.sensor_class import SensorClass
 from .._sensor.sensor_entity_description import NativeUnit, SolArkSensorEntityDescription
+from .._sensor.sensor_mixin import SensorMixin
 from ..coordinator.coordinator_metrics import CoordinatorMetrics
 from ..entry_map.base_entry import BaseEntry
 from ..register_value_types import TSensorValue
@@ -20,36 +21,16 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-class BaseSensorEntryOptional(TypedDict, total=False):
-    """Optional keyword arguments for sensor map entries."""
-
-    icon: str
-    entity_registry_enabled_default: bool
-    entity_category: EntityCategory
-    description: str
-    exclude_from_recorder: bool
-    should_poll: bool
-
-    device_class: SensorDeviceClass
-    sensor_class: SensorClass
-
-    state_class: Optional[SensorStateClass]
-    native_unit: NativeUnit
-
-    set_sensor_value: Callable[[Any, "SolArkData"], None]
-
-
-class BaseSensorEntry(Generic[TSensorValue], BaseEntry["SolArkSensorEntityDescription", TSensorValue], ABC):
+class BaseSensorEntry(Generic[TSensorValue], BaseEntry[SolArkSensorEntityDescription, TSensorValue], SensorMixin[TSensorValue], ABC):
     """
     BaseSensorEntry[TSensorValue]
 
-    Type Parameters:
-        TSensorValue: the type of the sensor display value.
-        TLookupMapKey: the type of the dynamic lookup key value.
+        Type Parameters:
+            TSensorValue: the type of the sensor display value.
 
-    Abstract base class for all sensor entries.
+    Abstract base class for all sensors.
 
-        Adds:
+        Provides:
             state class
     """
 
@@ -59,19 +40,6 @@ class BaseSensorEntry(Generic[TSensorValue], BaseEntry["SolArkSensorEntityDescri
         "sensor_class": SensorClass.COORDINATOR,
     }
 
-    # This is needed to introduce the sensor_class parameter to the entity description,
-    # which is required for dynamic icons and other behavior.
-    def __init__(self, key: str, name: str, **kwargs: Unpack[BaseSensorEntryOptional]) -> None:
-        """Initialize the base sensor entry."""
-        super().__init__(key, name, **kwargs)
-
-    def _create_entity_description(self, entry_class: type[BaseEntry]) -> SolArkSensorEntityDescription:
-        return SolArkSensorEntityDescription.from_kwargs(
-            key=self.key,
-            name=self.name,
-            entry_class=entry_class,
-            opts=self.opts,
-        )
 
 
 # TODO - Review all uses of this class for possible BaseSensorEntry inheritance instead

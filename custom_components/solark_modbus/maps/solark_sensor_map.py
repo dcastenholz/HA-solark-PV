@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 from homeassistant.util import dt
 
-from .._binary_sensor.binary_sensor_entry import BinaryProblemEntry
 from .._sensor.sensor_class import SensorClass
+from ..entry_map.binary_sensor_entry import BinaryProblemEntry
 from ..entry_map.sensor_entry import (
     ConfigEntry,
     DiagnosticEntry,
