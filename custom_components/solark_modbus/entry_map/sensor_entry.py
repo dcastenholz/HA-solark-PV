@@ -138,7 +138,7 @@ class GeneratorRelayEntry(BaseSensorEntry[int]):
     # This is the most fundamental value that is read from the registers
     _register_value_low_4_bits: int
 
-    DynamicValueDict = {
+    DynamicValueAndIcon = {
         0: ("Open", "mdi:electric-switch"),
         1: ("Closed", "mdi:electric-switch-closed"),
         2: ("No Connection", "mdi:connection"),

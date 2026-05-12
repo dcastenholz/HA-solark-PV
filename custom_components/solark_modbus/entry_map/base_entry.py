@@ -2,8 +2,9 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Generic, Protocol, Self, TypedDict, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Generic, Protocol, Self, TypedDict, Union
 
+from .._entity_description.entity_description_mixin import EntityDescriptionMixin
 from homeassistant.const import EntityCategory
 from typing_extensions import Unpack
 
@@ -40,7 +41,7 @@ class EntityDescriptionFactory(Protocol):
     ) -> Self: ...
 
 
-class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
+class BaseEntry(Generic[TEntityDescription, TSensorValue], EntityDescriptionMixin[TEntityDescription, TSensorValue], ABC):
     """
     BaseEntry[TEntityDescription, TSensorValue]
 
@@ -65,12 +66,6 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
 
     _merged_defaults: dict[str, Any]
     opts: dict[str, Any]
-
-    key: str
-    name: str
-    _entity_description: TEntityDescription
-    ENTITY_DESCRIPTION_CLS: type[EntityDescriptionFactory]
-    # ENTITY_DESCRIPTION_CLS: ClassVar[type[TEntityDescription]]
 
     # Holds the final value sent to the sensor for display in the UI.
     # The UI can do further processing on the actual displayed value as well as the icon shown.
@@ -108,29 +103,6 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], ABC):
                 merged.update(defaults)
 
         cls._merged_defaults = merged
-
-    # @abstractmethod
-    def _create_entity_description(self, entry_class: type[BaseEntry]) -> TEntityDescription:
-        """Subclasses must construct the entity description."""
-        return cast(TEntityDescription, self.ENTITY_DESCRIPTION_CLS.from_kwargs(
-            key=self.key,
-            name=self.name,
-            entry_class=entry_class,
-            opts=self.opts,
-        ))
-
-    # -----------------------------
-    # Entity access
-    # -----------------------------
-    @property
-    def entity_description(self) -> TEntityDescription:
-        """Return the entity description for this entry."""
-        return self._entity_description
-
-    @entity_description.setter
-    def entity_description(self, value: TEntityDescription) -> None:
-        """Set the entity description for this entry."""
-        self._entity_description = value
 
     @property
     def sensor_value(self) -> TSensorValue | None:

@@ -1,7 +1,7 @@
 """Binary sensor map entries for SolArk entities."""
 
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Self, Tuple, TypedDict, Unpack
+from typing import TYPE_CHECKING, Any, Callable, Self, TypedDict, Unpack
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.const import EntityCategory
@@ -45,60 +45,13 @@ class BaseBinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription, bool]
         "sensor_class": BinarySensorClass.BINARY,
     }
 
-    # ENTITY_DESCRIPTION_CLS = SolArkBinarySensorEntityDescription
-
-    # # Dynamic maps let entry classes override an icon for specific values.
-    # DynamicIcon: dict[bool, str] | None = None
-
     def __init__(self, key: str, name: str, **kwargs: Unpack[BinarySensorEntryOptional]) -> None:
         """Initialize the binary sensor entry."""
         super().__init__(key, name, **kwargs)
 
-    # @classmethod
-    # def _get_dynamic_entry(
-    #     cls, lookup_map_key: bool
-    # ) -> str | None:
-    #     ''' Return the dictionary entry for the given key if DynamicIcon is configured. '''
-    #     d = cls.DynamicIcon
-    #     if not d:
-    #         return None
-
-    #     if lookup_map_key is None:
-    #         raise ValueError(
-    #             f"Value {lookup_map_key!r} is None. DynamicIcon keys: {list(d.keys())}"
-    #         ) from None
-
-    #     try:
-    #         return d[lookup_map_key]
-    #     except KeyError:
-    #         raise ValueError(
-    #             f"Value {lookup_map_key!r} not valid for DynamicIcon keys: {list(d.keys())}"
-    #         ) from None
-
-    # @classmethod
-    # def dynamic_icon(cls, lookup_map_key: bool) -> str | None:
-    #     """Return a dynamic icon for the value if one is configured."""
-    #     entry = cls._get_dynamic_entry(lookup_map_key)
-    #     return entry[0] if entry else None
-
 
 class RegisterBoolEntry(BaseRegisterEntry[SolArkBinarySensorEntityDescription, bool], BinarySensorMixin):
     """Class for all modbus register backed boolean sensors."""
-
-    ENTITY_DESCRIPTION_CLS = SolArkBinarySensorEntityDescription
-
-    # def __init__(self, address: int, key: str, name: str, **kwargs) -> None:
-    #     """Initialize a numeric register entry."""
-    #     super().__init__(address, key, name, **kwargs)
-
-    def _create_entity_description(self, entry_class: type[BaseBinarySensorEntry]) -> SolArkBinarySensorEntityDescription:
-        """Create the Home Assistant entity description for this entry."""
-        return SolArkBinarySensorEntityDescription.from_kwargs(
-            key=self.key,
-            name=self.name,
-            entry_class=entry_class,
-            opts=self.opts,
-        )
 
     @property
     def register_length(self) -> int:
@@ -126,9 +79,9 @@ class MetricsSuccessFailureEntry(BaseBinarySensorEntry):
         "sensor_class": BinarySensorClass.SUCCESS_FAILURE,
     }
 
-    DynamicValueDict: dict[bool, Tuple[Any, str]] = {
-        True: (None, "mdi:check-circle"),
-        False: (None, "mdi:alert-circle"),
+    DynamicIcon: dict[bool, str] = {
+        True: "mdi:check-circle",
+        False: "mdi:alert-circle",
     }
 
     def __init__(
@@ -156,12 +109,12 @@ class MetricsSuccessFailureEntry(BaseBinarySensorEntry):
 class TimeOfUse_ChargeEnabledEntry(RegisterBoolEntry):
     """Register entry for time-of-use charge enabled state."""
 
+    DynamicIcon = {
+        True: "mdi:checkbox-marked-circle-outline",
+        False: "mdi:checkbox-blank-circle-outline",
+    }
+
     DEFAULTS = {
         # "state_class": None,
         "sensor_class": BinarySensorClass.ENABLED_DISABLED,
-    }
-
-    DynamicValueDict = {
-        True: ("Enabled", "mdi:checkbox-marked-circle-outline"),
-        False: ("Disabled", "mdi:checkbox-blank-circle-outline"),
     }

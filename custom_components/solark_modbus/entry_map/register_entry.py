@@ -78,23 +78,6 @@ class BaseRegisterSensorEntry(Generic[TSensorValue], BaseRegisterEntry[SolArkSen
     Abstract base class for all modbus register-backed sensors.
     """
 
-    # ENTITY_DESCRIPTION_CLS = SolArkSensorEntityDescription
-
-    # address: int
-
-    # def __init__(self, address: int, key: str, name: str, **kwargs: Unpack[RegisterEntryOptional]) -> None:
-    #     """Initialize a register-backed entry."""
-    #     super().__init__(address, key, name, **kwargs)
-
-    # def _create_entity_description(self, entry_class: type[BaseRegisterEntry]) -> SolArkSensorEntityDescription:
-    #     return SolArkSensorEntityDescription.from_kwargs(
-    #         key=self.key,
-    #         name=self.name,
-    #         entry_class=entry_class,
-    #         opts=self.opts,
-    #     )
-
-
 class RegisterNumericEntry(Generic[TSensorValue], BaseRegisterSensorEntry[TSensorValue], ABC):
     """
     RegisterNumericEntry[TRegisterValue, TSensorValue]
@@ -186,7 +169,7 @@ class RegisterFloatEntry(RegisterNumericEntry[float]):
 class GridRelayEntry(RegisterIntEntry):
     """Register entry for grid relay state."""
 
-    DynamicValueDict = {
+    DynamicValueAndIcon = {
         0: ("Open", "mdi:electric-switch"),
         1: ("Closed", "mdi:electric-switch-closed"),
     }
@@ -448,7 +431,7 @@ class SOCEntry(RegisterIntEntry):
 class TimeOfUse_EnabledEntry(RegisterIntEntry):
     """Register entry for time-of-use enabled state."""
 
-    DynamicValueDict = {
+    DynamicValueAndIcon = {
         0: ("Disabled", "mdi:checkbox-blank-circle-outline"),
         255: ("Enabled", "mdi:checkbox-marked-circle-outline"),
     }

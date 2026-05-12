@@ -1,5 +1,7 @@
 """Binary sensor platform for the SolArk integration."""
 
+import logging
+
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -10,6 +12,8 @@ from ._binary_sensor.binary_sensor_dynamic_value_set import BinarySensorDynamicV
 from ._binary_sensor.binary_sensor_entity_description import SolArkBinarySensorEntityDescription
 from .data import SolArkData
 from .entry_map.binary_sensor_entry import BaseBinarySensorEntry
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
@@ -59,7 +63,11 @@ class SolArkBinarySensor(BinarySensorEntity):
     @property
     def icon(self) -> str | None:
         """Return the dynamic icon when available."""
-        return self.entry_class.dynamic_icon(self.data_value) or self.entity_description.icon
+        icon = self.entry_class.dynamic_icon(self.data_value)
+        if icon is not None:
+            # _LOGGER.debug("Using dynamic icon %r for sensor %s with data value %r", icon, self._attr_name, self.data_value)
+            return icon
+        return self.entity_description.icon
 
     @property
     def data_value(self):

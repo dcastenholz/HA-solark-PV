@@ -1,4 +1,4 @@
-from .._binary_sensor.binary_sensor_entity_description import SolArkBinarySensorEntityDescription
+from .binary_sensor_entity_description import SolArkBinarySensorEntityDescription
 
 
 class BinarySensorMixin:
@@ -34,4 +34,4 @@ class BinarySensorMixin:
     def dynamic_icon(cls, lookup_map_key: bool) -> str | None:
         """Return a dynamic icon for the value if one is configured."""
         entry = cls._get_dynamic_entry(lookup_map_key)
-        return entry[0] if entry else None
+        return entry if entry else None

@@ -1,5 +1,6 @@
 """Sensor entities."""
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -16,6 +17,8 @@ from .const import FORMAT_TOU_SENSORS_24HOUR
 from .data import SolArkData
 from .entry_map.sensor_entry import BaseSensorEntry
 from .register_value_types import SensorValue
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
@@ -58,13 +61,18 @@ class SolArkSensorEntity(SensorEntity, ABC):
     @property
     def icon(self) -> str | None:
         """Return the dynamic icon when available."""
-        return self.entry_class.dynamic_icon(self.data_value) or self.entity_description.icon
+        icon = self.entry_class.dynamic_icon(self.data_value)
+        if icon is not None:
+            # _LOGGER.debug("Using dynamic icon %r for sensor %s with data value %r", icon, self._attr_name, self.data_value)
+            return icon
+        return self.entity_description.icon
 
     @property
     def native_value(self) -> Any | None:
         """Return the dynamic native value when available."""
         value = self.entry_class.dynamic_native_value(self.data_value)
         if value is not None:
+            # _LOGGER.debug("Using dynamic native value %r for sensor %s with data value %r", value, self._attr_name, self.data_value)
             return value
 
         return self.data_value
