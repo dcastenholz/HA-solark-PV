@@ -7,7 +7,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from ._binary_sensor.binary_sensor_class import BinarySensorClass
 from ._binary_sensor.binary_sensor_dynamic_value_set import BinarySensorDynamicValueSet
 from ._binary_sensor.binary_sensor_entity_description import SolArkBinarySensorEntityDescription
 from .data import SolArkData
@@ -24,7 +23,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     # Only binary sensors
     for entity_description in runtime_data.descriptions_of_type(SolArkBinarySensorEntityDescription):
-        entity_cls: type[SolArkBinarySensor] = _get_sensor_class(entity_description.sensor_class)
+        entity_class_name: str = entity_description.entry_class.ENTITY_CLASS
+
+        entity_cls: type[SolArkBinarySensor] = ENTITY_CLASS_MAP[entity_class_name]
+        # entity_cls: type[SolArkBinarySensor] = entity_description.entry_class.ENTITY_CLASS
+        # entity_cls: type[SolArkBinarySensor] = _get_sensor_class(entity_description.sensor_class)
         entities.append(entity_cls(runtime_data, entity_description))
 
     async_add_entities(entities)
@@ -95,16 +98,10 @@ class SolArkBinarySensor(BinarySensorEntity):
         return bool(value)
 
 
-class MetricsSusccessBinarySensor(SolArkBinarySensor):
+class SuccessFailureBinarySensor(SolArkBinarySensor):
     """Represent a SolArk binary sensor entity."""
 
     binary_sensor_state_values = BinarySensorDynamicValueSet.SUCCESS_FAILURE
-
-    def __init__(self, runtime_data: SolArkData, description: SolArkBinarySensorEntityDescription):
-        """Initialize the binary sensor entity."""
-        super().__init__(runtime_data, description)
-
-        # self._attr_translation_key = "success_failure"
 
 
 class EnabledDisabledBinarySensor(SolArkBinarySensor):
@@ -112,25 +109,25 @@ class EnabledDisabledBinarySensor(SolArkBinarySensor):
 
     binary_sensor_state_values = BinarySensorDynamicValueSet.ENABLED_DISABLED
 
-    def __init__(self, runtime_data: SolArkData, description: SolArkBinarySensorEntityDescription):
-        """Initialize the binary sensor entity."""
-        super().__init__(runtime_data, description)
 
-        # self._attr_translation_key = "enabled_disabled"
-
-
-BINARYSENSOR_CLASS_MAP = {
-    BinarySensorClass.BINARY: SolArkBinarySensor,
-    BinarySensorClass.SUCCESS_FAILURE: MetricsSusccessBinarySensor,
-    BinarySensorClass.ENABLED_DISABLED: EnabledDisabledBinarySensor,
+ENTITY_CLASS_MAP = {
+    "SolArkBinarySensor": SolArkBinarySensor,
+    "SuccessFailureBinarySensor": SuccessFailureBinarySensor,
+    "EnabledDisabledBinarySensor": EnabledDisabledBinarySensor,
 }
 
-def _get_sensor_class(sensor_class: BinarySensorClass) -> type[SolArkBinarySensor]:
-    """Return the sensor class that will be used to create the actual sensor."""
-    try:
-        return BINARYSENSOR_CLASS_MAP[sensor_class]
-    except KeyError as err:
-        raise ValueError(
-            f"Unhandled BinarySensorClass: {sensor_class}. "
-            f"BINARYSENSOR_CLASS_MAP is incomplete."
-        ) from err
+# BINARYSENSOR_CLASS_MAP = {
+#     BinarySensorClass.BINARY: SolArkBinarySensor,
+#     BinarySensorClass.SUCCESS_FAILURE: MetricsSusccessBinarySensor,
+#     BinarySensorClass.ENABLED_DISABLED: EnabledDisabledBinarySensor,
+# }
+
+# def _get_sensor_class(sensor_class: BinarySensorClass) -> type[SolArkBinarySensor]:
+#     """Return the sensor class that will be used to create the actual sensor."""
+#     try:
+#         return BINARYSENSOR_CLASS_MAP[sensor_class]
+#     except KeyError as err:
+#         raise ValueError(
+#             f"Unhandled BinarySensorClass: {sensor_class}. "
+#             f"BINARYSENSOR_CLASS_MAP is incomplete."
+#         ) from err

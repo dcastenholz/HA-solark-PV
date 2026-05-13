@@ -41,9 +41,7 @@ class BinarySensorEntryOptional(TypedDict, total=False):
 class BaseBinarySensorEntry(BaseEntry[SolArkBinarySensorEntityDescription, bool], BinarySensorMixin):
     """Base class for all binary sensor map entries."""
 
-    DEFAULTS = {
-        "sensor_class": BinarySensorClass.BINARY,
-    }
+    ENTITY_CLASS: str = "SolArkBinarySensor"
 
     def __init__(self, key: str, name: str, **kwargs: Unpack[BinarySensorEntryOptional]) -> None:
         """Initialize the binary sensor entry."""
@@ -72,11 +70,12 @@ class BinaryProblemEntry(BaseBinarySensorEntry):
 class MetricsSuccessFailureEntry(BaseBinarySensorEntry):
     """Binary sensor entry backed by coordinator metric success values."""
 
+    ENTITY_CLASS = "SuccessFailureBinarySensor"
+
     DEFAULTS = {
         "icon": "mdi:information-outline",
         "entity_category": EntityCategory.DIAGNOSTIC,
         "name_prefix": "Metric: ",
-        "sensor_class": BinarySensorClass.SUCCESS_FAILURE,
     }
 
     DynamicIcon: dict[bool, str] = {
@@ -109,12 +108,9 @@ class MetricsSuccessFailureEntry(BaseBinarySensorEntry):
 class TimeOfUse_ChargeEnabledEntry(RegisterBoolEntry):
     """Register entry for time-of-use charge enabled state."""
 
+    ENTITY_CLASS = "EnabledDisabledBinarySensor"
+
     DynamicIcon = {
         True: "mdi:checkbox-marked-circle-outline",
         False: "mdi:checkbox-blank-circle-outline",
-    }
-
-    DEFAULTS = {
-        # "state_class": None,
-        "sensor_class": BinarySensorClass.ENABLED_DISABLED,
     }

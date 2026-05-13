@@ -9,10 +9,9 @@ class EntityDescriptionMixin(Generic[TEntityDescription, TSensorValue]):
     _entity_description: TEntityDescription
     key: str
     name: str = ""
-    entry_class: type[TEntityDescription]
     opts: dict[str, Any]
 
-    ENTITY_DESCRIPTION_CLS: type[EntityDescriptionFactory[TEntityDescription]]
+    ENTITY_DESCRIPTION_CLS: type[EntityDescriptionFactory[TEntityDescription, type[Any]]]
 
     # -----------------------------
     # Entity access
@@ -27,11 +26,11 @@ class EntityDescriptionMixin(Generic[TEntityDescription, TSensorValue]):
         """Set the entity description for this entry."""
         self._entity_description = value
 
-    def _create_entity_description(self, entry_class: type[TEntityDescription]) -> Any:
+    def _create_entity_description(self) -> Any:
         """Subclasses must construct the entity description."""
         return self.ENTITY_DESCRIPTION_CLS.from_kwargs(
             key=self.key,
             name=self.name,
-            entry_class=entry_class,
+            entry_class=type(self),
             opts=self.opts,
         )

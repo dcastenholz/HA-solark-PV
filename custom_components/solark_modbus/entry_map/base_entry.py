@@ -2,12 +2,12 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Generic, Protocol, Self, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Callable, Generic, Self, TypedDict, Union
 
-from .._entity_description.entity_description_mixin import EntityDescriptionMixin
 from homeassistant.const import EntityCategory
 from typing_extensions import Unpack
 
+from .._entity_description.entity_description_mixin import EntityDescriptionMixin
 from ..register_value_types import NumericValue, TEntityDescription, TSensorValue
 
 if TYPE_CHECKING:
@@ -29,18 +29,6 @@ class BaseEntryOptional(TypedDict, total=False):
     set_sensor_value: Callable[[Any, "SolArkData"], None]
 
 
-class EntityDescriptionFactory(Protocol):
-    @classmethod
-    def from_kwargs(
-        cls,
-        *,
-        key: str,
-        name: str,
-        entry_class: type,
-        opts: dict,
-    ) -> Self: ...
-
-
 class BaseEntry(Generic[TEntityDescription, TSensorValue], EntityDescriptionMixin[TEntityDescription, TSensorValue], ABC):
     """
     BaseEntry[TEntityDescription, TSensorValue]
@@ -58,6 +46,7 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], EntityDescriptionMixi
             base value
             sensor value
     """
+    # ENTITY_CLASS: type["SolArkBinarySensor"]
 
     DEFAULTS: dict[str, Any] = {
         "exclude_from_recorder": False,
@@ -86,7 +75,7 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], EntityDescriptionMixi
         # -----------------------------
         self.set_sensor_value = self.opts.get("set_sensor_value")
 
-        self._entity_description = self._create_entity_description(self.__class__)
+        self._entity_description = self._create_entity_description()
 
     def __init_subclass__(cls, **kwargs):
         """Merge defaults from the inheritance chain for each subclass."""
