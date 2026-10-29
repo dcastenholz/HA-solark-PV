@@ -24,7 +24,7 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
     The class maintains the last successful reading and timestamp, and if a read fails,
     it will return the last known values if they are not too old, otherwise it will return an error message.
 
-    Philosopy here is  to perform a series of modbus reads, setting a single error flag for the whole dataset
+    Philosopy here is to perform a series of modbus reads, setting a single error flag for the whole dataset
     on the failure of any read.
     read, check for a successful read of all data, and return the last complete data.
     If the read was not successful, then return the last known values if they are not too old,

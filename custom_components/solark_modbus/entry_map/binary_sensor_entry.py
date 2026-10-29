@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Callable, Self, TypedDict, Unpack
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.const import EntityCategory
 
-from .._binary_sensor.binary_sensor_class import BinarySensorClass
 from .._binary_sensor.binary_sensor_dynamic_value_set import BinarySensorDynamicValueSet
 from .._binary_sensor.binary_sensor_entity_description import SolArkBinarySensorEntityDescription
 from .._binary_sensor.binary_sensor_mixin import BinarySensorMixin
@@ -31,8 +30,7 @@ class BinarySensorEntryOptional(TypedDict, total=False):
     should_poll: bool
 
     device_class: BinarySensorDeviceClass
-    sensor_class: BinarySensorClass
-    binary_sensor_state_values: BinarySensorDynamicValueSet
+    binary_sensor_dynamic_values: BinarySensorDynamicValueSet
 
     # TODO - Is this unused???
     set_sensor_value: Callable[[Any, "SolArkData"], None]

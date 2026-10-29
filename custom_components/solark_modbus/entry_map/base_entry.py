@@ -46,7 +46,6 @@ class BaseEntry(Generic[TEntityDescription, TSensorValue], EntityDescriptionMixi
             base value
             sensor value
     """
-    # ENTITY_CLASS: type["SolArkBinarySensor"]
 
     DEFAULTS: dict[str, Any] = {
         "exclude_from_recorder": False,

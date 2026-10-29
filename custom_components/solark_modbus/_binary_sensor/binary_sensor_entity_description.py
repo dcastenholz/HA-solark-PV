@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 
-from .binary_sensor_class import BinarySensorClass
+from .binary_sensor_dynamic_value_set import BinarySensorDynamicValueSet
 
 if TYPE_CHECKING:
     from ..entry_map.binary_sensor_entry import BaseBinarySensorEntry
@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 @dataclass(kw_only=True, frozen=True)
 class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
     """SolArk-specific sensor description."""
-    sensor_class: BinarySensorClass = BinarySensorClass.BINARY
     # TODO - Is this needed at all???
     description: str | None = None
     # TODO - Is this needed at all???
@@ -25,6 +24,8 @@ class SolArkBinarySensorEntityDescription(BinarySensorEntityDescription):
     should_poll: bool = True
     entry_class: type["BaseBinarySensorEntry"]
     name_prefix: str = ""
+
+    binary_sensor_dynamic_values: BinarySensorDynamicValueSet | None = None
 
     @classmethod
     def from_kwargs(
