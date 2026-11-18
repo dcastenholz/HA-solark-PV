@@ -2,7 +2,7 @@
 
 from typing import TypeVar
 
-from homeassistant.components.sensor import (
+from homeassistant.const import (
     EntityCategory,
 )
 
