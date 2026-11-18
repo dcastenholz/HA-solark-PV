@@ -1,5 +1,5 @@
 {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "codeowners": ["@dcastenholz"],
   "config_flow": true,
   "documentation": "https://github.com/dcastenholz/HA-solark-PV",
