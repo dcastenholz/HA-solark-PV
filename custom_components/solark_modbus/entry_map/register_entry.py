@@ -68,7 +68,9 @@ class RegisterEntryOptional(TypedDict, total=False):
 # ----------------------------------
 # Register Entry
 # ----------------------------------
-class BaseRegisterSensorEntry(Generic[TSensorValue], BaseRegisterEntry[SolArkSensorEntityDescription, TSensorValue], SensorMixin[TSensorValue], ABC):
+class BaseRegisterSensorEntry(
+    Generic[TSensorValue], BaseRegisterEntry[SolArkSensorEntityDescription, TSensorValue], SensorMixin[TSensorValue], ABC
+):
     """
     BaseRegisterSensorEntry[TSensorValue]
 
@@ -77,6 +79,7 @@ class BaseRegisterSensorEntry(Generic[TSensorValue], BaseRegisterEntry[SolArkSen
 
     Abstract base class for all modbus register-backed sensors.
     """
+
 
 class RegisterNumericEntry(Generic[TSensorValue], BaseRegisterSensorEntry[TSensorValue], ABC):
     """
@@ -92,9 +95,12 @@ class RegisterNumericEntry(Generic[TSensorValue], BaseRegisterSensorEntry[TSenso
             data type
             the length of the register range to read for all numeric entries
     """
+
     data_type: DataType
 
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]) -> None:
+    def __init__(
+        self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]
+    ) -> None:
         """Initialize a numeric register entry."""
         super().__init__(address, key, name, **kwargs)
 
@@ -120,7 +126,9 @@ class RegisterIntEntry(RegisterNumericEntry[int]):
             logic for setting base value and sensor value
     """
 
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]) -> None:
+    def __init__(
+        self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]
+    ) -> None:
         """Initialize an integer register entry."""
         super().__init__(address, key, name, data_type, **kwargs)
 
@@ -134,6 +142,7 @@ class RegisterFloatEntry(RegisterNumericEntry[float]):
             offset value for the register
             scale value for the register
     """
+
     offset: int
     scale: float
 
@@ -142,7 +151,9 @@ class RegisterFloatEntry(RegisterNumericEntry[float]):
         "scale": 1.0,
     }
 
-    def __init__(self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]) -> None:
+    def __init__(
+        self, address: int, key: str, name: str, data_type: DataType = DataType.INT16, **kwargs: Unpack[RegisterEntryOptional]
+    ) -> None:
         """Initialize a floating-point register entry."""
         super().__init__(address, key, name, data_type, **kwargs)
 
@@ -190,6 +201,7 @@ class StringEntry(BaseRegisterSensorEntry[str]):
             logic for setting base value and sensor value
             the length of the register range to read for string entries
     """
+
     # TODO - Should we just combine with SerialNumber???  Depends on potential reuse.
     length: int
 
@@ -222,11 +234,12 @@ class SerialNumberEntry(StringEntry):
 
     # TODO - Make sure this is called!!!
     def _post_process(self: Self, runtime_data: "SolArkData") -> None:
-        '''Save the serial number to the device info serial number property'''
+        """Save the serial number to the device info serial number property"""
 
         # TODO - This must be moved to a location where it will only be run if the register is read
         # just prior to it running.  _post_process is a sledgehammer
         from ..helpers.device_info import SolArkDeviceInfo
+
         SolArkDeviceInfo.handle_serial_number_change(runtime_data, str(self.sensor_value))
 
 
@@ -234,8 +247,8 @@ class SerialNumberEntry(StringEntry):
 # Raw Value
 # ----------------------------
 class RawValueEntry(RegisterIntEntry):
-    '''Values read from registers that are NOT normally displayed in UI screens.
-    These are values that change over time and will produce history if enabled.'''
+    """Values read from registers that are NOT normally displayed in UI screens.
+    These are values that change over time and will produce history if enabled."""
 
     DEFAULTS = {
         "icon": "mdi:code-braces",
@@ -249,8 +262,8 @@ class RawValueEntry(RegisterIntEntry):
 # Raw Value
 # ----------------------------
 class RawInfoEntry(RegisterIntEntry):
-    '''Values read from registers that are not normally displayed in UI screens.
-    These are mostly static values that do not typically change over time.'''
+    """Values read from registers that are not normally displayed in UI screens.
+    These are mostly static values that do not typically change over time."""
 
     DEFAULTS = {
         "icon": "mdi:code-braces",
@@ -265,9 +278,9 @@ class RawInfoEntry(RegisterIntEntry):
 # ----------------------------
 # TODO - Get rid of this class???
 class RawValueSystemTimeEntry(RawInfoEntry):
-    '''Values read from registers that are not normally displayed in UI screens.
+    """Values read from registers that are not normally displayed in UI screens.
     These are values that are based on the inverter system time but are specifically
-    excluded from history to avoid pointless database entries.'''
+    excluded from history to avoid pointless database entries."""
 
     DEFAULTS = {
         # "exclude_from_recorder": True,
@@ -426,23 +439,6 @@ class SOCEntry(RegisterIntEntry):
 
 
 # ----------------------------
-# Time of Use Enabled
-# ----------------------------
-class TimeOfUse_EnabledEntry(RegisterIntEntry):
-    """Register entry for time-of-use enabled state."""
-
-    DynamicValueAndIcon = {
-        0: ("Disabled", "mdi:checkbox-blank-circle-outline"),
-        255: ("Enabled", "mdi:checkbox-marked-circle-outline"),
-    }
-
-    DEFAULTS = {
-        "icon": "mdi:check-circle",
-        "state_class": None,
-    }
-
-
-# ----------------------------
 # Time of Use Time
 # ----------------------------
 class TimeOfUse_TimeEntry(RegisterIntEntry):
@@ -451,4 +447,22 @@ class TimeOfUse_TimeEntry(RegisterIntEntry):
     DEFAULTS = {
         "icon": "mdi:clock-outline",
         "sensor_class": SensorClass.TOU_TIME,
+    }
+
+
+# ----------------------------
+# Time Of Use Charge/Sell
+# ----------------------------
+class TimeOfUse_ChargeSellEntry(RegisterIntEntry):
+    """Register entry for time of use charge/sell enabled."""
+
+    DynamicValueAndIcon = {
+        0: ("None", "mdi:electric-switch"),
+        1: ("Charge", "mdi:electric-switch-closed"),
+        2: ("Sell", "mdi:electric-switch-closed"),
+        3: ("Charge & Sell", "mdi:electric-switch-closed"),
+    }
+
+    DEFAULTS = {
+        "state_class": None,
     }

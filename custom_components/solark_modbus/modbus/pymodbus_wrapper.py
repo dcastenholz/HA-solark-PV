@@ -27,7 +27,10 @@ import logging
 import pymodbus
 from packaging import version
 
-from ..const import DEFAULT_PORT
+# ---- Client imports ----
+from pymodbus.client import ModbusSerialClient, ModbusTcpClient
+
+from ..const import DEFAULT_PORT, MODBUS_EXCEPTIONS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,18 +41,10 @@ PYMODBUS_VERSION = version.parse(pymodbus.__version__)
 IS_PRIOR_TO_V3_5_0 = PYMODBUS_VERSION < version.parse("3.5.0")  # noqa: SIM300
 IS_PRIOR_TO_V3_10_0 = PYMODBUS_VERSION < version.parse("3.10.0")  # noqa: SIM300
 
-# ---- Client imports ----
-if IS_PRIOR_TO_V3_5_0:
-    # Older PyModbus before 3.5 requires method="rtu"
-    from pymodbus.client import ModbusSerialClient as OldModbusSerialClient
-    from pymodbus.client import ModbusTcpClient
-else:
-    from pymodbus.client import ModbusSerialClient, ModbusTcpClient
-
 
 # ---- Response abstraction ----
 class ModbusResponse:
-    """Thread-safe wrapper for Modbus read responses for PyModbus 3.1.1 → current."""
+    """Wrapper for Modbus read responses for PyModbus 3.1.1 → current."""
 
     __slots__ = ("_response",)
 
@@ -62,6 +57,11 @@ class ModbusResponse:
         """Return the list of registers or None if unavailable."""
         return getattr(self._response, "registers", None)
 
+    @property
+    def is_error(self) -> bool:
+        """Return True if the response indicates an error."""
+        return self.isError()
+
     def isError(self) -> bool:  # pylint: disable=invalid-name
         """Return True if the response indicates an error."""
         if self._response is None:
@@ -73,13 +73,34 @@ class ModbusResponse:
         # If no 'isError' method, consider it an error if it has no 'registers'
         return not hasattr(self._response, "registers")
 
-    def get_exception(self) -> Exception | None:
+    def get_exception_code(self) -> int | None:
         """Return the exception if the response contains one."""
-        return getattr(self._response, "error_message", None)
+        return getattr(self._response, "exception_code", None)
+
+    def get_exception_string(self) -> str | None:
+        """Return the exception if the response contains one."""
+        code = self.get_exception_code()
+
+        if code:
+            err = MODBUS_EXCEPTIONS.get(code, f"Unknown Modbus exception: {code}")
+        else:
+            err = None
+
+        return err
+
+    @property
+    def error(self) -> str | None:
+        """Return the error string if the response indicates an error."""
+        if hasattr(self._response, "error_message"):
+            return getattr(self._response, "error_message")
+        if self.is_error:
+            return str(self._response)
+        return None
 
     def __repr__(self) -> str:
         """Return a string representation of the ModbusResponse."""
-        return f"<ModbusResponse error={self.isError()} registers={self.registers} exception={self.get_exception()}>"
+        # TODO - Add function_code and filter the attributes based on is_error
+        return f"<ModbusResponse error={self.is_error} registers={self.registers} exception_code={self.get_exception_code()}>"
 
 
 class ModbusResponseError(ModbusResponse):
@@ -102,9 +123,9 @@ class ModbusResponseError(ModbusResponse):
 
 
 class ModbusClientWrapper:
-    """Thread-safe and async wrapper for Modbus TCP/Serial."""
+    """Wrapper for Modbus TCP/Serial."""
 
-    __slots__ = ("_client", "_lock", "_connected", "_stopped")
+    __slots__ = "_client"
 
     def __init__(
         self,
@@ -114,11 +135,11 @@ class ModbusClientWrapper:
         baudrate: int = 9600,
     ) -> None:
         """Create a Modbus client wrapper (TCP or Serial)."""
-        self._client: ModbusTcpClient | ModbusSerialClient | OldModbusSerialClient | None
+        self._client: ModbusTcpClient | ModbusSerialClient
 
         if serial_port is not None:
             if IS_PRIOR_TO_V3_5_0:
-                self._client = OldModbusSerialClient(  # pylint: disable=E1123
+                self._client = ModbusSerialClient(  # pylint: disable=E1123
                     method="rtu",  # type: ignore[call-arg]
                     port=serial_port,
                     baudrate=baudrate,
@@ -131,6 +152,7 @@ class ModbusClientWrapper:
         else:
             raise ValueError("Either host or serial_port must be provided")
 
+    # ---- Close client ----
     def close(self) -> None:
         """Close the underlying Modbus client."""
         if self._client:
@@ -146,8 +168,15 @@ class ModbusClientWrapper:
     def read_holding_registers(self, address: int, count: int, device_id: int) -> ModbusResponse:
         """Read holding registers from the configured Modbus device."""
         device_kw = self._get_device_id_param_name(device_id)
-        resp = self._client.read_holding_registers(address=address, count=count, **device_kw)  # type: ignore[arg-type]
-        return ModbusResponse(resp)
+        pdu = self._client.read_holding_registers(address=address, count=count, **device_kw)  # type: ignore[arg-type]
+        return ModbusResponse(pdu)
+
+    # ---- Sync write ----
+    def write_registers(self, address: int, values: list[int], device_id: int) -> ModbusResponse:
+        """Write registers to the configured Modbus device."""
+        device_kw = self._get_device_id_param_name(device_id)
+        pdu = self._client.write_registers(address=address, values=values, **device_kw)  # type: ignore[arg-type]
+        return ModbusResponse(pdu)
 
     # ---- Helper for slave/device_id ------
     def _get_device_id_param_name(self, device_id: int) -> dict[str, int]:

@@ -1,4 +1,5 @@
-''' Class for defining and processing entries that are read from registers.'''
+"""Class for defining and processing entries that are read from registers."""
+
 from abc import ABC
 from typing import Iterator
 
@@ -7,7 +8,8 @@ from ..entry_map.base_map import BaseMap
 
 
 class RegisterMap(BaseMap[BaseRegisterEntry], ABC):
-    '''Register map may contain only entries that are, or are a subclass of, RegisterEntry'''
+    """Register map may contain only entries that are, or are a subclass of, RegisterEntry"""
+
     _entry_type = BaseRegisterEntry
 
     # ---------- sorting ----------
@@ -41,6 +43,16 @@ class RegisterMap(BaseMap[BaseRegisterEntry], ABC):
     def init(self):
         """Initialize the register map before reading registers."""
         self.set_error(False)
+
+    # TODO - Delete if unused.
+    def get_entry_by_address(self, address: int) -> BaseRegisterEntry | None:
+        """Return the register entry starting at this address, if present."""
+        return next((entry for entry in self._entries if entry.address == address), None)
+
+    # TODO - Delete if unused.
+    def get_entry_by_key(self, key: str) -> BaseRegisterEntry | None:
+        """Return the register entry with this entity key, if present."""
+        return next((entry for entry in self._entries if entry.key == key), None)
 
     # ---------- register range helpers ----------
     # def init_register_range(self, start: RegisterEntry, end: RegisterEntry | None = None):

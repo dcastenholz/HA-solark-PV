@@ -41,11 +41,12 @@ class BaseSensorEntry(Generic[TSensorValue], BaseEntry[SolArkSensorEntityDescrip
     }
 
 
-
 # TODO - Review all uses of this class for possible BaseSensorEntry inheritance instead
 class SensorEntry_NoSet(Generic[TSensorValue], BaseSensorEntry[TSensorValue]):
     """Sensor entry that uses the default sensor value behavior."""
+
     pass
+
 
 class MetricsEntry(BaseSensorEntry):
     """Sensor entry backed by coordinator metrics."""
@@ -75,6 +76,7 @@ class MetricsEntry(BaseSensorEntry):
     def calc_sensor_value(self: Self, runtime_data: "SolArkData") -> None:
         """Calculate the sensor value from coordinator metrics."""
         self._sensor_value = self.metric(runtime_data.coordinator_metrics)
+
 
 # ----------------------------
 # Power
@@ -147,8 +149,72 @@ class GeneratorRelayEntry(BaseSensorEntry[int]):
 
     def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
         """Calculate generator relay state from the raw register value."""
-        value = runtime_data.register_map.GEN_RLY_RAW.sensor_value
+        _register_value_low_4_bits = runtime_data.register_map.GEN_RLY_RAW.sensor_value
+        self._sensor_value = (_register_value_low_4_bits & 0x0F) if _register_value_low_4_bits is not None else None  # mask low 4 bits
+
+    DEFAULTS = {
+        "state_class": None,
+    }
+
+
+# ----------------------------
+# Battery Measurement Mode
+# ----------------------------
+class BatteryMeasurementModeEntry(BaseSensorEntry[int]):
+    """Sensor entry for battery measurement mode."""
+
+    DynamicValueAndIcon = {
+        0: ("Voltage", "mdi:battery-unknown"),
+        1: ("SOC", "mdi:battery-unknown"),
+        2: ("No Battery", "mdi:battery-off-outline"),
+    }
+
+    def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
+        """Calculate battery measurement mode from the raw register value."""
+        value = runtime_data.register_map.BATT_MEASURE_MODE_RAW.sensor_value
         self._sensor_value = (value & 0x0F) if value is not None else None  # mask low 4 bits
+
+    DEFAULTS = {
+        "state_class": None,
+    }
+
+
+# ----------------------------
+# Time of Use Enabled
+# ----------------------------
+class TimeOfUse_EnabledEntry(BaseSensorEntry[bool]):
+    """Sensor entry for overall or per-day time-of-use enabled state."""
+
+    # DAYS_OF_WEEK = {
+    #     1: "Monday",
+    #     2: "Tuesday",
+    #     3: "Wednesday",
+    #     4: "Thursday",
+    #     5: "Friday",
+    #     6: "Saturday",
+    #     7: "Sunday",
+    # }
+
+    DynamicValueAndIcon = {
+        False: ("Disabled", "mdi:checkbox-blank-circle-outline"),
+        True: ("Enabled", "mdi:checkbox-marked-circle-outline"),
+    }
+
+    def __init__(self, *, enabled_index: int, **kwargs):
+        if enabled_index not in range(8):
+            raise ValueError("enabled_index must be between 0 and 7")
+
+        super().__init__(**kwargs)
+        self.enabled_index = enabled_index
+
+    # @property
+    # def day_of_week(self) -> str | None:
+    #     """Return the selected weekday, or None for overall enable."""
+    #     return self.DAYS_OF_WEEK.get(self.enabled_index)
+
+    def calc_sensor_value(self, runtime_data: "SolArkData") -> None:
+        raw_value = runtime_data.register_map.TIMEOFUSE_ENABLED_RAW.sensor_value
+        self._sensor_value = bool(int(raw_value) & (1 << self.enabled_index))
 
     DEFAULTS = {
         "state_class": None,

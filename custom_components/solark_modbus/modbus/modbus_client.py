@@ -1,4 +1,4 @@
-""" Update the register map with the latest values read from the inverter and return a combined dictionary of all data.
+"""Update the register map with the latest values read from the inverter and return a combined dictionary of all data.
 
 Class is responsible for reading the data from the inverter and returning it as a dictionary.
 The class maintains the last successful reading and timestamp, and if a read fails,
@@ -9,6 +9,7 @@ on the failure of any read.
 read, check for a successful read of all data, and return the last complete data.
 If the read was not successful, then return the last known values if they are not too old, otherwise return an error message.
 """
+
 import logging
 import threading
 from typing import Iterator
@@ -16,11 +17,11 @@ from typing import Iterator
 from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
 from ..config.config_connection_type import ConnectionType
-from ..const import MODBUS_EXCEPTIONS
 from ..entry_map.base_entry import BaseRegisterEntry
 from ..entry_map.binary_sensor_entry import RegisterBoolEntry
 from ..entry_map.register_entry import DataType, RegisterNumericEntry, StringEntry
 from ..maps.solark_register_map import SolArkRegisterMap
+from ..register_value_types import SensorValue
 from .binary_payload_decoder import BinaryPayloadDecoder
 from .modbus_config import ModbusConfig
 from .pymodbus_wrapper import ModbusClientWrapper, ModbusResponse, ModbusResponseError
@@ -30,11 +31,12 @@ _LOGGER = logging.getLogger(__name__)
 # Per SolArk modbus documentation, register read count is 0x0001~ 0x007D, or 1 to 125
 MAX_READ_REGISTER_COUNT = 125
 
+
 class ModbusDecodeError(RuntimeError):
     """Raised when Modbus register decoding fails."""
 
 
-class SolArkModbusClient():
+class SolArkModbusClient:
     """Thread-safe wrapper for reading inverter data from Modbus using register dictionary."""
 
     def __init__(self, config: ModbusConfig, register_map: SolArkRegisterMap) -> None:
@@ -49,18 +51,6 @@ class SolArkModbusClient():
         self._register_map = register_map
         self._connected = False
         self._stopped = False
-
-    def close(self) -> None:
-        """Close the Modbus client connection safely."""
-        with self._lock:
-            if self._client:
-                try:
-                    self._client.close()
-                except Exception as e:
-                    _LOGGER.exception("Error closing modbus client connection: %s", e)
-                finally:
-                    self._connected = False
-                    self._client = None
 
     # ---- Connection handling ----
     def _ensure_connected(self) -> None:
@@ -90,7 +80,7 @@ class SolArkModbusClient():
         """Read the static inverter data from the inverter and store the results in the register map."""
 
         # TODO - Move this to a static data list and read once and save values.
-        self._process_register_range(self._register_map.SN, self._register_map.INFO_RATED_POWER)   # R5 - R16
+        self._process_register_range(self._register_map.SN, self._register_map.INFO_RATED_POWER)  # R5 - R16
 
         if self._register_map.is_error():
             _LOGGER.error("Reading inverter data failed!")
@@ -121,14 +111,67 @@ class SolArkModbusClient():
 
         self._process_register_range(self._register_map.GRIDL1N_V, self._register_map.GEN_FREQ)  # R150 - R196
 
-        self._process_register_range(self._register_map.TIMEOFUSE_ENABLED, self._register_map.TIMEOFUSE_ENABLED_6)  # R248 - R279
+        self._process_register_range(self._register_map.BATT_MEASURE_MODE_RAW)  # R213
+        self._process_register_range(self._register_map.BATT_CHARGE_CURRENT_LIMIT)  # R230
+
+        self._process_register_range(self._register_map.TIMEOFUSE_ENABLED_RAW, self._register_map.TIMEOFUSE_6_CHARGE_SELL)  # R248 - R279
 
         self._process_register_range(self._register_map.BMS_CHARGING_VOLTAGE, self._register_map.BMS_TEMP)  # R312 - R319
 
         return not self._register_map.is_error()
 
+    def read_register_entry(self, entry: BaseRegisterEntry) -> dict[str, SensorValue]:
+        """Read one register-map entry and return its processed value."""
+        self._register_map.init()
+        self._process_register_range(entry)
+
+        if self._register_map.is_error() or entry.sensor_value is None:
+            return {}
+
+        entry.process_sensor_value(self._register_map.runtime_data)
+
+        if entry.sensor_value is None:
+            return {}
+
+        return {entry.key: entry.sensor_value}
+
+    def read_modbus_register_range(
+        self,
+        address: int,
+        count: int = 1,
+    ) -> bool:
+        """Read and decode a specific range of holding registers."""
+
+        if count < 1 or count > MAX_READ_REGISTER_COUNT:
+            raise ValueError(f"Register count must be between 1 and {MAX_READ_REGISTER_COUNT}")
+
+        with self._lock:
+            response = self._read_holding_registers(
+                address=address,
+                count=count,
+            )
+
+            if response.is_error:
+                _LOGGER.error(
+                    "Reading register range %d-%d failed!",
+                    address,
+                    address + count - 1,
+                )
+                return False
+
+            decoder = BinaryPayloadDecoder(response.registers)
+
+            entries = self._register_map.entries_register_read_in_address_range(
+                address,
+                count,
+            )
+
+            self._decode_register_map_entries(decoder, entries)
+
+            return not self._register_map.is_error()
+
     def _process_register_range(self, start_register: BaseRegisterEntry, end_register: BaseRegisterEntry | None = None):
-        """Read the holding registers and decode the vlues for a range of BaseRegisterEntry objects."""
+        """Read the holding registers and decode the values for a range of BaseRegisterEntry objects."""
 
         if end_register is None:
             end_register = start_register
@@ -137,24 +180,26 @@ class SolArkModbusClient():
 
         # Per SolArk modbus documentation, register count read is 0x0001~ 0x007D, or 1 to 125
         if register_count > MAX_READ_REGISTER_COUNT:
-            raise RuntimeError(f"Holding register read count exceeds maximum of {MAX_READ_REGISTER_COUNT}. Register range requested contains {register_count} registers.")
+            raise RuntimeError(
+                f"Holding register read count exceeds maximum of {MAX_READ_REGISTER_COUNT}. Register range requested contains {register_count} registers."
+            )
 
         # Init the register map entries prior to read attempt
         # self._register_map.init_register_range(start_register, end_register)
 
         # Read the registers from the inverter
-        modbus_response = self._read_holding_registers(address=start_register.address, count=register_count)
+        response = self._read_holding_registers(address=start_register.address, count=register_count)
 
         # Process the Modbus response and update the register map entries with the decoded values if successful,
         # otherwise set error state on the register map
-        if modbus_response.isError():
+        if response.is_error:
             _LOGGER.error(
                 "Processing registers %d-%d failed!", start_register.address, end_register.address + end_register.register_length - 1
             )
             self._register_map.set_error()
             return
 
-        decoder = BinaryPayloadDecoder(modbus_response.registers)
+        decoder = BinaryPayloadDecoder(response.registers)
 
         entries = self._register_map.entries_register_read_in_range(start_register, end_register)
         self._decode_register_map_entries(decoder, entries)
@@ -224,7 +269,7 @@ class SolArkModbusClient():
         entry.sensor_value = int_value
 
     def _read_holding_registers(self, address: int, count: int) -> ModbusResponse:
-        """Reads a block of holding registers from the inverter via Modbus
+        """Reads a block of holding registers from the inverter via Modbus.
 
         Catch and handle common exceptions by returning error.
         Should not return NONE, and bubbles up ONLY unexpected exceptions.
@@ -232,24 +277,76 @@ class SolArkModbusClient():
         with self._lock:
             try:
                 self._ensure_connected()
-            except (ConnectionException) as exc:
+            except ConnectionException as exc:
                 _LOGGER.error("Ensure connected failed: %s", exc)
                 return ModbusResponseError(exc)
 
             assert self._client is not None
 
             try:
-                result: ModbusResponse = self._client.read_holding_registers(address, count=count, device_id=self.device_id)
-            except (ModbusIOException, ConnectionException, ModbusException) as exc:
+                response: ModbusResponse = self._client.read_holding_registers(address, count=count, device_id=self.device_id)
+            except (ModbusIOException, ConnectionException, ModbusException, OSError) as exc:
+                # Drop the connection rather than just clear the connected flag: connect() is a no-op while pymodbus still holds a socket.
+                self._drop_connection()
                 return ModbusResponseError(exc)
 
-            if result.isError():
-                code = getattr(result, "exception_code", None)
-                if code:
-                    err = MODBUS_EXCEPTIONS.get(code, f"Unknown Modbus exception: {code}")
-                else:
-                    err = str(result)
+            if response.is_error:
+                err = response.get_exception_string()
+                _LOGGER.error("Failed to read holding registers starting at %d. Modbus error: %s", address, err)
 
-                _LOGGER.warning("Reading holding registers Modbus error: %s", err)
+            return response
 
-            return result
+    def _write_registers(self, address: int, values: list[int]) -> ModbusResponse:
+        """Writes a block of holding registers to the inverter via Modbus.
+
+        Catch and handle common exceptions by returning error.
+        Should not return NONE, and bubbles up ONLY unexpected exceptions.
+        """
+        with self._lock:
+            try:
+                self._ensure_connected()
+            except ConnectionException as exc:
+                _LOGGER.error("Ensure connected failed: %s", exc)
+                return ModbusResponseError(exc)
+
+            assert self._client is not None
+
+            try:
+                response: ModbusResponse = self._client.write_registers(address, values, device_id=self.device_id)
+            except (ModbusIOException, ConnectionException, ModbusException, OSError) as exc:
+                # Drop the connection rather than just clear the connected flag: connect() is a no-op while pymodbus still holds a socket.
+                self._drop_connection()
+                return ModbusResponseError(exc)
+
+            if response.is_error:
+                err = response.get_exception_string()
+                _LOGGER.error("Failed to write to registers starting at %d. Modbus error: %s.", address, err)
+
+            return response
+
+    def write_register(self, address: int, value: int) -> ModbusResponse:
+        """Writes a single register to the inverter via Modbus.
+
+        Catch and handle common exceptions by returning error.
+        Should not return NONE, and bubbles up ONLY unexpected exceptions.
+        """
+        self._write_registers(address, [value])
+
+    def close(self) -> None:
+        """Close the Modbus client connection safely."""
+        with self._lock:
+            if self._client:
+                self._drop_connection()
+                self._client = None
+            else:
+                self._connected = False
+
+    def _drop_connection(self) -> None:
+        """Close the underlying client. The caller must hold the lock."""
+        try:
+            if self._client:
+                self._client.close()
+        except Exception as e:  # noqa: BLE001
+            _LOGGER.exception("Error closing modbus client connection: %s", e)
+        finally:
+            self._connected = False

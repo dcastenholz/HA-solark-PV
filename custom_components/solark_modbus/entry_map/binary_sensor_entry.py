@@ -65,6 +65,7 @@ class BinaryProblemEntry(BaseBinarySensorEntry):
         "device_class": BinarySensorDeviceClass.PROBLEM,
     }
 
+
 class MetricsSuccessFailureEntry(BaseBinarySensorEntry):
     """Binary sensor entry backed by coordinator metric success values."""
 
@@ -98,17 +99,3 @@ class MetricsSuccessFailureEntry(BaseBinarySensorEntry):
     def calc_sensor_value(self: Self, runtime_data: "SolArkData") -> None:
         """Calculate the sensor value from coordinator metrics."""
         self._sensor_value = self.metric(runtime_data.coordinator_metrics)
-
-
-# ----------------------------
-# Time of Use Charge Enabled
-# ----------------------------
-class TimeOfUse_ChargeEnabledEntry(RegisterBoolEntry):
-    """Register entry for time-of-use charge enabled state."""
-
-    ENTITY_CLASS = "EnabledDisabledBinarySensor"
-
-    DynamicIcon = {
-        True: "mdi:checkbox-marked-circle-outline",
-        False: "mdi:checkbox-blank-circle-outline",
-    }

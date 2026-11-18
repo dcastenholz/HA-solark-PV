@@ -7,7 +7,6 @@ from homeassistant.components.sensor import (
 )
 
 from .._sensor.sensor_entity_description import NativeUnit
-from ..entry_map.binary_sensor_entry import TimeOfUse_ChargeEnabledEntry
 from ..entry_map.register_entry import (
     BatteryCurrentEntry,
     BatteryVoltageEntry,
@@ -27,12 +26,13 @@ from ..entry_map.register_entry import (
     SerialNumberEntry,
     SOCEntry,
     TemperatureEntry,
-    TimeOfUse_EnabledEntry,
+    TimeOfUse_ChargeSellEntry,
     TimeOfUse_TimeEntry,
 )
 from ..entry_map.register_map import RegisterMap
 
 T = TypeVar("T", bound="RegisterMap")  # T is the real subclass
+
 
 class SolArkRegisterMap(RegisterMap):
     """Declare the Modbus register map."""
@@ -41,7 +41,15 @@ class SolArkRegisterMap(RegisterMap):
     INFO_FIRMWARE_S = RawInfoEntry(address=11, key="info_firmware_s", name="Firmware S", icon="mdi:information-outline")
     INFO_FIRMWARE_M = RawInfoEntry(address=13, key="info_firmware_m", name="Firmware Control Board", icon="mdi:information-outline")
     INFO_FIRMWARE_C = RawInfoEntry(address=14, key="info_firmware_c", name="Firmware Communication Board", icon="mdi:information-outline")
-    INFO_RATED_POWER = PowerEntry(address=16, key="info_rated_power", scale=0.1, name="Rated Power", icon="mdi:solar-power", data_type=DataType.UINT32, entity_category=EntityCategory.DIAGNOSTIC)
+    INFO_RATED_POWER = PowerEntry(
+        address=16,
+        key="info_rated_power",
+        scale=0.1,
+        name="Rated Power",
+        icon="mdi:solar-power",
+        data_type=DataType.UINT32,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    )
     INFO_MPPT_PHASE_COUNTS_RAW = RawInfoEntry(address=18, key="info_mppt_phase_raw", name="MPPT & Phase")
 
     SYSTEM_TIME_YM_RAW = RawValueSystemTimeEntry(address=22, key="system_time_ym_raw", name="System Time Year Month")
@@ -49,18 +57,30 @@ class SolArkRegisterMap(RegisterMap):
     SYSTEM_TIME_MS_RAW = RawValueSystemTimeEntry(address=24, key="system_time_ms_raw", name="System Time Minute Second")
 
     DAILYINV_E = EnergyEntry(address=60, key="dailyinv_e", name="Daily Inverter Energy", data_type=DataType.INT16)
-#    DAILYREA_E = EnergyEntry(address=61, key="dailyrea_e", name="Daily Reactive Energy", data_type=DataType.INT16)
+    #    DAILYREA_E = EnergyEntry(address=61, key="dailyrea_e", name="Daily Reactive Energy", data_type=DataType.INT16)
     # TODO - The keys for some registers are very misleading. Review and rename, handling history.
     TOTALGRID_E = EnergyEntry(address=63, key="totalgrid_e", name="Total Inverter Energy", data_type=DataType.INT32)
     DAILYBATT_C_E = EnergyTotalIncreasingEntry(address=70, key="daybattc_e", name="Daily Battery Charge Energy", data_type=DataType.UINT16)
-    DAILYBATT_D_E = EnergyTotalIncreasingEntry(address=71, key="daybattd_e", name="Daily Battery Discharge Energy", data_type=DataType.UINT16)
-    TOTALBATT_C_E = EnergyTotalIncreasingEntry(address=72, key="totalbattc_e", name="Total Battery Charge Energy", data_type=DataType.UINT32)
-    TOTALBATT_D_E = EnergyTotalIncreasingEntry(address=74, key="totalbattd_e", name="Total Battery Discharge Energy", data_type=DataType.UINT32)
+    DAILYBATT_D_E = EnergyTotalIncreasingEntry(
+        address=71, key="daybattd_e", name="Daily Battery Discharge Energy", data_type=DataType.UINT16
+    )
+    TOTALBATT_C_E = EnergyTotalIncreasingEntry(
+        address=72, key="totalbattc_e", name="Total Battery Charge Energy", data_type=DataType.UINT32
+    )
+    TOTALBATT_D_E = EnergyTotalIncreasingEntry(
+        address=74, key="totalbattd_e", name="Total Battery Discharge Energy", data_type=DataType.UINT32
+    )
     DAILYGRIDBUY_E = EnergyTotalIncreasingEntry(address=76, key="dailygridbuy_e", name="Daily Grid Buy Energy", data_type=DataType.UINT16)
-    DAILYGRIDSELL_E = EnergyTotalIncreasingEntry(address=77, key="dailygridsell_e", name="Daily Grid Sell Energy", data_type=DataType.UINT16)
-    TOTALGRIDBUY_E_LOW_RAW = RawValueEntry(address=78, key="totalgridbuy_e_low", name="Total Grid Buy Energy - low word", data_type=DataType.UINT16)
+    DAILYGRIDSELL_E = EnergyTotalIncreasingEntry(
+        address=77, key="dailygridsell_e", name="Daily Grid Sell Energy", data_type=DataType.UINT16
+    )
+    TOTALGRIDBUY_E_LOW_RAW = RawValueEntry(
+        address=78, key="totalgridbuy_e_low", name="Total Grid Buy Energy - low word", data_type=DataType.UINT16
+    )
     GRIDFREQ = FrequencyEntry(address=79, key="gridfreq", name="Grid Frequency")
-    TOTALGRIDBUY_E_HIGH_RAW = RawValueEntry(address=80, key="totalgridbuy_e_high", name="Total Grid Buy Energy - high word", data_type=DataType.UINT16)
+    TOTALGRIDBUY_E_HIGH_RAW = RawValueEntry(
+        address=80, key="totalgridbuy_e_high", name="Total Grid Buy Energy - high word", data_type=DataType.UINT16
+    )
     TOTALGRIDSELL_E = EnergyTotalIncreasingEntry(address=81, key="totalsell_e", name="Total Grid Sell Energy", data_type=DataType.UINT32)
     DAILYLOAD_E = EnergyTotalIncreasingEntry(address=84, key="dailyload_e", name="Daily Load Energy", data_type=DataType.UINT16)
     TOTALLOAD_E = EnergyTotalIncreasingEntry(address=85, key="totalload_e", name="Total Load Energy", data_type=DataType.UINT32)
@@ -68,8 +88,18 @@ class SolArkRegisterMap(RegisterMap):
     ACHSTempC = TemperatureEntry(address=91, key="achstempc", name="AC Heatsink Temperature")
     # TODO - The keys for some registers are very misleading. Review and rename, handling history.
     TOTALINV_E = EnergyEntry(address=96, key="totalinv_e", name="Total PV Energy", data_type=DataType.INT32)
-    FAULT_INFO_RAW = RawInfoEntry(address=103, key="fault_info_raw", name="Inverter Fault Information", data_type=DataType.UINT64, icon="mdi:message-alert-outline")
-    CORR_BATT_CAP = RegisterIntEntry(address=107, key="corr_batt_cap", name="Corrected Battery Capacity", data_type=DataType.UINT16, icon="mdi:battery", native_unit=NativeUnit.AH, state_class=None)
+    FAULT_INFO_RAW = RawInfoEntry(
+        address=103, key="fault_info_raw", name="Inverter Fault Information", data_type=DataType.UINT64, icon="mdi:message-alert-outline"
+    )
+    CORR_BATT_CAP = RegisterIntEntry(
+        address=107,
+        key="corr_batt_cap",
+        name="Corrected Battery Capacity",
+        data_type=DataType.UINT16,
+        icon="mdi:battery",
+        native_unit=NativeUnit.AH,
+        state_class=None,
+    )
     DAILYPV_E = EnergyTotalIncreasingEntry(address=108, key="dailypv_e", name="Daily PV Energy", data_type=DataType.UINT16)
 
     PV1_V = PVVoltageEntry(address=109, key="pv1_v", name="PV1 Voltage")
@@ -133,45 +163,54 @@ class SolArkRegisterMap(RegisterMap):
 
     GEN_FREQ = FrequencyEntry(address=196, key="genfreq", name="Generator Relay Frequency")
 
+    BATT_MEASURE_MODE_RAW = RawValueEntry(
+        address=213, key="batt_measure_mode_raw", name="Battery Measurement Mode Raw Value", data_type=DataType.UINT16
+    )
+    BATT_CHARGE_CURRENT_LIMIT = BatteryCurrentEntry(
+        address=230, key="battery_charge_current_limit", name="Battery Charge Current Limit", data_type=DataType.UINT16
+    )
+
     # ----------------------------
     # Time of use
     # ----------------------------
-    TIMEOFUSE_ENABLED = TimeOfUse_EnabledEntry(address=248, key="timeofuse_enabled", name="Time of Use Enabled", data_type=DataType.UINT16)
+    TIMEOFUSE_ENABLED_RAW = RawValueEntry(
+        address=248, key="timeofuse_enabled_raw", name="Time of Use Enabled Raw Value", data_type=DataType.UINT16
+    )
 
-    TIMEOFUSE_TIME_1 = TimeOfUse_TimeEntry(address=250, key="timeofuse_time_1", name="Time of Use Time 1")
-    TIMEOFUSE_TIME_2 = TimeOfUse_TimeEntry(address=251, key="timeofuse_time_2", name="Time of Use Time 2")
-    TIMEOFUSE_TIME_3 = TimeOfUse_TimeEntry(address=252, key="timeofuse_time_3", name="Time of Use Time 3")
-    TIMEOFUSE_TIME_4 = TimeOfUse_TimeEntry(address=253, key="timeofuse_time_4", name="Time of Use Time 4")
-    TIMEOFUSE_TIME_5 = TimeOfUse_TimeEntry(address=254, key="timeofuse_time_5", name="Time of Use Time 5")
-    TIMEOFUSE_TIME_6 = TimeOfUse_TimeEntry(address=255, key="timeofuse_time_6", name="Time of Use Time 6")
+    TIMEOFUSE_1_TIME = TimeOfUse_TimeEntry(address=250, key="timeofuse_1_time", name="Time of Use 1 Time")
+    TIMEOFUSE_2_TIME = TimeOfUse_TimeEntry(address=251, key="timeofuse_2_time", name="Time of Use 2 Time")
+    TIMEOFUSE_3_TIME = TimeOfUse_TimeEntry(address=252, key="timeofuse_3_time", name="Time of Use 3 Time")
+    TIMEOFUSE_4_TIME = TimeOfUse_TimeEntry(address=253, key="timeofuse_4_time", name="Time of Use 4 Time")
+    TIMEOFUSE_5_TIME = TimeOfUse_TimeEntry(address=254, key="timeofuse_5_time", name="Time of Use 5 Time")
+    TIMEOFUSE_6_TIME = TimeOfUse_TimeEntry(address=255, key="timeofuse_6_time", name="Time of Use 6 Time")
 
-    TIMEOFUSE_POWER_1 = PowerEntry(address=256, key="timeofuse_power_1", name="Time of Use Power 1", data_type=DataType.UINT16)
-    TIMEOFUSE_POWER_2 = PowerEntry(address=257, key="timeofuse_power_2", name="Time of Use Power 2", data_type=DataType.UINT16)
-    TIMEOFUSE_POWER_3 = PowerEntry(address=258, key="timeofuse_power_3", name="Time of Use Power 3", data_type=DataType.UINT16)
-    TIMEOFUSE_POWER_4 = PowerEntry(address=259, key="timeofuse_power_4", name="Time of Use Power 4", data_type=DataType.UINT16)
-    TIMEOFUSE_POWER_5 = PowerEntry(address=260, key="timeofuse_power_5", name="Time of Use Power 5", data_type=DataType.UINT16)
-    TIMEOFUSE_POWER_6 = PowerEntry(address=261, key="timeofuse_power_6", name="Time of Use Power 6", data_type=DataType.UINT16)
+    TIMEOFUSE_1_POWER = PowerEntry(address=256, key="timeofuse_1_power", name="Time of Use 1 Power", data_type=DataType.UINT16)
+    TIMEOFUSE_2_POWER = PowerEntry(address=257, key="timeofuse_2_power", name="Time of Use 2 Power", data_type=DataType.UINT16)
+    TIMEOFUSE_3_POWER = PowerEntry(address=258, key="timeofuse_3_power", name="Time of Use 3 Power", data_type=DataType.UINT16)
+    TIMEOFUSE_4_POWER = PowerEntry(address=259, key="timeofuse_4_power", name="Time of Use 4 Power", data_type=DataType.UINT16)
+    TIMEOFUSE_5_POWER = PowerEntry(address=260, key="timeofuse_5_power", name="Time of Use 5 Power", data_type=DataType.UINT16)
+    TIMEOFUSE_6_POWER = PowerEntry(address=261, key="timeofuse_6_power", name="Time of Use 6 Power", data_type=DataType.UINT16)
 
-    TIMEOFUSE_VOLTAGE_1 = BatteryVoltageEntry(address=262, key="timeofuse_voltage_1", name="Time of Use Voltage 1")
-    TIMEOFUSE_VOLTAGE_2 = BatteryVoltageEntry(address=263, key="timeofuse_voltage_2", name="Time of Use Voltage 2")
-    TIMEOFUSE_VOLTAGE_3 = BatteryVoltageEntry(address=264, key="timeofuse_voltage_3", name="Time of Use Voltage 3")
-    TIMEOFUSE_VOLTAGE_4 = BatteryVoltageEntry(address=265, key="timeofuse_voltage_4", name="Time of Use Voltage 4")
-    TIMEOFUSE_VOLTAGE_5 = BatteryVoltageEntry(address=266, key="timeofuse_voltage_5", name="Time of Use Voltage 5")
-    TIMEOFUSE_VOLTAGE_6 = BatteryVoltageEntry(address=267, key="timeofuse_voltage_6", name="Time of Use Voltage 6")
+    TIMEOFUSE_1_VOLTAGE = BatteryVoltageEntry(address=262, key="timeofuse_1_voltage", name="Time of Use 1 Voltage")
+    TIMEOFUSE_2_VOLTAGE = BatteryVoltageEntry(address=263, key="timeofuse_2_voltage", name="Time of Use 2 Voltage")
+    TIMEOFUSE_3_VOLTAGE = BatteryVoltageEntry(address=264, key="timeofuse_3_voltage", name="Time of Use 3 Voltage")
+    TIMEOFUSE_4_VOLTAGE = BatteryVoltageEntry(address=265, key="timeofuse_4_voltage", name="Time of Use 4 Voltage")
+    TIMEOFUSE_5_VOLTAGE = BatteryVoltageEntry(address=266, key="timeofuse_5_voltage", name="Time of Use 5 Voltage")
+    TIMEOFUSE_6_VOLTAGE = BatteryVoltageEntry(address=267, key="timeofuse_6_voltage", name="Time of Use 6 Voltage")
 
-    TIMEOFUSE_SOC_1 = SOCEntry(address=268, key="timeofuse_soc_1", name="Time of Use SOC 1")
-    TIMEOFUSE_SOC_2 = SOCEntry(address=269, key="timeofuse_soc_2", name="Time of Use SOC 2")
-    TIMEOFUSE_SOC_3 = SOCEntry(address=270, key="timeofuse_soc_3", name="Time of Use SOC 3")
-    TIMEOFUSE_SOC_4 = SOCEntry(address=271, key="timeofuse_soc_4", name="Time of Use SOC 4")
-    TIMEOFUSE_SOC_5 = SOCEntry(address=272, key="timeofuse_soc_5", name="Time of Use SOC 5")
-    TIMEOFUSE_SOC_6 = SOCEntry(address=273, key="timeofuse_soc_6", name="Time of Use SOC 6")
+    TIMEOFUSE_1_SOC = SOCEntry(address=268, key="timeofuse_1_soc", name="Time of Use 1 SOC")
+    TIMEOFUSE_2_SOC = SOCEntry(address=269, key="timeofuse_2_soc", name="Time of Use 2 SOC")
+    TIMEOFUSE_3_SOC = SOCEntry(address=270, key="timeofuse_3_soc", name="Time of Use 3 SOC")
+    TIMEOFUSE_4_SOC = SOCEntry(address=271, key="timeofuse_4_soc", name="Time of Use 4 SOC")
+    TIMEOFUSE_5_SOC = SOCEntry(address=272, key="timeofuse_5_soc", name="Time of Use 5 SOC")
+    TIMEOFUSE_6_SOC = SOCEntry(address=273, key="timeofuse_6_soc", name="Time of Use 6 SOC")
 
-    TIMEOFUSE_ENABLED_1 = TimeOfUse_ChargeEnabledEntry(address=274, key="timeofuse_enabled_1", name="Time of Use Enabled 1")
-    TIMEOFUSE_ENABLED_2 = TimeOfUse_ChargeEnabledEntry(address=275, key="timeofuse_enabled_2", name="Time of Use Enabled 2")
-    TIMEOFUSE_ENABLED_3 = TimeOfUse_ChargeEnabledEntry(address=276, key="timeofuse_enabled_3", name="Time of Use Enabled 3")
-    TIMEOFUSE_ENABLED_4 = TimeOfUse_ChargeEnabledEntry(address=277, key="timeofuse_enabled_4", name="Time of Use Enabled 4")
-    TIMEOFUSE_ENABLED_5 = TimeOfUse_ChargeEnabledEntry(address=278, key="timeofuse_enabled_5", name="Time of Use Enabled 5")
-    TIMEOFUSE_ENABLED_6 = TimeOfUse_ChargeEnabledEntry(address=279, key="timeofuse_enabled_6", name="Time of Use Enabled 6")
+    TIMEOFUSE_1_CHARGE_SELL = TimeOfUse_ChargeSellEntry(address=274, key="timeofuse_1_charge_sell", name="Time of Use 1 Charge/Sell")
+    TIMEOFUSE_2_CHARGE_SELL = TimeOfUse_ChargeSellEntry(address=275, key="timeofuse_2_charge_sell", name="Time of Use 2 Charge/Sell")
+    TIMEOFUSE_3_CHARGE_SELL = TimeOfUse_ChargeSellEntry(address=276, key="timeofuse_3_charge_sell", name="Time of Use 3 Charge/Sell")
+    TIMEOFUSE_4_CHARGE_SELL = TimeOfUse_ChargeSellEntry(address=277, key="timeofuse_4_charge_sell", name="Time of Use 4 Charge/Sell")
+    TIMEOFUSE_5_CHARGE_SELL = TimeOfUse_ChargeSellEntry(address=278, key="timeofuse_5_charge_sell", name="Time of Use 5 Charge/Sell")
+    TIMEOFUSE_6_CHARGE_SELL = TimeOfUse_ChargeSellEntry(address=279, key="timeofuse_6_charge_sell", name="Time of Use 6 Charge/Sell")
 
     # ----------------------------
     # BMS

@@ -1,4 +1,5 @@
 """Data update coordinator for SolArk."""
+
 from __future__ import annotations
 
 import logging
@@ -16,8 +17,9 @@ from .coordinator_metrics import CoordinatorMetrics
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class SolArkCoordinator(DataUpdateCoordinator[dict]):
-    """ Update the register map with the latest values read from the inverter and return a combined
+    """Update the register map with the latest values read from the inverter and return a combined
     dictionary of all data.
 
     Class is responsible for reading the data from the inverter and returning it as a dictionary.
@@ -31,8 +33,8 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
     otherwise return an error message.
     """
 
-    _runtime_data: SolArkData
     _data_read_error: bool = False
+    _runtime_data: SolArkData
     _coordinator_metrics: CoordinatorMetrics
 
     def __init__(self, runtime_data: SolArkData):
@@ -54,7 +56,7 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
         _LOGGER.debug(
             "Scan interval set to %s seconds, Max stale data age set to %s seconds.",
             runtime_data.config_data.scan_interval,
-            runtime_data.config_data.max_stale_data_age_seconds
+            runtime_data.config_data.max_stale_data_age_seconds,
         )
 
         # We want to attempt to read the inverter information registers until we have read them successfully a single time.
@@ -130,9 +132,53 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
         # ----------------------------------
         return pipeline_ok
 
+    async def async_write_register(self, address: int, value: int) -> bool:
+        """Write to a single register on the inverter."""
+
+        modbus_client: SolArkModbusClient = self._runtime_data.modbus_client
+
+        _LOGGER.debug("Writing to register %d: %d", address, value)
+        try:
+            result = await self.hass.async_add_executor_job(modbus_client.write_register(address=address, value=value))
+
+            if result.is_error:
+                _LOGGER.error("Failed to write to register %d: %s", address, result.error)
+                return False
+
+            # Immediately request a refresh to update the UI with the new value
+            await self.async_request_refresh()
+
+            # TODO - Need to read just the written registers and then call async_set_updated_data()
+            # cached_data: CoordinatorData = self._runtime_data.last_data_updated
+
+            # self.async_set_updated_data(data)
+
+            return True
+
+        except Exception as e:
+            _LOGGER.exception("Unexpected error writing to register %d: %s", address, e)
+            return False
+
+    def _publish_partial_update(self, updates: dict[str, SensorValue]) -> None:
+        # Publish a complete coordinator dictionary, preserving unchanged keys.
+        current = dict(self.data or {})
+        current.update(updates)
+        self.async_set_updated_data(current)
+
+        # Keep the fallback values consistent with the published values.
+        cached = self._runtime_data.last_data_updated
+        if cached is not None:
+            cached_values = dict(cached.data)
+            cached_values.update(updates)
+            self._runtime_data.previous_data_updated = cached
+            self._runtime_data.last_data_updated = CoordinatorData(
+                data=cached_values,
+                timestamp=cached.timestamp,
+            )
+
     def _try_get_cached_data(self) -> dict[str, SensorValue]:
         """Use last successful data if it's not too old.
-         Logs warnings or errors as needed."""
+        Logs warnings or errors as needed."""
 
         cached_data: CoordinatorData = self._runtime_data.last_data_updated
 
@@ -149,7 +195,7 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
             # Data is too stale, so log error
             _LOGGER.warning(
                 "Returning no data. No recent cached data available. Last successful update: %s.",
-                cached_data.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                cached_data.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
             )
             # Record the return of no recent cached data
             self.coordinator_metrics.on_return_no_recent_cached_data()
@@ -172,5 +218,4 @@ class SolArkCoordinator(DataUpdateCoordinator[dict]):
         except Exception as exc:
             _LOGGER.error("Error stopping coordinator: %s", exc, exc_info=True)
 
-        # self._data_change_dispatcher.clear()
         self.coordinator_metrics.on_shutdown()
