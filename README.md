@@ -1,5 +1,5 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-# HA-solark-PV
+# Sol-Ark
 This integration utilizes the MODBUS interface of a SolArk All-in-One inverter to allow local read-only access to inverter variables.  The integration does a direct MODBUS interface with your inverter.  I have tested with my own 12K Outdoor model but it should work with the other models (15k, 12k indoor, 8k and 5k) as well.  This connection method does not use the connector used by SolArk's Inverter Control/Data collection dongle and does not interfere with it.  This method is independent of that one and can be used to collect data locally without any need for an internet connection and does not require you to surrender control of your inverter and data to an unknown foreign website.  It can provide update rates at least as fast as once every 7 seconds.  This integration provide read access to your inverter, no writing is provided.
 
 ## Connection via Modbus TCP to the SolArk inverter
