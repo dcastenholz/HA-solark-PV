@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-DOMAIN = "solark_modbus"
+DOMAIN = "solark"
 DEFAULT_NAME = "SolArk"
 DEFAULT_HOST = "localhost"
 DEFAULT_PORT_RTU = "/dev/ttyUSB0"

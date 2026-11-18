@@ -11,11 +11,13 @@ from typing import TYPE_CHECKING
 
 from homeassistant.helpers.storage import Store
 
+from ..const import DOMAIN
+
 if TYPE_CHECKING:
     from ..data import SolArkData
 
 STORAGE_VERSION = 1
-STORAGE_KEY = "solark_modbus.metrics"
+STORAGE_KEY = f"{DOMAIN}.metrics"
 
 
 class MetricsStorage:
