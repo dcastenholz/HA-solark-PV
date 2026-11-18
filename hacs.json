@@ -1,5 +1,5 @@
 {
-  "name": "SolArk PV Inverter Modbus",
+  "name": "Sol-Ark PV Inverter",
   "render_readme": true,
   "iot_class": "local_polling",
   "homeassistant": "2023.2.0",
